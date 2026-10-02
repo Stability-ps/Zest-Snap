@@ -94,45 +94,70 @@ export async function POST(req: NextRequest) {
     "Do not invent locations, times or dates."
   ].join("\n");
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + apiKey,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      instructions,
-      input: [{
-        role: "user",
-        content: [
-          { type: "input_text", text: "Find all actionable dates and events in this file." },
-          mediaPart
-        ]
-      }],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "zest_snap_events",
-          strict: true,
-          schema
-        }
-      }
-    })
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    console.error("OpenAI extraction failed", payload?.error?.message || response.statusText);
-    return NextResponse.json({ error: "We could not analyse this file right now. Please try again." }, { status: 502 });
-  }
-
-  const text = extractOutputText(payload);
   try {
-    const result = JSON.parse(text);
-    return NextResponse.json(result);
-  } catch {
-    console.error("OpenAI returned unparsable structured output");
-    return NextResponse.json({ error: "The scan completed, but the result could not be read. Please try again." }, { status: 502 });
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        instructions,
+        input: [{
+          role: "user",
+          content: [
+            { type: "input_text", text: "Find all actionable dates and events in this file." },
+            mediaPart
+          ]
+        }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "zest_snap_events",
+            strict: true,
+            schema
+          }
+        }
+      })
+    });
+
+    const rawPayload = await response.text();
+    let payload: any = null;
+    try {
+      payload = rawPayload ? JSON.parse(rawPayload) : null;
+    } catch {
+      console.error("OpenAI extraction returned a non-JSON response", response.status);
+      return NextResponse.json(
+        { error: "We could not analyse this file right now. Please try again." },
+        { status: 502 }
+      );
+    }
+
+    if (!response.ok) {
+      console.error("OpenAI extraction failed", payload?.error?.message || response.statusText);
+      return NextResponse.json(
+        { error: "We could not analyse this file right now. Please try again." },
+        { status: 502 }
+      );
+    }
+
+    const text = extractOutputText(payload);
+    try {
+      const result = JSON.parse(text);
+      return NextResponse.json(result);
+    } catch {
+      console.error("OpenAI returned unparsable structured output");
+      return NextResponse.json(
+        { error: "The scan completed, but the result could not be read. Please try again." },
+        { status: 502 }
+      );
+    }
+  } catch (error) {
+    console.error("Extraction request failed", error instanceof Error ? error.message : "Unknown error");
+    return NextResponse.json(
+      { error: "We could not scan this file right now. Please try again." },
+      { status: 500 }
+    );
   }
 }
