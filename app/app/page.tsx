@@ -101,20 +101,30 @@ export default function App() {
     setSelected(s => s.includes(index) ? s.filter(i => i !== index) : [...s, index]);
   }
 
-  async function downloadIcs(event: ExtractedEvent) {
-    const res = await fetch("/api/calendar/ics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(event)
-    });
-    if (!res.ok) return;
-    const blob = await res.blob();
-    const href = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = href;
-    a.download = "zest-snap-event.ics";
-    a.click();
-    URL.revokeObjectURL(href);
+  async function downloadIcs(events: ExtractedEvent | ExtractedEvent[]) {
+    const items = Array.isArray(events) ? events : [events];
+    if (!items.length) return;
+
+    try {
+      const res = await fetch("/api/calendar/ics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events: items })
+      });
+      if (!res.ok) throw new Error("Calendar export failed.");
+
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = items.length > 1 ? "zest-snap-events.ics" : "zest-snap-event.ics";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 1000);
+    } catch {
+      setError("We could not prepare these calendar events. Please try again.");
+    }
   }
 
   return <main className="appShell">
@@ -189,7 +199,7 @@ export default function App() {
           })}
         </div>
 
-        <div className="stickyAction"><div><b>{selected.length} selected</b><span>Review before adding</span></div><button className="button" onClick={() => selected.length && downloadIcs(result.events[selected[0]])}>Add selected</button></div>
+        <div className="stickyAction"><div><b>{selected.length} selected</b><span>Review before adding</span></div><button className="button" onClick={() => selected.length && downloadIcs(selected.map(i => result.events[i]))}>Add selected</button></div>
       </>}
 
       {view === "history" && <EmptyView title="Scan history" text="Your previous scans will live here once account storage is connected." icon={<Clock/>}/>}
