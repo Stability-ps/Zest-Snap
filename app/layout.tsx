@@ -1,0 +1,1 @@
+import "./globals.css"; export const metadata={title:"Zest Snap — Anything with a date becomes actionable",description:"AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines."}; export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body>{children}</body></html>}
