@@ -1,1 +1,27 @@
-import "./globals.css"; export const metadata={title:"Zest Snap — Anything with a date becomes actionable",description:"AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines."}; export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body>{children}</body></html>}
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import PwaRegister from "./pwa-register";
+
+export const metadata: Metadata = {
+  title: "Zest Snap — Anything with a date becomes actionable",
+  description: "AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines.",
+  applicationName: "Zest Snap",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Zest Snap"
+  },
+  formatDetection: { telephone: false }
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0B1F3B"
+};
+
+export default function RootLayout({children}:{children:React.ReactNode}) {
+  return <html lang="en"><body>{children}<PwaRegister/></body></html>;
+}
