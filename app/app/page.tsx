@@ -27,34 +27,66 @@ export default function App() {
   async function scanFile(file?: File) {
     if (!file) return;
     setError("");
-    if (file.size > 5_500_000) {
-      setError("Please choose a file smaller than 5 MB for now.");
+
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf";
+    if (!isImage && !isPdf) {
+      setError("Zest Snap currently accepts images and PDFs.");
       return;
     }
-    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
-      setError("Zest Snap currently accepts images and PDFs.");
+
+    // Vercel Functions have an inbound request-size ceiling. PDFs are sent as
+    // base64, which grows the payload by roughly a third, so keep raw PDFs
+    // comfortably below that ceiling. Large phone photos are compressed first.
+    if (isPdf && file.size > 3_000_000) {
+      setError("This PDF is too large to scan right now. Please use a PDF smaller than 3 MB.");
+      return;
+    }
+    if (isImage && file.size > 15_000_000) {
+      setError("This photo is too large to scan. Please choose a smaller image.");
       return;
     }
 
     setBusy(true);
     setFileName(file.name);
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
+      const prepared = await prepareFileForScan(file);
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       const locale = navigator.language || "en";
       const res = await fetch("/api/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dataUrl, mimeType: file.type, fileName: file.name, timezone, locale })
+        body: JSON.stringify({
+          dataUrl: prepared.dataUrl,
+          mimeType: prepared.mimeType,
+          fileName: file.name,
+          timezone,
+          locale
+        })
       });
-      const payload = await res.json();
-      if (!res.ok) throw new Error(payload.error || "Scan failed.");
+
+      const raw = await res.text();
+      let payload: ExtractionResult | { error?: string } | null = null;
+      try {
+        payload = raw ? JSON.parse(raw) : null;
+      } catch {
+        payload = null;
+      }
+
+      if (!res.ok) {
+        if (res.status === 413) {
+          throw new Error("This file is too large to scan. Try a smaller PDF or photo.");
+        }
+        throw new Error(
+          (payload && "error" in payload && payload.error) ||
+          "We could not scan this file right now. Please try again."
+        );
+      }
+
+      if (!payload || !("events" in payload) || !Array.isArray(payload.events)) {
+        throw new Error("The scan finished, but the result could not be read. Please try again.");
+      }
+
       setResult(payload);
       setSelected(payload.events.map((_: ExtractedEvent, i: number) => i));
       setView("review");
@@ -192,4 +224,47 @@ function RewardsView() {
       <div><Gift/><span><b>Invite a friend</b><small>Both earn bonus scans</small></span></div>
     </div>
   </section>;
+}
+
+
+async function readAsDataUrl(file: Blob): Promise<string> {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error || new Error("Could not read this file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function prepareFileForScan(file: File): Promise<{ dataUrl: string; mimeType: string }> {
+  if (!file.type.startsWith("image/") || file.size <= 2_000_000) {
+    return { dataUrl: await readAsDataUrl(file), mimeType: file.type };
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxDimension = 2000;
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Image compression is unavailable.");
+
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+
+    return {
+      dataUrl: canvas.toDataURL("image/jpeg", 0.82),
+      mimeType: "image/jpeg"
+    };
+  } catch {
+    // If the browser cannot compress this format, fall back only when the
+    // resulting request should still fit safely.
+    if (file.size > 3_000_000) {
+      throw new Error("This photo is too large to scan on this device. Please use a smaller photo.");
+    }
+    return { dataUrl: await readAsDataUrl(file), mimeType: file.type };
+  }
 }
