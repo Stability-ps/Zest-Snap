@@ -78,3 +78,5 @@ For a frontend regression, restore the last verified Vercel deployment. Keep dat
 
 
 > Cloud activation redeploy triggered after production Supabase environment variables were configured on 2026-10-03.
+
+> Production redeploy triggered after server-side Supabase credential configuration on 2026-10-03.
