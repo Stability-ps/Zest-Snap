@@ -11,6 +11,17 @@ async function rpc(name:string,args:Record<string,unknown>){if(!isSupabaseConfig
 export async function cancelReminder(id:string,storage=localStorage){const l=read(storage);if(l.some(x=>x.id===id)){write(storage,l.map(x=>x.id===id?{...x,status:"cancelled"}:x));return;}await rpc("cancel_planner_reminder",{p_id:id});}
 export async function snoozeReminder(id:string,minutes:number,storage=localStorage){const l=read(storage);if(l.some(x=>x.id===id)){if(!Number.isFinite(minutes)||minutes<1||minutes>10080)throw new Error("Choose a snooze between 1 minute and 1 week.");const t=new Date(Date.now()+minutes*60000).toISOString();write(storage,l.map(x=>x.id===id?{...x,status:"pending",scheduledAt:t,snoozedUntil:t}:x));return;}await rpc("snooze_planner_reminder",{p_id:id,p_minutes:minutes});}
 export async function markReminderHandled(id:string,storage=localStorage){const l=read(storage);if(l.some(x=>x.id===id)){write(storage,l.map(x=>x.id===id?{...x,status:"handled",handledAt:new Date().toISOString()}:x));return;}await rpc("mark_planner_reminder_handled",{p_id:id});}
+export type NotificationState="unsupported"|"blocked"|"available"|"enabled";
 export function notificationSupport(){return typeof window!=="undefined"&&"Notification" in window&&"serviceWorker" in navigator&&"PushManager" in window;}
+export async function getNotificationState():Promise<NotificationState>{
+ if(!notificationSupport())return "unsupported";
+ if(Notification.permission==="denied")return "blocked";
+ if(Notification.permission!=="granted")return "available";
+ try{
+  const reg=await navigator.serviceWorker.ready;
+  const sub=await reg.pushManager.getSubscription();
+  return sub?"enabled":"available";
+ }catch{return "available";}
+}
 function key(v:string){const p="=".repeat((4-v.length%4)%4),b=(v+p).replace(/-/g,"+").replace(/_/g,"/"),raw=atob(b);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));}
 export async function enablePushNotifications(){if(!notificationSupport())throw new Error("Push notifications are not supported on this device/browser.");if(!isSupabaseConfigured())throw new Error("Sign in to enable background reminders.");const pub=process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY||"BLfn6Z34FtBgi3t9IqHP9gtUjk9RXxoh7Msm7r8YDdj-_8v8V8Tv1KZJyqVAPrhRygU3MRWaKE-Zvv84JFI-Ekw";if(await Notification.requestPermission()!=="granted")throw new Error("Notification permission was not granted.");const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key(pub)}),json=sub.toJSON(),db=createClient(),a=await db.auth.getUser();if(!a.data.user)throw new Error("Sign in to enable background reminders.");const{error}=await db.rpc("register_push_subscription",{p_endpoint:sub.endpoint,p_keys:json.keys||{}});if(error)throw new Error("Notification subscription could not be saved.");return true;}
