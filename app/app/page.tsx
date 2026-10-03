@@ -33,13 +33,12 @@ import {
   type StoredEvent,
   type LocalState,
 } from "@/lib/data";
-import { eventFingerprint, validateEvent, agendaGroup } from "@/lib/events";
+import { eventFingerprint, validateEvent } from "@/lib/events";
 import { generateIcs } from "@/lib/ics";
 
 export default function App() {
   const provider = useRef<DataProvider | null>(null);
   const [ready, setReady] = useState(false);
-  const [insights, setInsights] = useState(true);
   const [mode, setMode] = useState("local");
   const [activeScan, setActiveScan] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -55,36 +54,6 @@ export default function App() {
   const [draft, setDraft] = useState<ExtractedEvent | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [installed, setInstalled] = useState(false);
-
-  useEffect(() => {
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true;
-    setInstalled(standalone);
-    const beforeInstall = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event);
-    };
-    const appInstalled = () => {
-      setInstalled(true);
-      setInstallPrompt(null);
-    };
-    window.addEventListener("beforeinstallprompt", beforeInstall);
-    window.addEventListener("appinstalled", appInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", beforeInstall);
-      window.removeEventListener("appinstalled", appInstalled);
-    };
-  }, []);
-
-  async function installApp() {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    if (choice?.outcome === "accepted") setInstallPrompt(null);
-  }
 
   useEffect(() => {
     let mounted = true;
@@ -107,7 +76,6 @@ export default function App() {
           }
         }
         if (mounted) {
-          setInsights(pref.reminders);
           provider.current = p;
           setStore(data);
           setMode(p.mode);
@@ -430,24 +398,8 @@ export default function App() {
       </header>
 
       <div className="appContent">
-        <p>
-          <a href="/settings">Settings</a> ·{" "}
-          {mode === "cloud"
-            ? "Cloud account · merge guest data in Settings"
-            : "Saved on this device"}
-        </p>
-        {error && (
-          <div className="errorBox" role="alert">
-            {error}
-          </div>
-        )}
         {view === "home" && (
           <>
-            {!installed && installPrompt && (
-              <button className="button alt" onClick={installApp}>
-                Install Zest Snap
-              </button>
-            )}
             <section className="appIntro">
               <div className="eyebrow">YOUR DAY</div>
               <h1>What do you want to remember?</h1>
@@ -553,44 +505,13 @@ export default function App() {
               </button>
             </section>
 
-            {insights && (
-              <section className="insightCard">
-                <CalendarDays size={18} />
-                <div>
-                  <b>
-                    {
-                      store.events.filter((e) =>
-                        ["Today", "Tomorrow"].includes(agendaGroup(e)),
-                      ).length
-                    }{" "}
-                    items today or tomorrow
-                  </b>
-                  <p>
-                    {
-                      store.scans.filter((s) =>
-                        s.events.some(
-                          (e) =>
-                            !store.events.some(
-                              (a) =>
-                                eventFingerprint(a) === eventFingerprint(e),
-                            ),
-                        ),
-                      ).length
-                    }{" "}
-                    scans have items you can still review. No external reminder
-                    has been sent.
-                  </p>
-                </div>
-              </section>
-            )}
             <section className="insightCard">
               <Sparkles size={18} />
               <div>
                 <b>Zest keeps working after the scan.</b>
                 <p>
                   Your saved agenda, scan history and duplicate protection stay
-                  available on this device and remain separate from your
-                  external calendars.
+                  available on this device while the cloud account layer is being connected.
                 </p>
               </div>
             </section>
