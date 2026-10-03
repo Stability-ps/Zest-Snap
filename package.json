@@ -6,20 +6,33 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "prebuild": "node scripts/prepare-sw.mjs",
+    "predev": "node scripts/prepare-sw.mjs"
   },
   "dependencies": {
-    "next": "16.0.10",
+    "@js-temporal/polyfill": "0.5.1",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "lucide-react": "^0.468.0",
+    "next": "16.3.8",
+    "pdf-lib": "1.17.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "lucide-react": "^0.468.0",
-    "@supabase/ssr": "^0.7.0",
-    "@supabase/supabase-js": "^2.57.4"
+    "server-only": "0.0.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@playwright/test": "1.63.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.8",
+    "prettier": "3.9.9",
+    "tsx": "4.23.15",
     "typescript": "^5.7.2"
   }
 }

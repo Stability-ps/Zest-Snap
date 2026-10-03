@@ -4,24 +4,37 @@ import PwaRegister from "./pwa-register";
 
 export const metadata: Metadata = {
   title: "Zest Snap — Anything with a date becomes actionable",
-  description: "AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines.",
+  description:
+    "AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines.",
+  icons: { apple: "/icons/apple-touch-icon.png", icon: "/icons/zest-192.png" },
   applicationName: "Zest Snap",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Zest Snap"
+    title: "Zest Snap",
   },
-  formatDetection: { telephone: false }
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0B1F3B"
+  themeColor: "#0B1F3B",
 };
 
-export default function RootLayout({children}:{children:React.ReactNode}) {
-  return <html lang="en"><body>{children}<PwaRegister/></body></html>;
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <PwaRegister />
+      </body>
+    </html>
+  );
 }
