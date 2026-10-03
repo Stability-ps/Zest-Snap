@@ -147,11 +147,19 @@ export default function Settings() {
               <button className="iconButton" onClick={()=>setSheet(null)} aria-label="Close"><X/></button>
             </div>
             {sheet==="storage"&&<div className="settingsStorageDetails">
-              <div><span>Storage mode</span><b>{provider?.mode==="cloud"?"Cloud sync":"On this device"}</b></div>
-              <div><span>Scan history</span><b>{retentionLabel}</b></div>
-              <div><span>Planner data</span><b>{provider?.mode==="cloud"?"Synced":"Stored locally"}</b></div>
-              <p>{provider?.mode==="cloud"?"Changes stay available across signed-in devices.":"If you clear this browser/app data or uninstall without signing in, locally stored Zest data can be lost."}</p>
-              <a className="button" href={provider?.mode==="cloud"?"/login":"/login"}>{provider?.mode==="cloud"?"Manage account":"Sign in to sync"}</a>
+              <div className="storageStatus">
+                <span className="storageStatusIcon"><Database /></span>
+                <span><small>Storage</small><b>{provider?.mode==="cloud"?"Cloud sync":"On this device"}</b></span>
+                <strong className={provider?.mode==="cloud"?"safe":"warning"}>{provider?.mode==="cloud"?"Synced":"Not backed up"}</strong>
+              </div>
+              <div className="storageFacts">
+                <div><span>Scans & history</span><b>{provider?.mode==="cloud"?"Synced":"Stored locally"}</b></div>
+                <div><span>Planner & reminders</span><b>{provider?.mode==="cloud"?"Synced":"Stored locally"}</b></div>
+                <div><span>History retention</span><b>{retentionLabel}</b></div>
+                <div><span>Original uploads</span><b>Not retained</b></div>
+              </div>
+              <p>{provider?.mode==="cloud"?"Your Zest data stays available when you sign in on supported devices.":"Clearing app/browser data or uninstalling before signing in can remove locally stored Zest data."}</p>
+              <a className="button" href="/login">{provider?.mode==="cloud"?"Manage account":"Sign in to sync"}</a>
             </div>}
             {sheet==="timezone"&&<>
               <label className="settingsSheetSearch"><Search/><input autoFocus value={sheetSearch} onChange={e=>setSheetSearch(e.target.value)} placeholder="Search city or timezone" /></label>
