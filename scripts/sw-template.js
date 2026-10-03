@@ -91,16 +91,43 @@ self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
 });
 self.addEventListener("push", (event) => {
-  if (!event.data) return;
+  let payload = {};
+  try { payload = event.data?.json() || {}; } catch {}
+  const title = payload.title || "Zest Snap";
+  const body = payload.body || "You have an upcoming item.";
+  const url = payload.url || "/app?view=calendar";
   event.waitUntil(
-    self.registration.showNotification("Zest Snap", {
-      body: "You have an upcoming item. Open your agenda to review it.",
+    self.registration.showNotification(title, {
+      body,
       icon: "/icons/zest-snap-192.png",
-      data: { url: "/app?view=calendar" },
+      badge: "/icons/zest-snap-192.png",
+      tag: payload.tag || "zest-reminder",
+      renotify: true,
+      vibrate: [180, 80, 180],
+      data: { url, reminderId: payload.reminderId || null },
+      actions: [
+        { action: "open", title: "Open Planner" },
+        { action: "snooze", title: "Snooze 15 min" },
+      ],
     }),
   );
 });
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow("/app?view=calendar"));
+  const base = event.notification.data?.url || "/app?view=calendar";
+  const id = event.notification.data?.reminderId;
+  const url = event.action === "snooze" && id
+    ? `/app?view=calendar&reminderAction=snooze&reminderId=${encodeURIComponent(id)}`
+    : base;
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const existing = windows.find((c) => "focus" in c);
+      if (existing) {
+        await existing.navigate(url);
+        return existing.focus();
+      }
+      return self.clients.openWindow(url);
+    })(),
+  );
 });
