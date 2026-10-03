@@ -61,6 +61,7 @@ export default function App() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const [plannerInitialTab, setPlannerInitialTab] = useState<"today" | "upcoming">("today");
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
@@ -348,6 +349,7 @@ export default function App() {
         saved++;
       }
       setSuccess(saved === 1 ? "Saved to Planner." : `${saved} items saved to Planner.`);
+      setPlannerInitialTab("upcoming");
       setView("calendar");
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save to Planner."); }
     finally { setBusy(false); }
@@ -801,7 +803,10 @@ export default function App() {
           />
         )}
         {view === "calendar" && (
-          <PlannerView onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)} />
+          <PlannerView
+            initialTab={plannerInitialTab}
+            onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)}
+          />
         )}
         {view === "rewards" && <RewardsView store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { setError("Sign in to create a referral link."); return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("Referral sharing is not available yet. Sign in and try again."); } }} />}
 
