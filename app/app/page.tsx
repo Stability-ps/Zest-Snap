@@ -72,6 +72,13 @@ export default function App() {
   const [installed, setInstalled] = useState(false);
   const [plannerVisited, setPlannerVisited] = useState(false);
 
+  function deviceId() {
+    const key="zest-device-id";
+    let id=localStorage.getItem(key);
+    if(!id){id=crypto.randomUUID()+"-"+crypto.randomUUID();localStorage.setItem(key,id);}
+    return id;
+  }
+
   function openView(next: View) {
     if (next === "calendar") setPlannerVisited(true);
     setView(next);
@@ -260,6 +267,7 @@ export default function App() {
         headers: {
           "Content-Type": "application/json",
           "X-Request-Id": requestId,
+          "X-Zest-Device": deviceId(),
         },
         signal: AbortSignal.timeout(65000),
         body: JSON.stringify({
