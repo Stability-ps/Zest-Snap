@@ -35,6 +35,9 @@ import {
 } from "@/lib/data";
 import { eventFingerprint, validateEvent, agendaGroup } from "@/lib/events";
 import { generateIcs } from "@/lib/ics";
+import PlannerView from "./planner-view";
+import { PlannerStore } from "@/lib/planner-store";
+import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
 
 export default function App() {
   const provider = useRef<DataProvider | null>(null);
@@ -121,7 +124,7 @@ export default function App() {
         ),
       );
     const params = new URLSearchParams(window.location.search);
-    if (params.get("view") === "calendar") setView("calendar");
+    if (["calendar", "planner"].includes(params.get("view") || "")) setView("calendar");
     return () => {
       mounted = false;
     };
@@ -208,11 +211,12 @@ export default function App() {
       const preferences = await provider.current!.loadProfile();
       const timezone = preferences.timezone;
       const locale = preferences.locale;
+      const requestId = crypto.randomUUID();
       const res = await fetch("/api/extract", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Request-Id": crypto.randomUUID(),
+          "X-Request-Id": requestId,
         },
         signal: AbortSignal.timeout(65000),
         body: JSON.stringify({
@@ -254,7 +258,7 @@ export default function App() {
       }
 
       const scan: StoredScan = {
-        id: crypto.randomUUID(),
+        id: requestId,
         fileName: friendlySourceName(file),
         scannedAt: new Date().toISOString(),
         documentType: payload.documentType,
@@ -328,6 +332,24 @@ export default function App() {
     setResult({ ...result, events });
     setEditingIndex(null);
     setDraft(null);
+  }
+
+  async function saveSelectedToPlanner(indexes: number[]) {
+    if (!result || !activeScan || !indexes.length) return;
+    setBusy(true); setError("");
+    try {
+      const planner = await PlannerStore.create();
+      let saved = 0;
+      for (const index of indexes) {
+        const event = result.events[index];
+        if (!event) continue;
+        await planner.upsert(extractionToPlannerSuggestion(event, activeScan).item);
+        saved++;
+      }
+      setSuccess(saved === 1 ? "Saved to Planner." : `${saved} items saved to Planner.`);
+      setView("calendar");
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not save to Planner."); }
+    finally { setBusy(false); }
   }
 
   async function downloadIcs(events: ExtractedEvent | ExtractedEvent[]) {
@@ -459,7 +481,7 @@ export default function App() {
               <h1>What do you want to remember?</h1>
               <p>
                 Capture anything with a date. Zest Snap will find it, organise
-                it and let you review it before it reaches your calendar.
+                it and let you review it before you save it to Planner.
               </p>
             </section>
 
@@ -744,11 +766,9 @@ export default function App() {
               <button
                 className="button"
                 disabled={!selected.length}
-                onClick={() =>
-                  downloadIcs(selected.map((i) => result.events[i]))
-                }
+                onClick={() => saveSelectedToPlanner(selected)}
               >
-                Add selected
+                Save selected to Planner
               </button>
             </div>
           </>
@@ -776,7 +796,7 @@ export default function App() {
           />
         )}
         {view === "calendar" && (
-          <AgendaView events={sortedAgenda} onDelete={removeAgendaEvent} onAdd={() => setPlannerOpen(true)} />
+          <PlannerView onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)} />
         )}
         {view === "rewards" && <RewardsView store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { setError("Sign in to create a referral link."); return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("Referral sharing is not available yet. Sign in and try again."); } }} />}
 
