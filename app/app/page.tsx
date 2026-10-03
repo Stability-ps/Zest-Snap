@@ -98,7 +98,21 @@ export default function App() {
     let mounted = true;
     getDataProvider()
       .then(async (p) => {
-        let data = await p.load();
+        let data;
+        if (p.mode === "cloud") {
+          data = await migrateLocal(p);
+          try {
+            const response = await fetch("/api/account/migrate-local", {
+              method: "POST",
+              headers: { "X-Zest-Action": "migrate-local" },
+            });
+            if (response.ok) data = await p.load();
+          } catch {
+            // Scans and planner data are already migrated; reward sync can retry later.
+          }
+        } else {
+          data = await p.load();
+        }
         const pref = await p.loadProfile();
         if (pref.retentionDays > 0) {
           const next = {
