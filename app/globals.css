@@ -2252,3 +2252,42 @@ dialog::backdrop {
 /* Native-style Settings */
 .settingsNative{max-width:620px}.settingsBack{display:inline-flex;margin:2px 0 14px;color:#52667a;font-weight:700}.settingsTitle{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}.settingsTitle h1{margin:0;font-size:38px}.settingsTitle p{margin:4px 0 0;color:var(--muted)}.settingsSaved{font-size:12px;font-weight:800;color:#087865;background:#e8f8f4;padding:6px 10px;border-radius:999px}.settingsSectionTitle{margin:24px 4px 8px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b7d8e}.settingsGroup{background:#fff;border:1px solid #e2e9ef;border-radius:18px;overflow:hidden}.settingsGroup .settingsRow{width:100%;min-height:68px;display:flex;align-items:center;gap:11px;padding:11px 14px;border:0;border-bottom:1px solid #edf1f4;background:#fff;color:var(--ink);font:inherit;text-align:left;text-decoration:none}.settingsGroup .settingsRow:last-child{border-bottom:0}.settingsGroup button.settingsRow{cursor:pointer}.settingsGroup .settingsRow>svg{width:18px;flex:none;color:#94a3b8}.settingsRowCopy{flex:1;min-width:0}.settingsRowCopy b,.settingsRowCopy small{display:block}.settingsRowCopy b{font-size:14px}.settingsRowCopy small{margin-top:2px;color:var(--muted);font-size:12px;line-height:1.3}.settingsGroup .settingsIcon{width:38px;height:38px;border-radius:12px;flex:none}.settingsGroup .editable input{width:130px;min-width:0;border:0;background:transparent;text-align:right;color:#52667a;font:inherit;font-size:13px;outline:0}.settingsGroup select{max-width:125px;border:0;background:transparent;color:#52667a;font:inherit;font-size:13px;text-align:right}.settingsValue{color:#6b7d8e;font-size:12px;font-weight:800}.settingsToggle{appearance:none;width:44px;height:26px;border-radius:999px;background:#ccd6df;position:relative;flex:none;transition:.2s}.settingsToggle:after{content:"";position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;box-shadow:0 1px 4px rgba(0,0,0,.18);transition:.2s}.settingsToggle:checked{background:var(--teal)}.settingsToggle:checked:after{transform:translateX(18px)}.dangerRow .settingsIcon,.dangerRow b{color:#a43f36}.settingsFootnote{margin:18px 8px 0!important;font-size:11px;line-height:1.5;color:#8291a0!important}
 @media(max-width:600px){.settingsPage{padding:22px 16px 40px}.settingsTitle h1{font-size:34px}.settingsSectionTitle{margin-top:20px}.settingsGroup .settingsRow{min-height:64px;padding:10px 12px}.settingsGroup .editable input{width:105px}.settingsWrap{padding-bottom:max(16px,env(safe-area-inset-bottom))}}
+
+/* Auth viewport: no artificial blank scroll on mobile */
+@media (max-width:520px){
+  .authPage{
+    min-height:100dvh;
+    height:auto;
+    align-content:start;
+    overflow-x:hidden;
+  }
+  .authCard{
+    min-height:0;
+    height:auto;
+    padding-bottom:max(22px,env(safe-area-inset-bottom));
+  }
+  .authFine{margin-bottom:0}
+}
+/* Friendly Settings selects: keep stored technical values out of the UI */
+.settingsGroup .selectRow{position:relative}
+.settingsGroup .selectRow select{
+  appearance:none;
+  -webkit-appearance:none;
+  width:auto;
+  max-width:150px;
+  padding:8px 2px;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:#52667a;
+  font:inherit;
+  font-size:13px;
+  font-weight:650;
+  text-align:right;
+  text-align-last:right;
+  cursor:pointer;
+}
+.settingsGroup .selectRow>svg{pointer-events:none}
+@media(max-width:420px){
+  .settingsGroup .selectRow select{max-width:125px;font-size:12px}
+}
