@@ -56,6 +56,7 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [plannerOpen, setPlannerOpen] = useState(false);
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
@@ -404,6 +405,16 @@ export default function App() {
         "Check dates, start/end times and timezone, then retry. Ambiguous clock-change times need correction.",
       );
     }
+  }
+
+  async function addPlannerItem(event: ExtractedEvent) {
+    try {
+      validateEvent(event);
+      const reward = !store.firstCalendarRewarded ? 5 : 0;
+      await persist({ ...store, events: [...store.events, { ...event, id: crypto.randomUUID(), addedAt: new Date().toISOString() }], credits: store.credits + reward, firstCalendarRewarded: true });
+      setPlannerOpen(false);
+      setSuccess(reward ? "Added to Planner - you earned 5 Zest Credits." : "Added to Planner.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not add this item."); }
   }
 
   async function removeAgendaEvent(id: string) {
@@ -770,9 +781,11 @@ export default function App() {
           />
         )}
         {view === "calendar" && (
-          <AgendaView events={sortedAgenda} onDelete={removeAgendaEvent} />
+          <AgendaView events={sortedAgenda} onDelete={removeAgendaEvent} onAdd={() => setPlannerOpen(true)} />
         )}
-        {view === "rewards" && <RewardsView store={store} onPlan={() => setView("calendar")} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { setError("Sign in to create a referral link."); return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("Referral sharing is not available yet. Sign in and try again."); } }} />}
+        {view === "rewards" && <RewardsView store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { setError("Sign in to create a referral link."); return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("Referral sharing is not available yet. Sign in and try again."); } }} />}
+
+        {plannerOpen && <PlannerSheet onClose={() => setPlannerOpen(false)} onSave={addPlannerItem} />}
 
         {editingIndex !== null && draft && (
           <dialog
@@ -1020,28 +1033,16 @@ function HistoryView({
   );
 }
 
-function AgendaView({
-  events,
-  onDelete,
-}: {
-  events: StoredEvent[];
-  onDelete: (id: string) => void;
-}) {
+function AgendaView({ events, onDelete, onAdd }: { events: StoredEvent[]; onDelete: (id: string) => void; onAdd: () => void }) {
   const [past, setPast] = useState(false);
   const visible = events.filter((e) => (agendaGroup(e) === "Past") === past);
-  if (!events.length)
-    return (
-      <EmptyView
-        title="Your planner"
-        text="Dates you save from scans will appear here. Add your first planned item from a scan to get started."
-        icon={<CalendarDays />}
-      />
-    );
+  if (!events.length) return <section className="dataView"><div className="eyebrow">PLANNER</div><h1>Your planner</h1><p>Keep events, tasks and reminders together, including dates Zest finds in your scans.</p><button className="button plannerAdd" onClick={onAdd}>+ Add plan</button><EmptyView title="Nothing planned yet" text="Add an event, task or reminder, or save one from your next scan." icon={<CalendarDays />} /></section>;
   return (
     <section className="dataView">
       <div className="eyebrow">PLANNER</div>
       <h1>Your planner</h1>
       <p>Today, upcoming dates and reminders from everything you save in Zest.</p>
+      <button className="button plannerAdd" onClick={onAdd}>+ Add plan</button>
       <button className="textButton" onClick={() => setPast(!past)}>
         {past ? "Show upcoming" : "Show past"}
       </button>
@@ -1096,6 +1097,29 @@ function EmptyView({
       <p>{text}</p>
     </section>
   );
+}
+
+function PlannerSheet({ onClose, onSave }: { onClose: () => void; onSave: (event: ExtractedEvent) => void }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [kind, setKind] = useState<"event" | "task" | "reminder">("event");
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState(today);
+  const [time, setTime] = useState("");
+  const [notes, setNotes] = useState("");
+  const submit = () => {
+    if (!title.trim() || !date) return;
+    onSave({ title: title.trim(), startDate: date, endDate: date, startTime: time, endTime: "", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", location: "", description: notes, allDay: !time, confidence: 1, confidenceReason: "Added manually", sourceText: "Manual Planner item", category: kind === "task" ? "deadline" : "event" });
+  };
+  return <div className="plannerOverlay" role="presentation" onClick={onClose}>
+    <section className="plannerSheet" role="dialog" aria-modal="true" aria-label="Add to Planner" onClick={e => e.stopPropagation()}>
+      <div className="sheetHandle" /><div className="sheetTop"><div><div className="eyebrow">NEW PLAN</div><h2>Add to Planner</h2></div><button className="iconButton" aria-label="Close" onClick={onClose}>×</button></div>
+      <div className="plannerKinds">{(["event","task","reminder"] as const).map(x => <button key={x} className={kind === x ? "active" : ""} onClick={() => setKind(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</div>
+      <label><span>Title</span><input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={kind === "task" ? "What needs to be done?" : kind === "reminder" ? "What should Zest remind you about?" : "What's happening?"} /></label>
+      <div className="fieldGrid"><label><span>Date</span><input type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label><span>Time (optional)</span><input type="time" value={time} onChange={e => setTime(e.target.value)} /></label></div>
+      <label><span>Notes (optional)</span><textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></label>
+      <button className="button sheetSave" disabled={!title.trim() || !date} onClick={submit}>Add to Planner</button>
+    </section>
+  </div>;
 }
 
 function RewardsView({ store, onPlan, onInvite }: { store: LocalState; onPlan: () => void; onInvite: () => void }) {
