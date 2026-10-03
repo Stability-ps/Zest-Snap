@@ -2346,3 +2346,13 @@ dialog::backdrop {
   box-shadow: none !important;
   border: 0 !important;
 }
+
+/* Planner navigation: three primary views + dedicated reminders */
+.plannerHeroActions{display:flex;align-items:center;gap:9px;flex:none}
+.plannerReminderButton{position:relative;width:48px;height:48px;border:1px solid #dce5ed;border-radius:16px;background:#fff;color:#0b1f3b;display:grid;place-items:center}
+.plannerReminderButton svg{width:21px}.plannerReminderButton span{position:absolute;right:-4px;top:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#e9324c;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800;border:2px solid #f5f9fc}
+.plannerTabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;overflow:visible;padding:3px 0}
+.plannerTabs button{min-width:0;padding:0 8px}
+.reminderPage{display:grid;gap:14px}.reminderPageHead{display:flex;align-items:flex-start;gap:10px}.reminderPageHead h2{margin:2px 0 3px;font-size:26px}.reminderPageHead p{margin:0;color:var(--muted);font-size:13px}.reminderBack{width:42px;height:42px;border:0;border-radius:14px;background:#fff;display:grid;place-items:center;flex:none}
+.calendarActionChoices{display:grid;grid-template-columns:1fr 1fr;gap:10px}.calendarActionChoices button{min-height:138px;border:1px solid #dce5ed;border-radius:18px;background:#fff;padding:18px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;color:var(--ink);font:inherit}.calendarActionChoices button svg{width:24px;color:var(--teal)}.calendarActionChoices button b{font-size:15px}.calendarActionChoices button span{font-size:12px;line-height:1.35;color:var(--muted)}
+@media(max-width:380px){.plannerTabs button{font-size:13px}.plannerHeroActions{gap:6px}.plannerReminderButton,.plannerFab{width:46px;height:46px}.calendarActionChoices{grid-template-columns:1fr}.calendarActionChoices button{min-height:96px}}
