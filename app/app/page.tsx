@@ -30,6 +30,7 @@ type View = "home" | "review" | "history" | "calendar" | "rewards";
 
 import {
   getDataProvider,
+  migrateLocal,
   emptyState,
   type DataProvider,
   type StoredScan,
