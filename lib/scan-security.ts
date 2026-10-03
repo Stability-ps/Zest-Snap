@@ -22,17 +22,24 @@ export async function reserveScan(
       data: { user },
     } = await db.auth.getUser();
     if (!user) throw new Error("sign_in_required");
+    const deviceId=req.headers.get("x-zest-device");
+    if(!deviceId) throw new Error("device_required");
     const admin = serviceClient();
     const { data, error } = await admin.rpc("reserve_scan", {
       p_user: user.id,
       p_request: requestId,
       p_hash: hash,
+      p_device_id: deviceId,
     });
     if (error) {
       if (error.message.includes("allowance_exhausted"))
         throw new Error("allowance_exhausted");
-      if (error.message.includes("repeat_request"))
+      if (error.message.includes("repeat_request")||error.message.includes("device_rate_limited"))
         throw new Error("rate_limited");
+      if (error.message.includes("device_free_limit"))
+        throw new Error("device_free_limit");
+      if (error.message.includes("device_required"))
+        throw new Error("device_required");
       throw new Error("cloud_unavailable");
     }
     return { userId: user.id, pages: Number(data) || 3 };
