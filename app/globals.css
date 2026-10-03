@@ -2310,3 +2310,14 @@ dialog::backdrop {
 
 /* Storage status sheet */
 .settingsStorageDetails{display:grid;gap:14px}.storageStatus{display:grid!important;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:11px;padding:14px!important;border:1px solid #e4ecef;border-radius:16px;background:#f9fcfc}.storageStatusIcon{width:42px;height:42px;border-radius:13px;background:#e9f9f5;color:var(--teal);display:grid;place-items:center}.storageStatusIcon svg{width:21px}.storageStatus small,.storageStatus b{display:block}.storageStatus small{color:var(--muted);font-size:11px}.storageStatus b{font-size:16px}.storageStatus strong{font-size:11px;border-radius:999px;padding:6px 8px;white-space:nowrap}.storageStatus strong.safe{background:#e7f8f3;color:#087865}.storageStatus strong.warning{background:#fff3df;color:#95600b}.storageFacts{border:1px solid #e4ecef;border-radius:16px;overflow:hidden}.storageFacts>div{display:flex!important;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px!important;border-bottom:1px solid #edf1f4}.storageFacts>div:last-child{border-bottom:0}.storageFacts span{font-size:13px;color:#607285}.storageFacts b{font-size:12px;text-align:right}.settingsStorageDetails>p{margin:0!important;color:var(--muted);font-size:12px;line-height:1.45}.settingsStorageDetails>.button{text-align:center}
+
+
+/* Mobile auth keyboard/focus polish */
+@media(max-width:520px) and (max-height:760px){
+  .authCard:focus-within{padding-top:18px}
+  .authCard:focus-within .authBrandRow{margin-bottom:18px}
+  .authCard:focus-within h1{font-size:34px;line-height:1.02;margin-bottom:12px}
+  .authCard:focus-within .authIntro{font-size:15px;line-height:1.4;margin-bottom:20px}
+  .authCard:focus-within form{gap:14px}
+  .authCard:focus-within .authLinks,.authCard:focus-within .authDivider,.authCard:focus-within .authDeviceButton,.authCard:focus-within .authFine{margin-top:12px}
+}
