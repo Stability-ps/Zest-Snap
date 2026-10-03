@@ -99,6 +99,13 @@ export default function App() {
     let mounted = true;
     getDataProvider()
       .then(async (p) => {
+        const cached = p.loadCached?.();
+        if (mounted && cached) {
+          provider.current = p;
+          setStore(cached);
+          setMode(p.mode);
+          setReady(true);
+        }
         let data;
         if (p.mode === "cloud") {
           data = await migrateLocal(p);
