@@ -56,34 +56,6 @@ export default function App() {
   const cameraRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true;
-    setInstalled(standalone);
-    const beforeInstall = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event);
-    };
-    const appInstalled = () => {
-      setInstalled(true);
-      setInstallPrompt(null);
-    };
-    window.addEventListener("beforeinstallprompt", beforeInstall);
-    window.addEventListener("appinstalled", appInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", beforeInstall);
-      window.removeEventListener("appinstalled", appInstalled);
-    };
-  }, []);
-
-  async function installApp() {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    if (choice?.outcome === "accepted") setInstallPrompt(null);
-  }
-
-  useEffect(() => {
     let mounted = true;
     getDataProvider()
       .then(async (p) => {
