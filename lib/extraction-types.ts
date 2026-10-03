@@ -11,7 +11,15 @@ export type ExtractedEvent = {
   confidence: number;
   confidenceReason: string;
   sourceText: string;
-  category: "appointment" | "meeting" | "deadline" | "travel" | "payment" | "school" | "event" | "other";
+  category:
+    | "appointment"
+    | "meeting"
+    | "deadline"
+    | "travel"
+    | "payment"
+    | "school"
+    | "event"
+    | "other";
 };
 
 export type ExtractionResult = {
