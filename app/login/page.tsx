@@ -41,6 +41,7 @@ export default function LoginPage() {
   function changeMode(next: Mode) {
     setMessage("");
     setMode(next);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
