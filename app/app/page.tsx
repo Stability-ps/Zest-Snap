@@ -33,13 +33,12 @@ import {
   type StoredEvent,
   type LocalState,
 } from "@/lib/data";
-import { eventFingerprint, validateEvent, agendaGroup } from "@/lib/events";
+import { eventFingerprint, validateEvent } from "@/lib/events";
 import { generateIcs } from "@/lib/ics";
 
 export default function App() {
   const provider = useRef<DataProvider | null>(null);
   const [ready, setReady] = useState(false);
-  const [insights, setInsights] = useState(true);
   const [mode, setMode] = useState("local");
   const [activeScan, setActiveScan] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -55,8 +54,6 @@ export default function App() {
   const [draft, setDraft] = useState<ExtractedEvent | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
     const standalone =
@@ -107,7 +104,6 @@ export default function App() {
           }
         }
         if (mounted) {
-          setInsights(pref.reminders);
           provider.current = p;
           setStore(data);
           setMode(p.mode);
@@ -430,24 +426,8 @@ export default function App() {
       </header>
 
       <div className="appContent">
-        <p>
-          <a href="/settings">Settings</a> ·{" "}
-          {mode === "cloud"
-            ? "Cloud account · merge guest data in Settings"
-            : "Saved on this device"}
-        </p>
-        {error && (
-          <div className="errorBox" role="alert">
-            {error}
-          </div>
-        )}
         {view === "home" && (
           <>
-            {!installed && installPrompt && (
-              <button className="button alt" onClick={installApp}>
-                Install Zest Snap
-              </button>
-            )}
             <section className="appIntro">
               <div className="eyebrow">YOUR DAY</div>
               <h1>What do you want to remember?</h1>
@@ -589,8 +569,7 @@ export default function App() {
                 <b>Zest keeps working after the scan.</b>
                 <p>
                   Your saved agenda, scan history and duplicate protection stay
-                  available on this device and remain separate from your
-                  external calendars.
+                  available on this device while the cloud account layer is being connected.
                 </p>
               </div>
             </section>
