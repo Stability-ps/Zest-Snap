@@ -75,3 +75,6 @@ Use two test accounts. Verify sign-up, verification, sign-in, password recovery,
 ## Rollback
 
 For a frontend regression, restore the last verified Vercel deployment. Keep database data and migrations intact. To temporarily pause cloud operations, set `cloud_persistence=false`; authenticated cloud data remains stored and the app explains the pause. For a full return to guest mode set `NEXT_PUBLIC_CLOUD_ENABLED=false` and redeploy; original guest data and account-specific caches remain on devices. Do not reverse migrations or delete the project to roll back. Re-enable and rerun smoke tests after correcting configuration.
+
+
+> Cloud activation redeploy triggered after production Supabase environment variables were configured on 2026-10-03.
