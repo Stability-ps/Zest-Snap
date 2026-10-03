@@ -2,6 +2,7 @@
 import { createClient,isSupabaseConfigured } from "./supabase/client";
 import type { PlannerItem,ReminderDraft } from "./planner";
 import { calculateReminderAt,reminderMinutes } from "./planner";
+// Web Push delivery is handled by the Supabase reminder worker.
 export type ReminderRecord={id:string;plannerItemId:string;scheduledAt:string;status:"pending"|"processing"|"sent"|"cancelled"|"failed"|"handled";offsetMinutes?:number;label?:string;deliveredAt?:string;snoozedUntil?:string;handledAt?:string};
 const KEY="zest-reminders-v1";function read(s:Storage):ReminderRecord[]{try{const v=JSON.parse(s.getItem(KEY)||"[]");return Array.isArray(v)?v:[];}catch{return[];}}function write(s:Storage,r:ReminderRecord[]){s.setItem(KEY,JSON.stringify(r));}
 export async function listReminders(storage=localStorage){if(!isSupabaseConfigured())return read(storage);const db=createClient(),a=await db.auth.getSession();if(!a.data.session?.user||!navigator.onLine)return read(storage);const{data,error}=await db.from("reminders").select("id,planner_item_id,scheduled_at,status,offset_minutes,label,delivered_at,snoozed_until,handled_at").order("scheduled_at",{ascending:true});if(error)throw new Error("Reminders could not be loaded.");return(data||[]).map(r=>({id:r.id,plannerItemId:r.planner_item_id,scheduledAt:r.scheduled_at,status:r.status,offsetMinutes:r.offset_minutes??undefined,label:r.label??undefined,deliveredAt:r.delivered_at??undefined,snoozedUntil:r.snoozed_until??undefined,handledAt:r.handled_at??undefined} as ReminderRecord));}
