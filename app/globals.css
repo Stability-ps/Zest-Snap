@@ -444,6 +444,8 @@ button {
   text-align: left;
   color: var(--ink);
   cursor: pointer;
+  text-decoration: none;
+  touch-action: manipulation;
 }
 .miniCard > svg {
   margin-left: auto;
@@ -507,10 +509,12 @@ button {
   border-top: 1px solid #e6ebf0;
   display: flex;
   justify-content: center;
-  z-index: 20;
+  z-index: 60;
+  pointer-events: auto;
   padding: 8px 16px max(12px, env(safe-area-inset-bottom));
 }
-.bottomNav button {
+.bottomNav button,
+.bottomNav > a {
   width: 88px;
   border: 0;
   background: none;
@@ -521,6 +525,9 @@ button {
   gap: 3px;
   padding: 5px;
   cursor: pointer;
+  min-height: 48px;
+  text-decoration: none;
+  touch-action: manipulation;
 }
 .bottomNav svg {
   width: 21px;
@@ -528,7 +535,8 @@ button {
 .bottomNav small {
   font-size: 11px;
 }
-.bottomNav button.active {
+.bottomNav button.active,
+.bottomNav > a.active {
   color: var(--blue);
   font-weight: 750;
 }
