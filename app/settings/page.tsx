@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, Download, Trash2 } from "lucide-react";
+import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, Download, Trash2, X, Check, Search } from "lucide-react";
 import {
   getDataProvider,
   migrateLocal,
@@ -19,7 +19,9 @@ export default function Settings() {
     [usage, setUsage] = useState<Usage | null>(null),
     [flags, setFlags] = useState<Record<string, boolean>>({}),
     [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [sheet, setSheet] = useState<"timezone"|"region"|"retention"|"calendar"|"clear"|null>(null),
+    [sheetSearch, setSheetSearch] = useState("");
   useEffect(() => {
     getDataProvider()
       .then(async (p) => {
@@ -75,18 +77,18 @@ export default function Settings() {
     ["Pacific/Auckland", "Auckland"],
   ] as const;
   const localeOptions = [
-    ["en", "English"],
-    ["en-GB", "English (UK)"],
-    ["en-US", "English (US)"],
-    ["af", "Afrikaans"],
-    ["es", "Spanish"],
-    ["fr", "French"],
-    ["de", "German"],
-    ["pt", "Portuguese"],
-    ["zh-CN", "Chinese (Simplified)"],
-    ["hi", "Hindi"],
-    ["ar", "Arabic"],
+    ["en", "Automatic"],
+    ["en-ZA", "South Africa"],
+    ["en-GB", "United Kingdom"],
+    ["en-US", "United States"],
+    ["en-CA", "Canada"],
+    ["en-AU", "Australia"],
+    ["en-IN", "India"],
   ] as const;
+  const timezoneLabel = timezoneOptions.find(([value])=>value===profile.timezone)?.[1] || profile.timezone.replaceAll("_"," ");
+  const localeLabel = localeOptions.find(([value])=>value===profile.locale)?.[1] || "Automatic";
+  const retentionLabel = profile.retentionDays===0 ? "Until deleted" : profile.retentionDays===365 ? "1 year" : profile.retentionDays+" days";
+  const filteredTimezones = timezoneOptions.filter(([,label])=>label.toLowerCase().includes(sheetSearch.toLowerCase()));
   return (
     <main className="settingsPage">
       <div className="settingsWrap settingsNative">
@@ -102,15 +104,15 @@ export default function Settings() {
         <h2 className="settingsSectionTitle">Preferences</h2>
         <section className="settingsGroup">
           <label className="settingsRow editable"><span className="settingsIcon"><UserRound /></span><span className="settingsRowCopy"><b>Display name</b><small>How Zest addresses you</small></span><input aria-label="Display name" maxLength={100} value={profile.displayName} placeholder="Add name" onChange={e=>setProfile({...profile,displayName:e.target.value})} onBlur={()=>saveProfile(profile)} /></label>
-          <label className="settingsRow selectRow"><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Timezone</b><small>Dates and reminders use this timezone</small></span><select aria-label="Timezone" value={profile.timezone} onChange={e=>saveProfile({...profile,timezone:e.target.value})}>{!timezoneOptions.some(([value])=>value===profile.timezone)&&<option value={profile.timezone}>{profile.timezone.replaceAll("_"," ")}</option>}{timezoneOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><ChevronRight /></label>
-          <label className="settingsRow selectRow"><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Language</b><small>App language and date formatting</small></span><select aria-label="Language" value={profile.locale} onChange={e=>saveProfile({...profile,locale:e.target.value})}>{!localeOptions.some(([value])=>value===profile.locale)&&<option value={profile.locale}>{profile.locale}</option>}{localeOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><ChevronRight /></label>
+          <button type="button" className="settingsRow" onClick={()=>{setSheetSearch("");setSheet("timezone");}}><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Timezone</b></span><span className="settingsValue">{timezoneLabel}</span><ChevronRight /></button>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("region")}><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Language & region</b><small>Interface is currently English</small></span><span className="settingsValue">{localeLabel}</span><ChevronRight /></button>
           <label className="settingsRow"><span className="settingsIcon"><Bell /></span><span className="settingsRowCopy"><b>Upcoming insights</b><small>Helpful reminders inside Zest</small></span><input className="settingsToggle" type="checkbox" checked={profile.reminders} onChange={e=>saveProfile({...profile,reminders:e.target.checked})} /></label>
         </section>
 
         <h2 className="settingsSectionTitle">Calendar & history</h2>
         <section className="settingsGroup">
-          <div className="settingsRow"><span className="settingsIcon"><CalendarDays /></span><span className="settingsRowCopy"><b>Device calendar</b><small>Export selected events to your calendar</small></span><span className="settingsValue">ICS</span></div>
-          <label className="settingsRow"><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history</b><small>Choose how long scan history is kept</small></span><select aria-label="History retention" value={profile.retentionDays} onChange={e=>saveProfile({...profile,retentionDays:Number(e.target.value)})}><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option><option value={0}>Until deleted</option></select></label>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("calendar")}><span className="settingsIcon"><CalendarDays /></span><span className="settingsRowCopy"><b>Device calendar</b><small>Add selected Zest events to your calendar</small></span><ChevronRight /></button>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("retention")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history</b><small>How long scan history is kept</small></span><span className="settingsValue">{retentionLabel}</span><ChevronRight /></button>
         </section>
 
         <h2 className="settingsSectionTitle">Plan & usage</h2>
@@ -122,7 +124,7 @@ export default function Settings() {
         <h2 className="settingsSectionTitle">Privacy & data</h2>
         <section className="settingsGroup">
           <button className="settingsRow" disabled={busy||!provider} onClick={()=>run(async()=>{const blob=new Blob([JSON.stringify(await provider!.exportData(),null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zest-snap-data.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage("Data export prepared");})}><span className="settingsIcon"><Download /></span><span className="settingsRowCopy"><b>Export my data</b><small>Download a copy of your Zest data</small></span><ChevronRight /></button>
-          <button className="settingsRow dangerRow" disabled={busy||!provider} onClick={()=>{if(window.confirm(provider?.mode==="cloud"?"Permanently delete your Zest account and all cloud data?":"Clear all Zest data on this device?"))run(async()=>{await provider!.deleteData();await new LocalDataProvider(localStorage).deleteData();window.location.assign(new URL("/app",window.location.origin).href);});}}><span className="settingsIcon"><Trash2 /></span><span className="settingsRowCopy"><b>{provider?.mode==="cloud"?"Delete my account":"Clear device data"}</b><small>This cannot be undone</small></span><ChevronRight /></button>
+          <button className="settingsRow dangerRow" disabled={busy||!provider} onClick={()=>setSheet("clear")}><span className="settingsIcon"><Trash2 /></span><span className="settingsRowCopy"><b>{provider?.mode==="cloud"?"Delete my account":"Clear device data"}</b><small>This cannot be undone</small></span><ChevronRight /></button>
         </section>
 
         <h2 className="settingsSectionTitle">Support</h2>
@@ -132,6 +134,28 @@ export default function Settings() {
           <a className="settingsRow" href="/terms"><span className="settingsRowCopy"><b>Terms</b></span><ChevronRight /></a>
         </section>
         <p className="settingsFootnote">Original uploads are not retained by Zest after processing. Calendar files you export remain under your control.</p>
+        {sheet && <div className="settingsOverlay" onClick={()=>setSheet(null)}>
+          <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
+            <div className="settingsSheetTop">
+              <div>
+                <h2>{sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Device calendar":"Clear Zest data?"}</h2>
+                {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
+                {sheet==="calendar"&&<p>Zest exports calendar events using standard ICS files supported by Apple Calendar, Google Calendar and Outlook.</p>}
+                {sheet==="clear"&&<p>{provider?.mode==="cloud"?"This permanently deletes your Zest account and cloud data.":"This permanently clears Zest scans, planner data and preferences stored on this device."}</p>}
+              </div>
+              <button className="iconButton" onClick={()=>setSheet(null)} aria-label="Close"><X/></button>
+            </div>
+            {sheet==="timezone"&&<>
+              <label className="settingsSheetSearch"><Search/><input autoFocus value={sheetSearch} onChange={e=>setSheetSearch(e.target.value)} placeholder="Search city or timezone" /></label>
+              <div className="settingsChoiceList">{filteredTimezones.map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,timezone:value});setSheet(null);}}><span>{label}</span>{profile.timezone===value&&<Check/>}</button>)}</div>
+            </>}
+            {sheet==="region"&&<div className="settingsChoiceList">{localeOptions.map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,locale:value});setSheet(null);}}><span>{label}</span>{profile.locale===value&&<Check/>}</button>)}</div>}
+            {sheet==="retention"&&<div className="settingsChoiceList">{([[30,"30 days"],[90,"90 days"],[365,"1 year"],[0,"Until deleted"]] as const).map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,retentionDays:value});setSheet(null);}}><span>{label}</span>{profile.retentionDays===value&&<Check/>}</button>)}</div>}
+            {sheet==="calendar"&&<div className="settingsSheetActions"><a className="button" href="/app">Go to scans</a><span>Select events after a scan, then choose <b>Add selected to calendar</b>.</span></div>}
+            {sheet==="clear"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{await provider!.deleteData();await new LocalDataProvider(localStorage).deleteData();window.location.assign(new URL("/app",window.location.origin).href);})}>{provider?.mode==="cloud"?"Delete account":"Clear device data"}</button></div>}
+          </section>
+        </div>}
+
       </div>
     </main>
   );
