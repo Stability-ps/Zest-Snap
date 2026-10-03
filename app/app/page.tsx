@@ -532,11 +532,11 @@ export default function App() {
                   <CalendarDays />
                 </div>
                 <div>
-                  <b>Upcoming</b>
+                  <b>Planner</b>
                   <span>
                     {store.events.length
                       ? `${store.events.length} saved ${store.events.length === 1 ? "event" : "events"}`
-                      : "Your intelligent agenda"}
+                      : "Today & upcoming"}
                   </span>
                 </div>
                 <ChevronRight />
@@ -772,7 +772,7 @@ export default function App() {
         {view === "calendar" && (
           <AgendaView events={sortedAgenda} onDelete={removeAgendaEvent} />
         )}
-        {view === "rewards" && <RewardsView store={store} />}
+        {view === "rewards" && <RewardsView store={store} onPlan={() => setView("calendar")} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { setError("Sign in to create a referral link."); return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("Referral sharing is not available yet. Sign in and try again."); } }} />}
 
         {editingIndex !== null && draft && (
           <dialog
@@ -929,7 +929,7 @@ export default function App() {
         />
         <NavButton
           active={view === "calendar"}
-          label="Calendar"
+          label="Planner"
           onClick={() => setView("calendar")}
           icon={<CalendarDays />}
         />
@@ -1032,16 +1032,16 @@ function AgendaView({
   if (!events.length)
     return (
       <EmptyView
-        title="Your agenda"
-        text="Events you add from a scan will appear here automatically."
+        title="Your planner"
+        text="Dates you save from scans will appear here. Add your first planned item from a scan to get started."
         icon={<CalendarDays />}
       />
     );
   return (
     <section className="dataView">
-      <div className="eyebrow">UPCOMING</div>
-      <h1>Your Zest agenda</h1>
-      <p>Removing an item here does not remove it from an external calendar.</p>
+      <div className="eyebrow">PLANNER</div>
+      <h1>Your planner</h1>
+      <p>Today, upcoming dates and reminders from everything you save in Zest.</p>
       <button className="textButton" onClick={() => setPast(!past)}>
         {past ? "Show upcoming" : "Show past"}
       </button>
@@ -1098,52 +1098,21 @@ function EmptyView({
   );
 }
 
-function RewardsView({ store }: { store: LocalState }) {
+function RewardsView({ store, onPlan, onInvite }: { store: LocalState; onPlan: () => void; onInvite: () => void }) {
   return (
     <section className="rewardsView">
       <div className="eyebrow">ZEST REWARDS</div>
       <h1>Useful rewards, not gimmicks.</h1>
-      <p>
-        Credits recognise useful actions and can later unlock bonus AI scans
-        when account billing is connected.
-      </p>
-      <div className="rewardBalance">
-        <span>Current balance</span>
-        <b>{store.credits}</b>
-        <small>Zest Credits</small>
-      </div>
+      <p>Earn credits by using Zest to organise the things that matter.</p>
+      <div className="rewardBalance"><span>Current balance</span><b>{store.credits}</b><small>Zest Credits</small></div>
       <div className="rewardRows">
-        <div>
-          <CheckCircle2 />
-          <span>
-            <b>Complete your first scan</b>
-            <small>
-              {store.firstScanRewarded
-                ? "Completed · +3 credits"
-                : "+3 credits"}
-            </small>
-          </span>
-          {store.firstScanRewarded && <Check size={18} />}
-        </div>
-        <div>
-          <CalendarDays />
-          <span>
-            <b>Add your first calendar event</b>
-            <small>
-              {store.firstCalendarRewarded
-                ? "Completed · +5 credits"
-                : "+5 credits"}
-            </small>
-          </span>
-          {store.firstCalendarRewarded && <Check size={18} />}
-        </div>
-        <div>
-          <Gift />
-          <span>
-            <b>Invite a friend</b>
-            <small>Coming with cloud accounts</small>
-          </span>
-        </div>
+        <div><CheckCircle2 /><span><b>Complete your first scan</b><small>{store.firstScanRewarded ? "Completed · +3 credits" : "+3 credits"}</small></span>{store.firstScanRewarded && <Check size={18} />}</div>
+        <button type="button" onClick={onPlan} disabled={store.firstCalendarRewarded}>
+          <CalendarDays /><span><b>Plan your first item</b><small>{store.firstCalendarRewarded ? "Completed · +5 credits" : "+5 credits · Open Planner"}</small></span>{store.firstCalendarRewarded ? <Check size={18} /> : <ChevronRight size={18} />}
+        </button>
+        <button type="button" onClick={onInvite}>
+          <Gift /><span><b>Invite a friend</b><small>Share your Zest Snap referral link</small></span><ChevronRight size={18} />
+        </button>
       </div>
     </section>
   );
