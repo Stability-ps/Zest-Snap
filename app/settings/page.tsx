@@ -53,8 +53,40 @@ export default function Settings() {
       setMessage(e instanceof Error ? e.message : "Could not save preference.");
     }
   }
-  const timezoneLabel = profile.timezone === "Africa/Johannesburg" ? "Johannesburg (GMT+2)" : profile.timezone.replaceAll("_", " ");
-  const localeLabel = profile.locale.toLowerCase().startsWith("en") ? "English" : profile.locale;
+  const timezoneOptions = [
+    ["Africa/Johannesburg", "Johannesburg (GMT+2)"],
+    ["Africa/Lagos", "Lagos"],
+    ["Africa/Nairobi", "Nairobi"],
+    ["Europe/London", "London"],
+    ["Europe/Paris", "Paris"],
+    ["Europe/Berlin", "Berlin"],
+    ["America/New_York", "New York"],
+    ["America/Chicago", "Chicago"],
+    ["America/Denver", "Denver"],
+    ["America/Los_Angeles", "Los Angeles"],
+    ["America/Toronto", "Toronto"],
+    ["America/Sao_Paulo", "São Paulo"],
+    ["Asia/Dubai", "Dubai"],
+    ["Asia/Kolkata", "India"],
+    ["Asia/Singapore", "Singapore"],
+    ["Asia/Tokyo", "Tokyo"],
+    ["Asia/Shanghai", "Shanghai"],
+    ["Australia/Sydney", "Sydney"],
+    ["Pacific/Auckland", "Auckland"],
+  ] as const;
+  const localeOptions = [
+    ["en", "English"],
+    ["en-GB", "English (UK)"],
+    ["en-US", "English (US)"],
+    ["af", "Afrikaans"],
+    ["es", "Spanish"],
+    ["fr", "French"],
+    ["de", "German"],
+    ["pt", "Portuguese"],
+    ["zh-CN", "Chinese (Simplified)"],
+    ["hi", "Hindi"],
+    ["ar", "Arabic"],
+  ] as const;
   return (
     <main className="settingsPage">
       <div className="settingsWrap settingsNative">
@@ -70,8 +102,8 @@ export default function Settings() {
         <h2 className="settingsSectionTitle">Preferences</h2>
         <section className="settingsGroup">
           <label className="settingsRow editable"><span className="settingsIcon"><UserRound /></span><span className="settingsRowCopy"><b>Display name</b><small>How Zest addresses you</small></span><input aria-label="Display name" maxLength={100} value={profile.displayName} placeholder="Add name" onChange={e=>setProfile({...profile,displayName:e.target.value})} onBlur={()=>saveProfile(profile)} /></label>
-          <label className="settingsRow editable"><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Timezone</b><small>{timezoneLabel}</small></span><input aria-label="Timezone" value={profile.timezone} onChange={e=>setProfile({...profile,timezone:e.target.value})} onBlur={()=>saveProfile(profile)} /></label>
-          <label className="settingsRow editable"><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Language</b><small>{localeLabel}</small></span><input aria-label="Language or locale" value={profile.locale} onChange={e=>setProfile({...profile,locale:e.target.value})} onBlur={()=>saveProfile(profile)} /></label>
+          <label className="settingsRow selectRow"><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Timezone</b><small>Dates and reminders use this timezone</small></span><select aria-label="Timezone" value={profile.timezone} onChange={e=>saveProfile({...profile,timezone:e.target.value})}>{!timezoneOptions.some(([value])=>value===profile.timezone)&&<option value={profile.timezone}>{profile.timezone.replaceAll("_"," ")}</option>}{timezoneOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><ChevronRight /></label>
+          <label className="settingsRow selectRow"><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Language</b><small>App language and date formatting</small></span><select aria-label="Language" value={profile.locale} onChange={e=>saveProfile({...profile,locale:e.target.value})}>{!localeOptions.some(([value])=>value===profile.locale)&&<option value={profile.locale}>{profile.locale}</option>}{localeOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><ChevronRight /></label>
           <label className="settingsRow"><span className="settingsIcon"><Bell /></span><span className="settingsRowCopy"><b>Upcoming insights</b><small>Helpful reminders inside Zest</small></span><input className="settingsToggle" type="checkbox" checked={profile.reminders} onChange={e=>saveProfile({...profile,reminders:e.target.checked})} /></label>
         </section>
 
