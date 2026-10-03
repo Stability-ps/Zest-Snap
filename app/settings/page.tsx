@@ -46,10 +46,16 @@ export default function Settings() {
         <a href="/app">← Back to Zest Snap</a>
         <h1>Settings</h1>
         <p>
-          {provider?.mode === "cloud"
-            ? "Signed-in cloud account"
-            : "Guest · data stays on this device"}
+          {provider?.mode === "cloud" ? "Signed-in account" : "Guest mode"}
         </p>
+        <section className="settingsStorage" aria-label="Storage">
+          <span>Storage</span>
+          <strong>
+            {provider?.mode === "cloud"
+              ? "Synced to your account"
+              : "On this device"}
+          </strong>
+        </section>
         <form
           onSubmit={(e) => {
             e.preventDefault();

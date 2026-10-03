@@ -6,7 +6,19 @@ export const metadata: Metadata = {
   title: "Zest Snap — Anything with a date becomes actionable",
   description:
     "AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines.",
-  icons: { apple: "/icons/apple-touch-icon.png", icon: "/icons/zest-192.png" },
+  icons: {
+    icon: [
+      { url: "/icons/zest-snap-mark.svg", type: "image/svg+xml" },
+      { url: "/icons/zest-snap-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      {
+        url: "/icons/zest-snap-apple-touch.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
   applicationName: "Zest Snap",
   manifest: "/manifest.webmanifest",
   appleWebApp: {

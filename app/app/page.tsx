@@ -20,6 +20,7 @@ import {
   Trash2,
   Check,
   History as HistoryIcon,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import type { ExtractionResult, ExtractedEvent } from "@/lib/extraction-types";
 
@@ -457,13 +458,17 @@ export default function App() {
         <div className="brand">
           Zest <span>Snap</span>
         </div>
-        <button className="creditPill" onClick={() => setView("rewards")}>
-          <Sparkles size={14} /> {store.credits} credits
-        </button>
+        <div className="appHeaderActions">
+          <button className="creditPill" onClick={() => setView("rewards")}>
+            <Sparkles size={14} /> {store.credits} credits
+          </button>
+          <a className="settingsIconButton" href="/settings" aria-label="Settings">
+            <SettingsIcon aria-hidden="true" />
+          </a>
+        </div>
       </header>
 
       <div className="appContent">
-        <div className="appStatus"><span>{mode === "cloud" ? "Cloud sync" : "On-device"}</span><a href="/settings">Settings</a></div>
         {error && (
           <div className="errorBox" role="alert">
             {error}

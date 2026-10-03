@@ -282,6 +282,12 @@ button {
   align-items: center;
   justify-content: space-between;
 }
+.appHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .creditPill {
   display: flex;
   align-items: center;
@@ -293,6 +299,32 @@ button {
   font-size: 12px;
   font-weight: 700;
   color: #53657a;
+}
+.settingsIconButton {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 1px solid #dfe7ef;
+  background: #fff;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #52667a;
+  text-decoration: none;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+.settingsIconButton:hover {
+  border-color: #c9d6e2;
+  background: #f9fbfc;
+  color: var(--navy);
+}
+.settingsIconButton:focus-visible {
+  outline: 3px solid rgba(0, 198, 167, 0.24);
+  outline-offset: 2px;
+}
+.settingsIconButton svg {
+  width: 19px;
+  height: 19px;
 }
 .appContent {
   max-width: 720px;
@@ -903,6 +935,26 @@ button {
 }
 .settingsWrap > p {
   color: var(--muted);
+}
+.settingsStorage {
+  margin: 18px 0 24px;
+  padding: 14px 16px;
+  border: 1px solid #e5ebf0;
+  border-radius: 16px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.settingsStorage span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.settingsStorage strong {
+  color: var(--ink);
+  font-size: 13px;
+  text-align: right;
 }
 .settingsList {
   background: #fff;
@@ -1910,9 +1962,6 @@ dialog::backdrop {
 @media(max-width:600px){ .appContent > p:first-child { font-size: 12px; color: var(--muted); margin: 4px 0 18px; } .plannerSheet{padding-left:18px;padding-right:18px;} }
 
 /* Planner information architecture */
-.appStatus{display:flex;justify-content:space-between;align-items:center;min-height:36px;margin:0 0 16px;font-size:12px;color:var(--muted)}
-.appStatus span{padding:6px 10px;border-radius:999px;background:#eef7f6;color:#087865;font-weight:800}
-.appStatus a{font-weight:800;color:#52667a;text-decoration:none;padding:8px}
 .plannerHeading{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .plannerHeading h1{margin-bottom:0}
 .plannerPlus{width:48px;height:48px;border:0;border-radius:16px;background:#0b1f3b;color:#fff;font-size:28px;line-height:1;cursor:pointer}
@@ -1925,7 +1974,7 @@ dialog::backdrop {
 .plannerEmpty{text-align:center;padding:34px 18px;background:#fff;border:1px solid #e1e8ee;border-radius:22px}
 .plannerEmpty>svg{width:34px;height:34px;color:#00a98f;margin-bottom:12px}
 .plannerEmpty b,.plannerEmpty span{display:block}.plannerEmpty span{color:var(--muted);font-size:13px;margin:7px 0 18px}
-@media(max-width:600px){.dataView.plannerView{padding-top:4px}.plannerView h1{font-size:34px}.plannerView>p{margin-top:8px}.appStatus{margin-top:-6px}}
+@media(max-width:600px){.dataView.plannerView{padding-top:4px}.plannerView h1{font-size:34px}.plannerView>p{margin-top:8px}}
 
 
 /* Production Planner */
@@ -1974,5 +2023,23 @@ dialog::backdrop {
 @media (display-mode: standalone) and (max-width: 600px) {
   .appHeader {
     height: calc(62px + env(safe-area-inset-top));
+  }
+}
+
+@media (max-width: 420px) {
+  .appHeader {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .appContent {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .appHeaderActions {
+    gap: 6px;
+  }
+  .creditPill {
+    padding-left: 9px;
+    padding-right: 9px;
   }
 }
