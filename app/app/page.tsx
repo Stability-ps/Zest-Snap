@@ -70,6 +70,16 @@ export default function App() {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerInitialTab, setPlannerInitialTab] = useState<"today" | "upcoming">("today");
   const [installed, setInstalled] = useState(false);
+  const [plannerVisited, setPlannerVisited] = useState(false);
+
+  function openView(next: View) {
+    if (next === "calendar") setPlannerVisited(true);
+    setView(next);
+    const url = new URL(window.location.href);
+    if (next === "home" || next === "review") url.searchParams.delete("view");
+    else url.searchParams.set("view", next === "calendar" ? "planner" : next);
+    window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+  }
 
   useEffect(() => {
     const standalone =
@@ -155,7 +165,7 @@ export default function App() {
       );
     const params = new URLSearchParams(window.location.search);
     const requestedView = params.get("view");
-    if (requestedView === "calendar" || requestedView === "planner") setView("calendar");
+    if (requestedView === "calendar" || requestedView === "planner") { setView("calendar"); setPlannerVisited(true); }
     if (requestedView === "rewards") setView("rewards");
     if (requestedView === "history") setView("history");
     return () => {
@@ -842,11 +852,13 @@ export default function App() {
             }}
           />
         )}
-        {view === "calendar" && (
-          <PlannerView
-            initialTab={plannerInitialTab}
-            onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)}
-          />
+        {(view === "calendar" || plannerVisited) && (
+          <div hidden={view !== "calendar"} aria-hidden={view !== "calendar"}>
+            <PlannerView
+              initialTab={plannerInitialTab}
+              onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)}
+            />
+          </div>
         )}
         {view === "rewards" && <RewardsView ready={ready} store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onFeedback={async(rating,feedback)=>{try{if(mode!=="cloud"){window.location.href="/login?next=/app?view=rewards";return false;}const db=createClient();const {data,error}=await db.rpc("submit_product_feedback",{p_rating:rating,p_feedback:feedback});if(error)throw error;const fresh=await provider.current?.load();if(fresh)setStore(fresh);setSuccess(Number(data)>0?`Thanks for the feedback — +${data} Zest Credits.`:"Thanks — your feedback was already received.");return true;}catch{setError("We couldn’t submit your feedback right now.");return false;}} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { window.location.href = "/login?next=/app?view=rewards"; return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("We couldn’t open sharing right now. Please try again."); } }} />}
 
@@ -996,27 +1008,25 @@ export default function App() {
         <NavButton
           active={view === "home" || view === "review"}
           label="Home"
-          onClick={() => setView("home")}
+          onClick={() => openView("home")}
           icon={<HomeIcon />}
         />
         <NavButton
           active={view === "history"}
           label="History"
-          onClick={() => setView("history")}
+          onClick={() => openView("history")}
           icon={<Clock />}
         />
-        <a
-          className={view === "calendar" ? "active" : ""}
-          href="/app?view=planner"
-          aria-label="Planner"
-        >
-          <CalendarDays />
-          <small>Planner</small>
-        </a>
+        <NavButton
+          active={view === "calendar"}
+          label="Planner"
+          onClick={() => openView("calendar")}
+          icon={<CalendarDays />}
+        />
         <NavButton
           active={view === "rewards"}
           label="Rewards"
-          onClick={() => setView("rewards")}
+          onClick={() => openView("rewards")}
           icon={<Gift />}
         />
       </nav>
