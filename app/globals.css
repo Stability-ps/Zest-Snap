@@ -1781,3 +1781,12 @@ dialog::backdrop {
   padding: 10px;
   border-radius: 8px;
 }
+
+/* Interactive reward actions */
+.rewardRows > button {
+  width: 100%; border: 0; background: transparent; color: inherit; font: inherit;
+  display: flex; align-items: center; gap: 14px; text-align: left; cursor: pointer;
+}
+.rewardRows > button:disabled { cursor: default; opacity: 1; }
+.rewardRows > button > span { flex: 1; }
+.rewardRows > button svg:last-child { margin-left: auto; }
