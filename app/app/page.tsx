@@ -441,12 +441,7 @@ export default function App() {
       </header>
 
       <div className="appContent">
-        <p>
-          <a href="/settings">Settings</a> ·{" "}
-          {mode === "cloud"
-            ? "Cloud account · merge guest data in Settings"
-            : "Saved on this device"}
-        </p>
+        <div className="appStatus"><span>{mode === "cloud" ? "Cloud sync" : "On-device"}</span><a href="/settings">Settings</a></div>
         {error && (
           <div className="errorBox" role="alert">
             {error}
@@ -1034,49 +1029,31 @@ function HistoryView({
 }
 
 function AgendaView({ events, onDelete, onAdd }: { events: StoredEvent[]; onDelete: (id: string) => void; onAdd: () => void }) {
-  const [past, setPast] = useState(false);
-  const visible = events.filter((e) => (agendaGroup(e) === "Past") === past);
-  if (!events.length) return <section className="dataView"><div className="eyebrow">PLANNER</div><h1>Your planner</h1><p>Keep events, tasks and reminders together, including dates Zest finds in your scans.</p><button className="button plannerAdd" onClick={onAdd}>+ Add plan</button><EmptyView title="Nothing planned yet" text="Add an event, task or reminder, or save one from your next scan." icon={<CalendarDays />} /></section>;
+  const [tab, setTab] = useState<"today" | "upcoming" | "calendar" | "reminders">("today");
+  const today = new Date().toISOString().slice(0, 10);
+  const reminderLike = (event: StoredEvent) => event.sourceText === "Manual Planner item" && /remind/i.test(event.description + " " + event.title);
+  const visible = events.filter(event => {
+    if (tab === "today") return event.startDate === today;
+    if (tab === "upcoming") return event.startDate >= today;
+    if (tab === "reminders") return reminderLike(event);
+    return event.startDate >= today;
+  });
+  const monthLabel = new Date().toLocaleDateString(undefined,{month:"long",year:"numeric"});
   return (
-    <section className="dataView">
-      <div className="eyebrow">PLANNER</div>
-      <h1>Your planner</h1>
-      <p>Today, upcoming dates and reminders from everything you save in Zest.</p>
-      <button className="button plannerAdd" onClick={onAdd}>+ Add plan</button>
-      <button className="textButton" onClick={() => setPast(!past)}>
-        {past ? "Show upcoming" : "Show past"}
-      </button>
-      <div className="agendaList">
-        {visible.map((event) => {
-          const status = agendaGroup(event);
-          return (
-            <article className="agendaCard" key={event.id}>
-              <div className="agendaDate">
-                <b>{event.startDate.slice(8, 10)}</b>
-                <span>{monthName(event.startDate)}</span>
-              </div>
-              <div className="agendaBody">
-                <div className="agendaTop">
-                  <span className="category">{event.category}</span>
-                  {status && <em>{status}</em>}
-                </div>
-                <h3>{event.title}</h3>
-                <p>
-                  {event.startTime || "All day"}
-                  {event.location ? " · " + event.location : ""}
-                </p>
-              </div>
-              <button
-                className="iconButton danger"
-                onClick={() => onDelete(event.id)}
-                aria-label={"Remove " + event.title + " from Zest agenda"}
-              >
-                <Trash2 />
-              </button>
-            </article>
-          );
-        })}
+    <section className="dataView plannerView">
+      <div className="plannerHeading"><div><div className="eyebrow">PLANNER</div><h1>Your planner</h1></div><button className="plannerPlus" onClick={onAdd} aria-label="Add to Planner">+</button></div>
+      <p>Events, tasks and reminders from your scans and the things you add yourself.</p>
+      <div className="plannerTabs">
+        {(["today","upcoming","calendar","reminders"] as const).map(x => <button key={x} className={tab===x?"active":""} onClick={()=>setTab(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}
       </div>
+      {tab === "today" && <div className="plannerSummary"><b>{visible.length ? visible.length + " planned today" : "Your day is clear"}</b><span>{new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}</span></div>}
+      {tab === "calendar" && <div className="monthStrip"><b>{monthLabel}</b><span>{visible.length} upcoming</span></div>}
+      {!visible.length ? <div className="plannerEmpty"><CalendarDays/><b>{tab === "reminders" ? "No reminders yet" : tab === "today" ? "Nothing planned for today" : "Nothing here yet"}</b><span>Tap + to add an event, task or reminder.</span><button className="button alt" onClick={onAdd}>Add to Planner</button></div> :
+      <div className="agendaList">{visible.map(event => <article className="agendaCard" key={event.id}>
+        <div className="agendaDate"><b>{event.startDate.slice(8,10)}</b><span>{monthName(event.startDate)}</span></div>
+        <div className="agendaBody"><div className="agendaTop"><span className="category">{event.category === "deadline" ? "task" : reminderLike(event) ? "reminder" : event.category}</span><em>{agendaGroup(event)}</em></div><h3>{event.title}</h3><p>{event.startTime || "All day"}{event.location ? " · "+event.location : ""}</p></div>
+        <button className="iconButton danger" onClick={()=>onDelete(event.id)} aria-label={"Remove "+event.title+" from Planner"}><Trash2/></button>
+      </article>)}</div>}
     </section>
   );
 }
