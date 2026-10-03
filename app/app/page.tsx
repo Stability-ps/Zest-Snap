@@ -560,7 +560,7 @@ export default function App() {
             </section>
 
             <section className="quickGrid">
-              <button className="miniCard" onClick={() => setView("calendar")}>
+              <a className="miniCard" href="/app?view=planner">
                 <div className="miniIcon blue">
                   <CalendarDays />
                 </div>
@@ -573,7 +573,7 @@ export default function App() {
                   </span>
                 </div>
                 <ChevronRight />
-              </button>
+              </a>
               <button className="miniCard" onClick={() => setView("rewards")}>
                 <div className="miniIcon teal">
                   <Gift />
@@ -960,12 +960,14 @@ export default function App() {
           onClick={() => setView("history")}
           icon={<Clock />}
         />
-        <NavButton
-          active={view === "calendar"}
-          label="Planner"
-          onClick={() => setView("calendar")}
-          icon={<CalendarDays />}
-        />
+        <a
+          className={view === "calendar" ? "active" : ""}
+          href="/app?view=planner"
+          aria-label="Planner"
+        >
+          <CalendarDays />
+          <small>Planner</small>
+        </a>
         <NavButton
           active={view === "rewards"}
           label="Rewards"
@@ -989,7 +991,7 @@ function NavButton({
   icon: React.ReactNode;
 }) {
   return (
-    <button className={active ? "active" : ""} onClick={onClick}>
+    <button type="button" className={active ? "active" : ""} onClick={onClick}>
       {icon}
       <small>{label}</small>
     </button>
