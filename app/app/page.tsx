@@ -21,6 +21,8 @@ import {
   Check,
   History as HistoryIcon,
   Settings as SettingsIcon,
+  MoreVertical,
+  Search,
 } from "lucide-react";
 import type { ExtractionResult, ExtractedEvent } from "@/lib/extraction-types";
 
@@ -770,13 +772,22 @@ export default function App() {
                 <b>{selected.length} selected</b>
                 <span>Duplicates are skipped automatically</span>
               </div>
-              <button
-                className="button"
-                disabled={!selected.length}
-                onClick={() => saveSelectedToPlanner(selected)}
-              >
-                Save selected to Planner
-              </button>
+              <div className="stickyActions">
+                <button
+                  className="button alt"
+                  disabled={!selected.length}
+                  onClick={() => downloadIcs(selected.map((i) => result!.events[i]).filter(Boolean))}
+                >
+                  <Download size={16} /> Add selected to calendar
+                </button>
+                <button
+                  className="button"
+                  disabled={!selected.length}
+                  onClick={() => saveSelectedToPlanner(selected)}
+                >
+                  Save selected to Planner
+                </button>
+              </div>
             </div>
           </>
         )}
@@ -1012,6 +1023,14 @@ function HistoryView({
   onOpen: (s: StoredScan) => void;
   onDelete: (id: string) => void;
 }) {
+  const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const filtered = scans.filter((scan) => {
+    const q = query.trim().toLowerCase();
+    return !q || scan.fileName.toLowerCase().includes(q) || scan.summary.toLowerCase().includes(q);
+  });
+  const visible = filtered.slice(0, visibleCount);
   if (!scans.length)
     return (
       <EmptyView
@@ -1021,41 +1040,55 @@ function HistoryView({
       />
     );
   return (
-    <section className="dataView">
+    <section className="dataView historyView">
       <div className="eyebrow">HISTORY</div>
-      <h1>Your scans</h1>
-      <p>Your previous scans and the events Zest found.</p>
+      <div className="historyHeading">
+        <div><h1>Your scans</h1><p>{scans.length} saved {scans.length === 1 ? "scan" : "scans"}</p></div>
+      </div>
+      <label className="historySearch">
+        <Search size={17} aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setVisibleCount(20); }}
+          placeholder="Search scan history"
+          aria-label="Search scan history"
+        />
+      </label>
       <div className="historyList">
-        {scans.map((scan) => (
-          <article className="historyCard" key={scan.id}>
-            <div className="historyIcon">
-              <FileText />
-            </div>
-            <div>
+        {visible.map((scan) => (
+          <article className="historyCard compact" key={scan.id}>
+            <div className="historyIcon"><FileText /></div>
+            <button className="historyMain" onClick={() => onOpen(scan)}>
               <div className="historyTop">
                 <b>{scan.fileName}</b>
-                <span>{new Date(scan.scannedAt).toLocaleString()}</span>
+                <span>{new Date(scan.scannedAt).toLocaleDateString()}</span>
               </div>
               <p>{scan.summary}</p>
               <small>
-                {scan.events.length}{" "}
-                {scan.events.length === 1 ? "event" : "events"} ·{" "}
-                {scan.documentType}
+                {scan.events.length} {scan.events.length === 1 ? "event" : "events"} · {scan.warnings?.length || 0} warnings
               </small>
-              <p>
-                {scan.warnings?.length || 0} warnings ·{" "}
-                {scan.status || "Ready to review"}
-              </p>
-              <button className="textButton" onClick={() => onOpen(scan)}>
-                Review
-              </button>{" "}
-              <button className="textButton" onClick={() => onDelete(scan.id)}>
-                Delete
+            </button>
+            <div className="historyMenu">
+              <button className="iconButton" aria-label={"More options for " + scan.fileName} onClick={() => setMenuId(menuId === scan.id ? null : scan.id)}>
+                <MoreVertical />
               </button>
+              {menuId === scan.id && (
+                <div className="historyMenuPopup">
+                  <button onClick={() => { setMenuId(null); onOpen(scan); }}>Review</button>
+                  <button className="dangerText" onClick={() => { setMenuId(null); onDelete(scan.id); }}>Delete</button>
+                </div>
+              )}
             </div>
           </article>
         ))}
       </div>
+      {!filtered.length && <div className="historyNoResults">No scans match “{query}”.</div>}
+      {visibleCount < filtered.length && (
+        <button className="button alt historyLoadMore" onClick={() => setVisibleCount((n) => n + 20)}>
+          Load 20 more
+        </button>
+      )}
     </section>
   );
 }
