@@ -6,11 +6,30 @@ export const metadata: Metadata = {
   title: "Zest Snap — Anything with a date becomes actionable",
   description:
     "AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines.",
+  applicationName: "Zest Snap",
+  manifest: "/manifest.webmanifest",
+  formatDetection: {
+    telephone: false,
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Zest Snap",
+    statusBarStyle: "default",
+  },
   icons: {
     icon: [
-      { url: "/icons/zest-snap-mark.svg", type: "image/svg+xml" },
-      { url: "/icons/zest-snap-192.png", sizes: "192x192", type: "image/png" },
+      {
+        url: "/icons/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/icons/zest-snap-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
     ],
+    shortcut: "/favicon.ico",
     apple: [
       {
         url: "/icons/zest-snap-apple-touch.png",
@@ -19,14 +38,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-  applicationName: "Zest Snap",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Zest Snap",
-  },
-  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -38,9 +49,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
       <body>

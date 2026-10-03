@@ -1,11 +1,12 @@
-const CACHE = "zest-snap-shell-v2";
+const CACHE = "zest-snap-shell-v3";
 const SHELL = [
   "/app",
   "/settings",
   "/offline",
   "/manifest.webmanifest",
-  "/icons/zest-192.png",
-  "/icons/zest-512.png",
+  "/icons/zest-snap-192.png",
+  "/icons/zest-snap-512.png",
+  "/icons/zest-snap-maskable-512.png",
 ];
 self.addEventListener("install", (event) =>
   event.waitUntil(
@@ -58,7 +59,6 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/api/")
   )
     return;
-  // Never cache auth, admin, API, RSC or personalized server-rendered pages.
   if (req.mode === "navigate") {
     if (!["/app", "/settings", "/offline"].includes(url.pathname)) return;
     event.respondWith(
@@ -90,13 +90,12 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
 });
-// Delivery stays disabled until a push provider and explicit user opt-in are configured.
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   event.waitUntil(
     self.registration.showNotification("Zest Snap", {
       body: "You have an upcoming item. Open your agenda to review it.",
-      icon: "/icons/zest-192.png",
+      icon: "/icons/zest-snap-192.png",
       data: { url: "/app?view=calendar" },
     }),
   );

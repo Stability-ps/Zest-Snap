@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: "/app",
+    id: "/",
     name: "Zest Snap",
     short_name: "Zest Snap",
     description:
