@@ -819,7 +819,7 @@ export default function App() {
             onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)}
           />
         )}
-        {view === "rewards" && <RewardsView store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { setError("Sign in to create a referral link."); return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("Referral sharing is not available yet. Sign in and try again."); } }} />}
+        {view === "rewards" && <RewardsView store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { window.location.href = "/login?next=/app?view=rewards"; return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("We couldn’t open sharing right now. Please try again."); } }} />}
 
         {plannerOpen && <PlannerSheet onClose={() => setPlannerOpen(false)} onSave={addPlannerItem} />}
 
@@ -1172,12 +1172,28 @@ function RewardsView({ store, onPlan, onInvite }: { store: LocalState; onPlan: (
       <p>Earn credits by using Zest to organise the things that matter.</p>
       <div className="rewardBalance"><span>Current balance</span><b>{store.credits}</b><small>Zest Credits</small></div>
       <div className="rewardRows">
-        <div><CheckCircle2 /><span><b>Complete your first scan</b><small>{store.firstScanRewarded ? "Completed · +3 credits" : "+3 credits"}</small></span>{store.firstScanRewarded && <Check size={18} />}</div>
-        <button type="button" onClick={onPlan} disabled={store.firstCalendarRewarded}>
-          <CalendarDays /><span><b>Plan your first item</b><small>{store.firstCalendarRewarded ? "Completed · +5 credits" : "+5 credits · Open Planner"}</small></span>{store.firstCalendarRewarded ? <Check size={18} /> : <ChevronRight size={18} />}
-        </button>
-        <button type="button" onClick={onInvite}>
-          <Gift /><span><b>Invite a friend</b><small>Share your Zest Snap referral link</small></span><ChevronRight size={18} />
+        <div className={"rewardItem " + (store.firstScanRewarded ? "completed" : "")}>
+          <span className="rewardIcon"><CheckCircle2 /></span>
+          <span className="rewardCopy"><b>Complete your first scan</b><small>{store.firstScanRewarded ? "Completed · +3 credits earned" : "Complete a scan · +3 credits"}</small></span>
+          <span className="rewardState">{store.firstScanRewarded ? <Check size={18} /> : "+3"}</span>
+        </div>
+        {store.firstCalendarRewarded ? (
+          <div className="rewardItem completed">
+            <span className="rewardIcon"><CalendarDays /></span>
+            <span className="rewardCopy"><b>Plan your first item</b><small>Completed · +5 credits earned</small></span>
+            <span className="rewardState"><Check size={18} /></span>
+          </div>
+        ) : (
+          <button className="rewardItem actionable" type="button" onClick={onPlan}>
+            <span className="rewardIcon"><CalendarDays /></span>
+            <span className="rewardCopy"><b>Plan your first item</b><small>Open Planner · +5 credits</small></span>
+            <ChevronRight className="rewardChevron" size={18} />
+          </button>
+        )}
+        <button className="rewardItem actionable" type="button" onClick={onInvite}>
+          <span className="rewardIcon"><Gift /></span>
+          <span className="rewardCopy"><b>Invite a friend</b><small>Share your referral link</small></span>
+          <ChevronRight className="rewardChevron" size={18} />
         </button>
       </div>
     </section>
