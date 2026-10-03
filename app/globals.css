@@ -2043,3 +2043,42 @@ dialog::backdrop {
     padding-right: 9px;
   }
 }
+
+
+/* Planner polish: compact mobile sheet, safe sticky actions and unclipped tab rails. */
+.plannerTabs,.plannerKinds,.reminderChoices{
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+}
+.plannerTabs{padding-inline:2px 18px;scroll-padding-inline:2px 18px}
+.plannerKinds{padding:2px 18px 6px 0;scrollbar-width:none;scroll-padding-right:18px}
+.plannerKinds::-webkit-scrollbar,.reminderChoices::-webkit-scrollbar{display:none}
+.plannerSheet .sheetTop{
+  position:sticky;
+  top:-16px;
+  z-index:4;
+  background:#fff;
+  padding:16px 0 8px;
+}
+.plannerSheet .sheetSave{
+  position:sticky;
+  bottom:0;
+  z-index:4;
+  margin-top:4px;
+  box-shadow:0 -10px 24px rgba(255,255,255,.96);
+}
+@media(max-width:600px){
+  .plannerSheet{
+    max-height:94dvh;
+    gap:10px;
+    padding-top:0;
+    padding-bottom:max(14px,env(safe-area-inset-bottom));
+  }
+  .plannerSheet label{margin-top:8px}
+  .plannerSheet input,.plannerSheet textarea{min-height:46px}
+  .plannerSheet textarea{min-height:82px}
+  .plannerKinds{margin-bottom:4px}
+  .plannerKinds button{flex:0 0 auto}
+  .reviewList{padding-bottom:128px}
+  .stickyAction{bottom:calc(72px + env(safe-area-inset-bottom))}
+}

@@ -754,7 +754,7 @@ export default function App() {
                           disabled={duplicate}
                         >
                           <Download size={16} />
-                          {duplicate ? "Added" : "Add to calendar"}
+                          {duplicate ? "Added" : "Add to device calendar"}
                         </button>
                       </div>
                     </div>
@@ -1017,7 +1017,7 @@ function HistoryView({
     <section className="dataView">
       <div className="eyebrow">HISTORY</div>
       <h1>Your scans</h1>
-      <p>Everything you scanned on this device, with the events Zest found.</p>
+      <p>Your previous scans and the events Zest found.</p>
       <div className="historyList">
         {scans.map((scan) => (
           <article className="historyCard" key={scan.id}>
@@ -1043,7 +1043,7 @@ function HistoryView({
                 Review
               </button>{" "}
               <button className="textButton" onClick={() => onDelete(scan.id)}>
-                Delete scan history
+                Delete
               </button>
             </div>
           </article>
