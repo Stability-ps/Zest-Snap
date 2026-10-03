@@ -1,13 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState, useEffect } from "react";
-import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { ArrowRight, Loader2, Lock, Mail } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+
+type Mode = "login" | "signup" | "forgot";
+
+const copy: Record<Mode, { eyebrow: string; title: string; text: string }> = {
+  login: {
+    eyebrow: "WELCOME BACK",
+    title: "Your dates, organised.",
+    text: "Sign in to keep your scans, planner, rewards and calendar connections together across devices.",
+  },
+  signup: {
+    eyebrow: "GET STARTED",
+    title: "Create your Zest account.",
+    text: "Keep everything you scan and plan safely connected across your devices.",
+  },
+  forgot: {
+    eyebrow: "PASSWORD HELP",
+    title: "Reset your password.",
+    text: "Enter your email and we’ll send you a secure reset link.",
+  },
+};
 
 export default function LoginPage() {
   const configured = isSupabaseConfigured();
-  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
+  const [mode, setMode] = useState<Mode>("login");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -18,14 +38,20 @@ export default function LoginPage() {
       );
   }, []);
 
+  function changeMode(next: Mode) {
+    setMessage("");
+    setMode(next);
+  }
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!configured) {
       setMessage(
-        "Account services are being connected. The app can still be previewed without signing in.",
+        "Sign-in is temporarily unavailable. You can still continue on this device.",
       );
       return;
     }
+
     setBusy(true);
     setMessage("");
     const form = new FormData(e.currentTarget);
@@ -33,6 +59,7 @@ export default function LoginPage() {
     const password = String(form.get("password") || "");
     const ref = new URLSearchParams(window.location.search).get("ref");
     if (ref) sessionStorage.setItem("zest-referral", ref);
+
     const supabase = createClient();
     try {
       const result =
@@ -50,16 +77,18 @@ export default function LoginPage() {
                   emailRedirectTo: window.location.origin + "/auth/callback",
                 },
               });
-      setBusy(false);
-      if (result.error)
+
+      if (result.error) {
         setMessage(
-          "We could not complete that request. Check your details or try a new link.",
+          mode === "login"
+            ? "We couldn’t sign you in. Check your email and password and try again."
+            : "We could not complete that request. Check your details and try again.",
         );
-      else if (mode === "forgot")
+      } else if (mode === "forgot") {
         setMessage("If this email has an account, a reset link is on its way.");
-      else if (mode === "signup")
+      } else if (mode === "signup") {
         setMessage("Check your email to confirm your Zest Snap account.");
-      else {
+      } else {
         const code =
           new URLSearchParams(window.location.search).get("ref") ||
           sessionStorage.getItem("zest-referral");
@@ -76,28 +105,21 @@ export default function LoginPage() {
     }
   }
 
+  const current = copy[mode];
+
   return (
     <main className="authPage">
       <div className="authCard">
-        <Link href="/" className="brand">
-          Zest <span>Snap</span>
-        </Link>
-        <div className="eyebrow">
-          {mode === "login" ? "WELCOME BACK" : "CREATE YOUR ACCOUNT"}
+        <div className="authBrandRow">
+          <Link href="/" className="brand">
+            Zest <span>Snap</span>
+          </Link>
+          <div className="eyebrow">{current.eyebrow}</div>
         </div>
-        <h1>
-          {mode === "login" ? "Your dates, organised." : "Start snapping."}
-        </h1>
-        <p>
-          Use one account across devices and keep your scans, agenda, rewards
-          and calendar connections together.
-        </p>
-        {!configured && (
-          <div className="authNotice">
-            Backend account services are not connected yet. This page is ready
-            for the dedicated Zest Snap Supabase project.
-          </div>
-        )}
+
+        <h1>{current.title}</h1>
+        <p className="authIntro">{current.text}</p>
+
         <form onSubmit={submit}>
           <label>
             <span>Email</span>
@@ -107,10 +129,13 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 required
+                autoComplete="email"
+                inputMode="email"
                 placeholder="you@example.com"
               />
             </div>
           </label>
+
           {mode !== "forgot" && (
             <label>
               <span>Password</span>
@@ -129,7 +154,13 @@ export default function LoginPage() {
               </div>
             </label>
           )}
-          {message && <div className="authMessage">{message}</div>}
+
+          {message && (
+            <div className="authMessage" role="status" aria-live="polite">
+              {message}
+            </div>
+          )}
+
           <button className="button authSubmit" disabled={busy}>
             {busy ? (
               <Loader2 className="spin" />
@@ -139,26 +170,37 @@ export default function LoginPage() {
                   ? "Send reset link"
                   : mode === "login"
                     ? "Sign in"
-                    : "Create account"}{" "}
+                    : "Create account"}
                 <ArrowRight size={17} />
               </>
             )}
           </button>
         </form>
-        <button
-          className="authSwitch"
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}
-        >
-          {mode === "login"
-            ? "New to Zest Snap? Create an account"
-            : "Already have an account? Sign in"}
-        </button>
-        <button className="authSwitch" onClick={() => setMode("forgot")}>
-          Forgot password?
-        </button>
-        <p>
-          <a href="/app">Continue on this device</a>
-        </p>
+
+        <div className="authLinks">
+          {mode === "login" ? (
+            <>
+              <button className="authSwitch" onClick={() => changeMode("signup")}>
+                New to Zest Snap? Create an account
+              </button>
+              <button className="authSwitch" onClick={() => changeMode("forgot")}>
+                Forgot password?
+              </button>
+            </>
+          ) : (
+            <button className="authSwitch" onClick={() => changeMode("login")}>
+              Back to sign in
+            </button>
+          )}
+        </div>
+
+        <div className="authDivider">
+          <span>or</span>
+        </div>
+        <Link className="authDeviceButton" href="/app">
+          Continue on this device
+        </Link>
+
         <div className="authFine">
           By continuing, you agree to the <a href="/terms">Terms</a> and
           acknowledge the <a href="/privacy">Privacy notice</a>.

@@ -1199,10 +1199,10 @@ button {
 }
 
 .authPage {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: clamp(12px, 3vw, 24px);
   background: linear-gradient(145deg, #f7fafc, #eef8f6);
 }
 .authCard {
@@ -1210,36 +1210,38 @@ button {
   background: #fff;
   border: 1px solid #e3eaf0;
   border-radius: 28px;
-  padding: 34px;
+  padding: 30px;
   box-shadow: 0 24px 70px rgba(11, 31, 59, 0.09);
 }
-.authCard > .brand {
-  display: inline-block;
-  margin-bottom: 30px;
+.authBrandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.authBrandRow .brand {
+  flex: none;
+}
+.authBrandRow .eyebrow {
+  white-space: nowrap;
 }
 .authCard h1 {
   font-size: 38px;
+  line-height: 1.08;
   letter-spacing: -1.5px;
-  margin: 12px 0 8px;
+  margin: 0 0 10px;
 }
-.authCard > p {
+.authIntro {
   color: var(--muted);
-  line-height: 1.55;
-}
-.authNotice {
-  background: #fff7e7;
-  border: 1px solid #ead8aa;
-  border-radius: 13px;
-  padding: 12px;
-  color: #745e24;
-  font-size: 13px;
-  margin: 18px 0;
+  line-height: 1.5;
+  margin: 0;
 }
 .authCard form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  margin-top: 24px;
+  gap: 14px;
+  margin-top: 22px;
 }
 .authCard label > span {
   display: block;
@@ -1248,7 +1250,7 @@ button {
   margin-bottom: 6px;
 }
 .authCard label > div {
-  height: 50px;
+  min-height: 50px;
   border: 1px solid #dce5ed;
   background: #fff;
   border-radius: 13px;
@@ -1257,8 +1259,13 @@ button {
   padding: 0 13px;
   gap: 9px;
 }
+.authCard label:focus-within > div {
+  border-color: #77cfc0;
+  box-shadow: 0 0 0 3px rgba(0, 198, 167, 0.09);
+}
 .authCard label svg {
   color: #7a8da0;
+  flex: none;
 }
 .authCard input {
   border: 0;
@@ -1266,10 +1273,18 @@ button {
   flex: 1;
   font: inherit;
   min-width: 0;
+  width: 100%;
+  background: transparent;
 }
 .authSubmit {
   width: 100%;
-  margin-top: 5px;
+  min-height: 50px;
+  margin-top: 3px;
+}
+.authLinks {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
 }
 .authSwitch {
   width: 100%;
@@ -1277,25 +1292,116 @@ button {
   background: none;
   color: var(--blue);
   font-weight: 700;
-  padding: 16px 0 8px;
+  padding: 9px 4px;
   cursor: pointer;
+}
+.authDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #9aa8b6;
+  font-size: 11px;
+  margin: 8px 0;
+}
+.authDivider::before,
+.authDivider::after {
+  content: "";
+  height: 1px;
+  background: #edf1f4;
+  flex: 1;
+}
+.authDeviceButton {
+  min-height: 46px;
+  border: 1px solid #dce5ed;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #52667a;
+  font-weight: 700;
+  background: #fff;
 }
 .authFine {
   text-align: center;
   color: #7b8a99;
   font-size: 11px;
-  line-height: 1.5;
-  margin-top: 10px;
+  line-height: 1.45;
+  margin-top: 14px;
 }
 .authFine a {
   color: var(--blue);
 }
 .authMessage {
   font-size: 13px;
+  line-height: 1.4;
   color: #8b3a33;
   background: #fff2f0;
-  padding: 10px;
+  padding: 10px 12px;
   border-radius: 10px;
+}
+@media (max-width: 520px) {
+  .authPage {
+    place-items: start center;
+    padding: max(10px, env(safe-area-inset-top)) 0 max(10px, env(safe-area-inset-bottom));
+    background: #fff;
+  }
+  .authCard {
+    width: 100%;
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    padding: 24px 22px 20px;
+    box-shadow: none;
+  }
+  .authBrandRow {
+    margin-bottom: 24px;
+  }
+  .authCard h1 {
+    font-size: clamp(34px, 10vw, 42px);
+    letter-spacing: -1.7px;
+  }
+  .authIntro {
+    font-size: 15px;
+  }
+}
+@media (max-height: 760px) and (max-width: 520px) {
+  .authCard {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  .authBrandRow {
+    margin-bottom: 16px;
+  }
+  .authCard h1 {
+    font-size: 33px;
+    margin-bottom: 6px;
+  }
+  .authIntro {
+    line-height: 1.4;
+  }
+  .authCard form {
+    margin-top: 16px;
+    gap: 10px;
+  }
+  .authCard label > div,
+  .authSubmit {
+    min-height: 46px;
+  }
+  .authLinks {
+    margin-top: 5px;
+  }
+  .authSwitch {
+    padding: 7px 4px;
+  }
+  .authDivider {
+    margin: 4px 0;
+  }
+  .authDeviceButton {
+    min-height: 42px;
+  }
+  .authFine {
+    margin-top: 10px;
+  }
 }
 
 /* Core retention loop */
