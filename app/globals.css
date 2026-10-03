@@ -1790,3 +1790,15 @@ dialog::backdrop {
 .rewardRows > button:disabled { cursor: default; opacity: 1; }
 .rewardRows > button > span { flex: 1; }
 .rewardRows > button svg:last-child { margin-left: auto; }
+
+/* Planner mobile flow */
+.plannerAdd { margin: 12px 0 18px; }
+.plannerOverlay { position: fixed; inset: 0; z-index: 70; background: #0b1f3b66; display: flex; align-items: flex-end; justify-content: center; }
+.plannerSheet { width: min(620px,100%); max-height: 92dvh; overflow: auto; background: #fff; border-radius: 28px 28px 0 0; padding: 22px 22px max(24px,env(safe-area-inset-bottom)); box-shadow: 0 -20px 60px #0b1f3b22; }
+.plannerSheet label { display: block; margin-top: 14px; }
+.plannerSheet label > span { display: block; font-size: 12px; font-weight: 800; color: #52667a; margin-bottom: 7px; }
+.plannerSheet input,.plannerSheet textarea { width: 100%; min-height: 48px; border: 1px solid #dce5ed; border-radius: 13px; padding: 12px; font: inherit; font-size: 16px; color: var(--ink); background: #fff; }
+.plannerKinds { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 4px 0 16px; }
+.plannerKinds button { min-height: 44px; border: 1px solid #dce5ed; border-radius: 999px; background: #fff; color: #52667a; font-weight: 800; }
+.plannerKinds button.active { background: #ecfaf7; border-color: #00b89c; color: #087865; }
+@media(max-width:600px){ .appContent > p:first-child { font-size: 12px; color: var(--muted); margin: 4px 0 18px; } .plannerSheet{padding-left:18px;padding-right:18px;} }
