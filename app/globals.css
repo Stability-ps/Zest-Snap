@@ -2291,3 +2291,18 @@ dialog::backdrop {
 @media(max-width:420px){
   .settingsGroup .selectRow select{max-width:125px;font-size:12px}
 }
+
+
+/* Zest Settings sheets: app-native controls instead of browser dialogs/selects */
+.settingsOverlay{position:fixed;inset:0;z-index:200;background:rgba(8,24,40,.48);display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.settingsSheet{width:min(100%,580px);max-height:min(78dvh,680px);overflow:auto;background:#fff;border-radius:28px;padding:20px;box-shadow:0 24px 70px rgba(5,25,45,.28)}
+.settingsSheetTop{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.settingsSheetTop h2{margin:0;font-size:23px}.settingsSheetTop p{margin:7px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
+.settingsSheet .iconButton{width:42px;height:42px;border:0;border-radius:50%;background:#f2f6f9;display:grid;place-items:center;flex:none}
+.settingsSheetSearch{height:48px;border:1px solid #dce5ed;border-radius:14px;display:flex;align-items:center;gap:9px;padding:0 12px;margin-bottom:10px;color:#718394}
+.settingsSheetSearch svg{width:19px}.settingsSheetSearch input{border:0;outline:0;min-width:0;flex:1;font:inherit;font-size:16px;background:transparent}
+.settingsChoiceList{display:grid}.settingsChoiceList button{min-height:54px;border:0;border-bottom:1px solid #edf1f4;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 8px;font:inherit;font-size:16px;text-align:left;color:var(--ink)}
+.settingsChoiceList button:last-child{border-bottom:0}.settingsChoiceList button svg{width:20px;color:var(--teal)}
+.settingsSheetActions{display:grid;gap:12px}.settingsSheetActions span{color:var(--muted);font-size:13px;line-height:1.45}.settingsSheetActions .button{text-align:center}
+.dangerActions{grid-template-columns:1fr 1fr}.dangerButton{background:#a43f36!important;border-color:#a43f36!important;color:#fff!important}
+@media(max-width:600px){.settingsOverlay{padding:0}.settingsSheet{width:100%;max-height:82dvh;border-radius:28px 28px 0 0;padding:20px 20px max(20px,env(safe-area-inset-bottom))}.settingsValue{max-width:145px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
