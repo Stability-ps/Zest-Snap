@@ -2090,3 +2090,37 @@ dialog::backdrop {
   .reviewList{padding-bottom:128px}
   .stickyAction{bottom:calc(72px + env(safe-area-inset-bottom))}
 }
+
+/* Compact, scalable scan history */
+.historyHeading { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.historyHeading h1 { margin-bottom:2px; }
+.historyHeading p { margin:0; font-size:13px; }
+.historySearch { min-height:46px; display:flex; align-items:center; gap:9px; padding:0 13px; margin-bottom:14px; background:#fff; border:1px solid #dce5ed; border-radius:14px; color:#6b7d8e; }
+.historySearch input { flex:1; min-width:0; border:0; outline:0; background:transparent; font:inherit; font-size:16px; color:var(--ink); }
+.historyCard.compact { position:relative; align-items:center; padding:12px; gap:10px; border-radius:16px; }
+.historyCard.compact .historyIcon { width:38px; height:38px; border-radius:11px; }
+.historyMain { flex:1; min-width:0; border:0; background:transparent; padding:0; text-align:left; color:inherit; cursor:pointer; }
+.historyCard.compact .historyTop { align-items:center; }
+.historyCard.compact .historyTop b { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }
+.historyCard.compact .historyTop span { flex:none; }
+.historyCard.compact p { margin:3px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; }
+.historyCard.compact small { display:block; font-size:11px; }
+.historyMenu { position:relative; flex:none; }
+.historyMenuPopup { position:absolute; right:0; top:42px; z-index:80; width:130px; padding:6px; background:#fff; border:1px solid #dce5ed; border-radius:12px; box-shadow:0 14px 35px rgba(11,31,59,.15); }
+.historyMenuPopup button { width:100%; min-height:42px; border:0; background:transparent; border-radius:8px; text-align:left; padding:0 10px; font:inherit; font-weight:700; color:var(--ink); }
+.historyMenuPopup button:active { background:#f2f6f9; }
+.historyMenuPopup .dangerText { color:#a43f36; }
+.historyLoadMore { display:flex; margin:16px auto 0; }
+.historyNoResults { padding:28px 12px; text-align:center; color:var(--muted); }
+.stickyActions { display:flex; gap:8px; margin-left:auto; }
+.stickyActions .button { min-height:50px; }
+@media (max-width:600px) {
+  .historyView.dataView h1 { font-size:30px; }
+  .historyView.dataView > p { display:none; }
+  .historyList { gap:8px; }
+  .historyCard.compact { min-height:76px; }
+  .stickyAction { align-items:stretch; }
+  .stickyAction > div:first-child { min-width:92px; }
+  .stickyActions { flex:1; flex-direction:column; margin-left:0; }
+  .stickyActions .button { width:100%; min-height:46px; padding:9px 12px; font-size:12px; }
+}
