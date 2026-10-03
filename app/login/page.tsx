@@ -94,36 +94,51 @@ export default function LoginPage() {
 
     const supabase = createClient();
     try {
-      const result =
-        mode === "forgot"
-          ? await supabase.auth.resetPasswordForEmail(email, {
-              redirectTo:
-                window.location.origin + "/auth/callback?next=/reset-password",
-            })
-          : mode === "login"
-            ? await supabase.auth.signInWithPassword({ email, password })
-            : await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                  emailRedirectTo: window.location.origin + "/auth/callback",
-                },
-              });
+      if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo:
+            window.location.origin + "/auth/callback?next=/reset-password",
+        });
+        setMessage(
+          error
+            ? authErrorMessage(error.code, error.message)
+            : "If this email has an account, a reset link is on its way.",
+        );
+        return;
+      }
 
-      if (result.error) {
-        setMessage(authErrorMessage(result.error.code, result.error.message));
-      } else if (mode === "forgot") {
-        setMessage("If this email has an account, a reset link is on its way.");
-      } else if (mode === "signup") {
-        if (result.data.session) {
-          await finishReferral(supabase);
-          window.location.assign(new URL("/app", window.location.origin).href);
-        } else {
-          setMessage("Check your email to confirm your Zest Snap account, then sign in.");
+      if (mode === "login") {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) {
+          setMessage(authErrorMessage(error.code, error.message));
+          return;
         }
-      } else {
         await finishReferral(supabase);
         window.location.assign(new URL("/app", window.location.origin).href);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + "/auth/callback",
+        },
+      });
+      if (error) {
+        setMessage(authErrorMessage(error.code, error.message));
+        return;
+      }
+      if (data.session) {
+        await finishReferral(supabase);
+        window.location.assign(new URL("/app", window.location.origin).href);
+      } else {
+        setMessage(
+          "Check your email to confirm your Zest Snap account, then sign in.",
+        );
       }
     } catch {
       setMessage("Connection interrupted. Please try again.");
