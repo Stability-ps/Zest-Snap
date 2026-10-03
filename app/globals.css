@@ -2182,3 +2182,69 @@ dialog::backdrop {
 @media(max-width:350px){
   .customReminder { grid-template-columns:1fr; }
 }
+
+/* Rewards: clear states, contained rows, mobile-safe actions */
+.rewardRows {
+  padding: 0;
+  overflow: hidden;
+}
+.rewardRows .rewardItem {
+  width: 100%;
+  min-width: 0;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: 44px minmax(0,1fr) 28px;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border: 0;
+  border-bottom: 1px solid #edf1f4;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+.rewardRows .rewardItem:last-child { border-bottom: 0; }
+.rewardRows button.rewardItem { cursor: pointer; }
+.rewardRows button.rewardItem:active { background: #f4faf9; }
+.rewardIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: #eafaf7;
+  color: var(--teal);
+  display: grid;
+  place-items: center;
+}
+.rewardIcon svg { width: 21px; height: 21px; }
+.rewardCopy { min-width: 0; }
+.rewardCopy b {
+  display: block;
+  font-size: 15px;
+  line-height: 1.25;
+}
+.rewardCopy small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.rewardState {
+  color: #078675;
+  font-size: 12px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+.rewardChevron { color: #8a9aaa !important; justify-self: end; }
+.rewardItem.completed { background: #fbfdfd; }
+.rewardItem.completed .rewardIcon { background: #effaf7; }
+@media(max-width:600px){
+  .rewardsView { padding-top: 14px; }
+  .rewardsView h1 { font-size: 30px; line-height: 1.06; margin-top: 12px; }
+  .rewardsView > p { font-size: 15px; margin-bottom: 0; }
+  .rewardBalance { margin: 18px 0; padding: 20px 22px; border-radius: 22px; }
+  .rewardBalance b { font-size: 46px; }
+  .rewardRows .rewardItem { min-height: 72px; padding: 12px 14px; grid-template-columns: 40px minmax(0,1fr) 24px; gap: 10px; }
+}
