@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, Download, Trash2 } from "lucide-react";
 import {
   getDataProvider,
   migrateLocal,
@@ -40,239 +41,65 @@ export default function Settings() {
       setBusy(false);
     }
   }
+  async function saveProfile(next: Profile) {
+    setProfile(next);
+    if (!provider) return;
+    try {
+      new Intl.DateTimeFormat(next.locale, { timeZone: next.timezone });
+      await provider.updateProfile(next);
+      setMessage("Saved");
+      window.setTimeout(() => setMessage(""), 1800);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Could not save preference.");
+    }
+  }
+  const timezoneLabel = profile.timezone === "Africa/Johannesburg" ? "Johannesburg (GMT+2)" : profile.timezone.replaceAll("_", " ");
+  const localeLabel = profile.locale.toLowerCase().startsWith("en") ? "English" : profile.locale;
   return (
     <main className="settingsPage">
-      <div className="settingsWrap">
-        <a href="/app">← Back to Zest Snap</a>
-        <h1>Settings</h1>
-        <p>
-          {provider?.mode === "cloud" ? "Signed-in account" : "Guest mode"}
-        </p>
-        <section className="settingsStorage" aria-label="Storage">
-          <span>Storage</span>
-          <strong>
-            {provider?.mode === "cloud"
-              ? "Synced to your account"
-              : "On this device"}
-          </strong>
+      <div className="settingsWrap settingsNative">
+        <a className="settingsBack" href="/app">← Zest Snap</a>
+        <div className="settingsTitle"><div><h1>Settings</h1><p>{provider?.mode === "cloud" ? "Signed-in account" : "Guest mode"}</p></div>{message && <span className="settingsSaved" role="status">{message}</span>}</div>
+
+        <h2 className="settingsSectionTitle">Account</h2>
+        <section className="settingsGroup">
+          <div className="settingsRow"><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Storage</b><small>{provider?.mode === "cloud" ? "Synced to your account" : "On this device"}</small></span></div>
+          <a className="settingsRow" href="/login"><span className="settingsIcon"><LogIn /></span><span className="settingsRowCopy"><b>{provider?.mode === "cloud" ? "Account" : "Sign in"}</b><small>{provider?.mode === "cloud" ? profile.displayName || "Manage your account" : "Sync your planner and history"}</small></span><ChevronRight /></a>
         </section>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            run(async () => {
-              new Intl.DateTimeFormat(profile.locale, {
-                timeZone: profile.timezone,
-              });
-              await provider?.updateProfile(profile);
-              setMessage("Preferences saved.");
-            });
-          }}
-          className="settingsForm"
-        >
-          <label>
-            Display name
-            <input
-              maxLength={100}
-              value={profile.displayName}
-              onChange={(e) =>
-                setProfile({ ...profile, displayName: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            Timezone
-            <input
-              required
-              value={profile.timezone}
-              placeholder="Europe/London"
-              onChange={(e) =>
-                setProfile({ ...profile, timezone: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            Language / locale
-            <input
-              required
-              value={profile.locale}
-              placeholder="en-GB"
-              onChange={(e) =>
-                setProfile({ ...profile, locale: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={profile.reminders}
-              onChange={(e) =>
-                setProfile({ ...profile, reminders: e.target.checked })
-              }
-            />{" "}
-            Show in-app upcoming insights
-          </label>
-          <p>
-            Push notifications and weekly email delivery are not enabled. No
-            notification permission is requested.
-          </p>
-          <p>
-            Calendar preference: downloadable ICS files for Apple Calendar,
-            Google Calendar and Outlook. Direct account connections are not
-            enabled. Missing end times use a one-hour export duration.
-          </p>
-          <label>
-            History retention
-            <select
-              value={profile.retentionDays}
-              onChange={(e) =>
-                setProfile({
-                  ...profile,
-                  retentionDays: Number(e.target.value),
-                })
-              }
-            >
-              <option value={30}>30 days</option>
-              <option value={90}>90 days</option>
-              <option value={365}>1 year</option>
-              <option value={0}>Until I delete it</option>
-            </select>
-          </label>
-          <p>
-            Retention removes scan history when you open the app. Saved agenda
-            items are kept separately. Original uploads are never saved on this
-            device or in Zest cloud storage.
-          </p>
-          <button className="button" disabled={busy || !provider}>
-            Save preferences
-          </button>
-        </form>
-        <h2>Plan & usage</h2>
-        <p>
-          Scan allowance ·{" "}
-          {usage
-            ? `${usage.scans} / ${usage.allowance} scans this month`
-            : "Loading…"}
-          .{" "}
-          {provider?.mode === "local"
-            ? "Device history is an estimate; server abuse limits also apply."
-            : ""}{" "}
-          Paid plans and credit redemption are not active.
-        </p>
-        {provider?.mode === "cloud" && flags.referrals && (
-          <section>
-            <h2>Invites</h2>
-            <button
-              disabled={busy}
-              onClick={() =>
-                run(async () => {
-                  const code = await provider.createReferral();
-                  setMessage(
-                    "Invite link: " +
-                      window.location.origin +
-                      "/login?ref=" +
-                      encodeURIComponent(code),
-                  );
-                })
-              }
-            >
-              Create invite link
-            </button>
-          </section>
-        )}
-        <h2>Privacy & data</h2>
-        <p>
-          Export before clearing data. Cloud deletion removes your account and
-          Zest records; downloaded files and external calendar events remain
-          under your control.
-        </p>
-        <div className="settingsActions">
-          <button
-            disabled={busy || !provider}
-            onClick={() =>
-              run(async () => {
-                const blob = new Blob(
-                  [JSON.stringify(await provider!.exportData(), null, 2)],
-                  { type: "application/json" },
-                );
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "zest-snap-data.json";
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-                setMessage("Data export prepared.");
-              })
-            }
-          >
-            Export my data
-          </button>
-          {provider?.mode === "cloud" && (
-            <button
-              disabled={busy}
-              onClick={() =>
-                run(async () => {
-                  await migrateLocal(provider);
-                  setMessage(
-                    "Local history and agenda merged safely. Milestone progress was imported separately; cloud credits require verified actions.",
-                  );
-                })
-              }
-            >
-              Merge this device’s guest history & agenda
-            </button>
-          )}
-          <button
-            disabled={busy || !provider}
-            onClick={() => {
-              if (
-                window.confirm(
-                  provider?.mode === "cloud"
-                    ? "Permanently delete your Zest account and all cloud data?"
-                    : "Clear all Zest data on this device?",
-                )
-              )
-                run(async () => {
-                  await provider!.deleteData();
-                  await new LocalDataProvider(localStorage).deleteData();
-                  window.location.assign(
-                    new URL("/app", window.location.origin).href,
-                  );
-                });
-            }}
-          >
-            {provider?.mode === "cloud"
-              ? "Delete my account"
-              : "Clear device data"}
-          </button>
-          {isSupabaseConfigured() && (
-            <button
-              disabled={busy}
-              onClick={() =>
-                run(async () => {
-                  const { error } = await createClient().auth.signOut();
-                  if (error) throw new Error("Sign out failed. Try again.");
-                  clearCloudCaches(localStorage);
-                  window.location.assign(
-                    new URL("/login", window.location.origin).href,
-                  );
-                })
-              }
-            >
-              Sign out
-            </button>
-          )}
-        </div>
-        <p>
-          <a href="/login">Account / sign in</a>
-        </p>
-        <p role="status">{message}</p>
-        <h2>Support</h2>
-        <a href={"mailto:" + productConfig.supportEmail}>
-          {productConfig.supportEmail}
-        </a>
-        <p>
-          <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a>
-        </p>
+
+        <h2 className="settingsSectionTitle">Preferences</h2>
+        <section className="settingsGroup">
+          <label className="settingsRow editable"><span className="settingsIcon"><UserRound /></span><span className="settingsRowCopy"><b>Display name</b><small>How Zest addresses you</small></span><input aria-label="Display name" maxLength={100} value={profile.displayName} placeholder="Add name" onChange={e=>setProfile({...profile,displayName:e.target.value})} onBlur={()=>saveProfile(profile)} /></label>
+          <label className="settingsRow editable"><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Timezone</b><small>{timezoneLabel}</small></span><input aria-label="Timezone" value={profile.timezone} onChange={e=>setProfile({...profile,timezone:e.target.value})} onBlur={()=>saveProfile(profile)} /></label>
+          <label className="settingsRow editable"><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Language</b><small>{localeLabel}</small></span><input aria-label="Language or locale" value={profile.locale} onChange={e=>setProfile({...profile,locale:e.target.value})} onBlur={()=>saveProfile(profile)} /></label>
+          <label className="settingsRow"><span className="settingsIcon"><Bell /></span><span className="settingsRowCopy"><b>Upcoming insights</b><small>Helpful reminders inside Zest</small></span><input className="settingsToggle" type="checkbox" checked={profile.reminders} onChange={e=>saveProfile({...profile,reminders:e.target.checked})} /></label>
+        </section>
+
+        <h2 className="settingsSectionTitle">Calendar & history</h2>
+        <section className="settingsGroup">
+          <div className="settingsRow"><span className="settingsIcon"><CalendarDays /></span><span className="settingsRowCopy"><b>Device calendar</b><small>Export selected events to your calendar</small></span><span className="settingsValue">ICS</span></div>
+          <label className="settingsRow"><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history</b><small>Choose how long scan history is kept</small></span><select aria-label="History retention" value={profile.retentionDays} onChange={e=>saveProfile({...profile,retentionDays:Number(e.target.value)})}><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option><option value={0}>Until deleted</option></select></label>
+        </section>
+
+        <h2 className="settingsSectionTitle">Plan & usage</h2>
+        <section className="settingsGroup">
+          <div className="settingsRow"><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Monthly scans</b><small>{usage ? `${usage.scans} of ${usage.allowance} used this month` : "Loading usage…"}</small></span></div>
+          <a className="settingsRow" href="/app?view=rewards"><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Zest Credits</b><small>View rewards and earned credits</small></span><ChevronRight /></a>
+        </section>
+
+        <h2 className="settingsSectionTitle">Privacy & data</h2>
+        <section className="settingsGroup">
+          <button className="settingsRow" disabled={busy||!provider} onClick={()=>run(async()=>{const blob=new Blob([JSON.stringify(await provider!.exportData(),null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zest-snap-data.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage("Data export prepared");})}><span className="settingsIcon"><Download /></span><span className="settingsRowCopy"><b>Export my data</b><small>Download a copy of your Zest data</small></span><ChevronRight /></button>
+          <button className="settingsRow dangerRow" disabled={busy||!provider} onClick={()=>{if(window.confirm(provider?.mode==="cloud"?"Permanently delete your Zest account and all cloud data?":"Clear all Zest data on this device?"))run(async()=>{await provider!.deleteData();await new LocalDataProvider(localStorage).deleteData();window.location.assign(new URL("/app",window.location.origin).href);});}}><span className="settingsIcon"><Trash2 /></span><span className="settingsRowCopy"><b>{provider?.mode==="cloud"?"Delete my account":"Clear device data"}</b><small>This cannot be undone</small></span><ChevronRight /></button>
+        </section>
+
+        <h2 className="settingsSectionTitle">Support</h2>
+        <section className="settingsGroup">
+          <a className="settingsRow" href={"mailto:"+productConfig.supportEmail}><span className="settingsIcon"><LifeBuoy /></span><span className="settingsRowCopy"><b>Contact support</b><small>{productConfig.supportEmail}</small></span><ChevronRight /></a>
+          <a className="settingsRow" href="/privacy"><span className="settingsRowCopy"><b>Privacy</b></span><ChevronRight /></a>
+          <a className="settingsRow" href="/terms"><span className="settingsRowCopy"><b>Terms</b></span><ChevronRight /></a>
+        </section>
+        <p className="settingsFootnote">Original uploads are not retained by Zest after processing. Calendar files you export remain under your control.</p>
       </div>
     </main>
   );
