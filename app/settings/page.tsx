@@ -20,7 +20,7 @@ export default function Settings() {
     [flags, setFlags] = useState<Record<string, boolean>>({}),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [sheet, setSheet] = useState<"timezone"|"region"|"retention"|"calendar"|"clear"|null>(null),
+    [sheet, setSheet] = useState<"storage"|"timezone"|"region"|"retention"|"calendar"|"clear"|null>(null),
     [sheetSearch, setSheetSearch] = useState("");
   useEffect(() => {
     getDataProvider()
@@ -97,7 +97,7 @@ export default function Settings() {
 
         <h2 className="settingsSectionTitle">Account</h2>
         <section className="settingsGroup">
-          <div className="settingsRow"><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Storage</b><small>{provider?.mode === "cloud" ? "Synced to your account" : "On this device"}</small></span></div>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("storage")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Storage</b><small>{provider?.mode === "cloud" ? "Synced to your account" : "On this device"}</small></span><ChevronRight /></button>
           <a className="settingsRow" href="/login"><span className="settingsIcon"><LogIn /></span><span className="settingsRowCopy"><b>{provider?.mode === "cloud" ? "Account" : "Sign in"}</b><small>{provider?.mode === "cloud" ? profile.displayName || "Manage your account" : "Sync your planner and history"}</small></span><ChevronRight /></a>
         </section>
 
@@ -138,13 +138,21 @@ export default function Settings() {
           <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
             <div className="settingsSheetTop">
               <div>
-                <h2>{sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Device calendar":"Clear Zest data?"}</h2>
+                <h2>{sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Device calendar":"Clear Zest data?"}</h2>
+                {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
                 {sheet==="calendar"&&<p>Zest exports calendar events using standard ICS files supported by Apple Calendar, Google Calendar and Outlook.</p>}
                 {sheet==="clear"&&<p>{provider?.mode==="cloud"?"This permanently deletes your Zest account and cloud data.":"This permanently clears Zest scans, planner data and preferences stored on this device."}</p>}
               </div>
               <button className="iconButton" onClick={()=>setSheet(null)} aria-label="Close"><X/></button>
             </div>
+            {sheet==="storage"&&<div className="settingsStorageDetails">
+              <div><span>Storage mode</span><b>{provider?.mode==="cloud"?"Cloud sync":"On this device"}</b></div>
+              <div><span>Scan history</span><b>{retentionLabel}</b></div>
+              <div><span>Planner data</span><b>{provider?.mode==="cloud"?"Synced":"Stored locally"}</b></div>
+              <p>{provider?.mode==="cloud"?"Changes stay available across signed-in devices.":"If you clear this browser/app data or uninstall without signing in, locally stored Zest data can be lost."}</p>
+              <a className="button" href={provider?.mode==="cloud"?"/login":"/login"}>{provider?.mode==="cloud"?"Manage account":"Sign in to sync"}</a>
+            </div>}
             {sheet==="timezone"&&<>
               <label className="settingsSheetSearch"><Search/><input autoFocus value={sheetSearch} onChange={e=>setSheetSearch(e.target.value)} placeholder="Search city or timezone" /></label>
               <div className="settingsChoiceList">{filteredTimezones.map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,timezone:value});setSheet(null);}}><span>{label}</span>{profile.timezone===value&&<Check/>}</button>)}</div>
