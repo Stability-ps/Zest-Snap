@@ -72,6 +72,7 @@ export const defaultProfile: Profile = {
 };
 export interface DataProvider {
   mode: "local" | "cloud";
+  loadCached?(): LocalState | null;
   load(): Promise<LocalState>;
   save(next: LocalState, previous: LocalState): Promise<void>;
   loadProfile(): Promise<Profile>;
