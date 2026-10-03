@@ -11,7 +11,15 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Sign in first" }, { status: 401 });
     const { data: profile, error: profileError } = await db.from("profiles").select("preferences").eq("id", user.id).single();
     if (profileError) throw profileError;
-    const imported = profile?.preferences?.importedMilestones || {};
+    const preferences =
+      profile?.preferences && typeof profile.preferences === "object" && !Array.isArray(profile.preferences)
+        ? profile.preferences as Record<string, unknown>
+        : {};
+    const rawImported = preferences.importedMilestones;
+    const imported =
+      rawImported && typeof rawImported === "object" && !Array.isArray(rawImported)
+        ? rawImported as Record<string, unknown>
+        : {};
     const admin = serviceClient();
     for (const reason of ["first_scan", "first_calendar"] as const) {
       const key = reason === "first_scan" ? "firstScan" : "firstCalendar";
