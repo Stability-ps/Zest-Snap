@@ -40,6 +40,9 @@ export class CachedCloudProvider implements DataProvider {
       this.flushing = null;
     }
   }
+  loadCached() {
+    return this.read()?.state || null;
+  }
   async load() {
     const cache = this.read();
     if (!navigator.onLine) {
