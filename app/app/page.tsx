@@ -533,36 +533,6 @@ export default function App() {
               </button>
             </section>
 
-            {insights && (
-              <section className="insightCard">
-                <CalendarDays size={18} />
-                <div>
-                  <b>
-                    {
-                      store.events.filter((e) =>
-                        ["Today", "Tomorrow"].includes(agendaGroup(e)),
-                      ).length
-                    }{" "}
-                    items today or tomorrow
-                  </b>
-                  <p>
-                    {
-                      store.scans.filter((s) =>
-                        s.events.some(
-                          (e) =>
-                            !store.events.some(
-                              (a) =>
-                                eventFingerprint(a) === eventFingerprint(e),
-                            ),
-                        ),
-                      ).length
-                    }{" "}
-                    scans have items you can still review. No external reminder
-                    has been sent.
-                  </p>
-                </div>
-              </section>
-            )}
             <section className="insightCard">
               <Sparkles size={18} />
               <div>
