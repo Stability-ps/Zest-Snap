@@ -23,6 +23,9 @@ import {
   Settings as SettingsIcon,
   MoreVertical,
   Search,
+  MessageSquare,
+  Star,
+  X,
 } from "lucide-react";
 import type { ExtractionResult, ExtractedEvent } from "@/lib/extraction-types";
 
@@ -41,6 +44,7 @@ import { eventFingerprint, validateEvent, agendaGroup } from "@/lib/events";
 import { generateIcs } from "@/lib/ics";
 import PlannerView from "./planner-view";
 import { PlannerStore } from "@/lib/planner-store";
+import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
 
 export default function App() {
@@ -844,7 +848,7 @@ export default function App() {
             onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)}
           />
         )}
-        {view === "rewards" && <RewardsView ready={ready} store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { window.location.href = "/login?next=/app?view=rewards"; return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("We couldn’t open sharing right now. Please try again."); } }} />}
+        {view === "rewards" && <RewardsView ready={ready} store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onFeedback={async(rating,feedback)=>{try{if(mode!=="cloud"){window.location.href="/login?next=/app?view=rewards";return false;}const db=createClient();const {data,error}=await db.rpc("submit_product_feedback",{p_rating:rating,p_feedback:feedback});if(error)throw error;const fresh=await provider.current?.load();if(fresh)setStore(fresh);setSuccess(Number(data)>0?`Thanks for the feedback — +${data} Zest Credits.`:"Thanks — your feedback was already received.");return true;}catch{setError("We couldn’t submit your feedback right now.");return false;}} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { window.location.href = "/login?next=/app?view=rewards"; return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("We couldn’t open sharing right now. Please try again."); } }} />}
 
         {plannerOpen && <PlannerSheet onClose={() => setPlannerOpen(false)} onSave={addPlannerItem} />}
 
@@ -1189,7 +1193,12 @@ function PlannerSheet({ onClose, onSave }: { onClose: () => void; onSave: (event
   </div>;
 }
 
-function RewardsView({ ready, store, onPlan, onInvite }: { ready: boolean; store: LocalState; onPlan: () => void; onInvite: () => void }) {
+function RewardsView({ ready, store, onPlan, onInvite, onFeedback }: { ready: boolean; store: LocalState; onPlan: () => void; onInvite: () => void; onFeedback: (rating:number|null,feedback:string)=>Promise<boolean> }) {
+  const [feedbackOpen,setFeedbackOpen]=useState(false);
+  const [rating,setRating]=useState<number|null>(null);
+  const [feedback,setFeedback]=useState("");
+  const [sending,setSending]=useState(false);
+  const submitFeedback=async()=>{if(sending)return;setSending(true);const ok=await onFeedback(rating,feedback);setSending(false);if(ok)setFeedbackOpen(false);};
   return (
     <section className="rewardsView">
       <div className="eyebrow">ZEST REWARDS</div>
@@ -1199,13 +1208,13 @@ function RewardsView({ ready, store, onPlan, onInvite }: { ready: boolean; store
       <div className="rewardRows">
         <div className={"rewardItem " + (store.firstScanRewarded ? "completed" : "")}>
           <span className="rewardIcon"><CheckCircle2 /></span>
-          <span className="rewardCopy"><b>Complete your first scan</b><small>{store.firstScanRewarded ? "Completed · +1 credit earned" : "Complete a scan · +1 credit"}</small></span>
+          <span className="rewardCopy"><b>Complete your first scan</b><small>{store.firstScanRewarded ? "Completed" : "Complete a scan · +1 credit"}</small></span>
           <span className="rewardState">{store.firstScanRewarded ? <Check size={18} /> : "+1"}</span>
         </div>
         {store.firstCalendarRewarded ? (
           <div className="rewardItem completed">
             <span className="rewardIcon"><CalendarDays /></span>
-            <span className="rewardCopy"><b>Plan your first item</b><small>Completed · +1 credit earned</small></span>
+            <span className="rewardCopy"><b>Plan your first item</b><small>Completed</small></span>
             <span className="rewardState"><Check size={18} /></span>
           </div>
         ) : (
@@ -1215,12 +1224,18 @@ function RewardsView({ ready, store, onPlan, onInvite }: { ready: boolean; store
             <ChevronRight className="rewardChevron" size={18} />
           </button>
         )}
+        <button className="rewardItem actionable" type="button" onClick={()=>setFeedbackOpen(true)}>
+          <span className="rewardIcon"><MessageSquare /></span>
+          <span className="rewardCopy"><b>Share your experience</b><small>Any honest feedback · +2 credits once</small></span>
+          <ChevronRight className="rewardChevron" size={18} />
+        </button>
         <button className="rewardItem actionable" type="button" onClick={onInvite}>
           <span className="rewardIcon"><Gift /></span>
           <span className="rewardCopy"><b>Invite a friend</b><small>Qualified referral · +5 credits</small></span>
           <ChevronRight className="rewardChevron" size={18} />
         </button>
       </div>
+      {feedbackOpen&&<div className="plannerOverlay"><section className="plannerSheet compact feedbackSheet" role="dialog" aria-modal="true" aria-labelledby="feedback-title"><div className="sheetTop"><div><h2 id="feedback-title">Share your experience</h2><span className="sheetHint">Positive or negative — honest feedback earns the same reward.</span></div><button className="iconButton" onClick={()=>setFeedbackOpen(false)} aria-label="Close"><X/></button></div><div className="feedbackStars" aria-label="Optional rating">{[1,2,3,4,5].map(n=><button key={n} type="button" className={rating&&n<=rating?"active":""} aria-label={`${n} star${n===1?"":"s"}`} onClick={()=>setRating(n)}><Star/></button>)}</div><label><span>Tell us what you think (optional)</span><textarea rows={5} maxLength={2000} value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="What works well? What should we improve?"/></label><p className="feedbackPolicy">Credits are for submitting feedback, not for giving a positive rating.</p><button className="button sheetSave" disabled={sending} onClick={submitFeedback}>{sending?"Sending…":"Send feedback · +2 credits"}</button></section></div>}
     </section>
   );
 }
