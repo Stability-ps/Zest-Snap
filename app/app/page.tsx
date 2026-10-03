@@ -128,7 +128,10 @@ export default function App() {
         ),
       );
     const params = new URLSearchParams(window.location.search);
-    if (["calendar", "planner"].includes(params.get("view") || "")) setView("calendar");
+    const requestedView = params.get("view");
+    if (requestedView === "calendar" || requestedView === "planner") setView("calendar");
+    if (requestedView === "rewards") setView("rewards");
+    if (requestedView === "history") setView("history");
     return () => {
       mounted = false;
     };
