@@ -2337,3 +2337,12 @@ dialog::backdrop {
   .authCard:focus-within .authDeviceButton{min-height:40px}
   .authCard:focus-within .authFine{margin-top:7px}
 }
+
+/* Auth inputs: use the outer Zest field as the only focus indicator. */
+.authCard input:focus,
+.authCard input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
