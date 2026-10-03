@@ -296,7 +296,7 @@ export default function App() {
         warnings: payload.warnings,
       };
 
-      const firstReward = !store.firstScanRewarded ? 3 : 0;
+      const firstReward = !store.firstScanRewarded ? 1 : 0;
       await persist({
         ...store,
         scans: [scan, ...store.scans],
@@ -309,7 +309,7 @@ export default function App() {
       setSelected(payload.events.map((_: ExtractedEvent, i: number) => i));
       setView("review");
       if (firstReward && mode === "local")
-        setSuccess("First scan complete - you earned 3 Zest Credits.");
+        setSuccess("First scan complete - you earned 1 Zest Credit.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "We could not scan this file.");
     } finally {
@@ -432,7 +432,7 @@ export default function App() {
         addedAt: now,
         exportedAt: now,
       }));
-      const calendarReward = !store.firstCalendarRewarded ? 5 : 0;
+      const calendarReward = !store.firstCalendarRewarded ? 1 : 0;
       await persist({
         ...store,
         events: [...store.events, ...added],
@@ -450,7 +450,7 @@ export default function App() {
           `${duplicateCount} duplicate ${duplicateCount === 1 ? "was" : "were"} skipped.`,
         );
       if (calendarReward && mode === "local")
-        parts.push("You earned 5 Zest Credits.");
+        parts.push("You earned 1 Zest Credit.");
       setSuccess(parts.join(" "));
     } catch {
       setError(
@@ -462,10 +462,10 @@ export default function App() {
   async function addPlannerItem(event: ExtractedEvent) {
     try {
       validateEvent(event);
-      const reward = !store.firstCalendarRewarded ? 5 : 0;
+      const reward = !store.firstCalendarRewarded ? 1 : 0;
       await persist({ ...store, events: [...store.events, { ...event, id: crypto.randomUUID(), addedAt: new Date().toISOString() }], credits: store.credits + reward, firstCalendarRewarded: true });
       setPlannerOpen(false);
-      setSuccess(reward ? "Added to Planner - you earned 5 Zest Credits." : "Added to Planner.");
+      setSuccess(reward ? "Added to Planner - you earned 1 Zest Credit." : "Added to Planner.");
     } catch (e) { setError(e instanceof Error ? e.message : "Could not add this item."); }
   }
 
@@ -1194,30 +1194,30 @@ function RewardsView({ ready, store, onPlan, onInvite }: { ready: boolean; store
     <section className="rewardsView">
       <div className="eyebrow">ZEST REWARDS</div>
       <h1>Useful rewards, not gimmicks.</h1>
-      <p>Earn credits by using Zest to organise the things that matter.</p>
+      <p>Earn small milestone credits, and earn more by helping Zest grow.</p>
       <div className="rewardBalance"><span>Current balance</span><b>{ready ? store.credits : "—"}</b><small>{ready ? "Zest Credits" : "Syncing…"}</small></div>
       <div className="rewardRows">
         <div className={"rewardItem " + (store.firstScanRewarded ? "completed" : "")}>
           <span className="rewardIcon"><CheckCircle2 /></span>
-          <span className="rewardCopy"><b>Complete your first scan</b><small>{store.firstScanRewarded ? "Completed · +3 credits earned" : "Complete a scan · +3 credits"}</small></span>
-          <span className="rewardState">{store.firstScanRewarded ? <Check size={18} /> : "+3"}</span>
+          <span className="rewardCopy"><b>Complete your first scan</b><small>{store.firstScanRewarded ? "Completed · +1 credit earned" : "Complete a scan · +1 credit"}</small></span>
+          <span className="rewardState">{store.firstScanRewarded ? <Check size={18} /> : "+1"}</span>
         </div>
         {store.firstCalendarRewarded ? (
           <div className="rewardItem completed">
             <span className="rewardIcon"><CalendarDays /></span>
-            <span className="rewardCopy"><b>Plan your first item</b><small>Completed · +5 credits earned</small></span>
+            <span className="rewardCopy"><b>Plan your first item</b><small>Completed · +1 credit earned</small></span>
             <span className="rewardState"><Check size={18} /></span>
           </div>
         ) : (
           <button className="rewardItem actionable" type="button" onClick={onPlan}>
             <span className="rewardIcon"><CalendarDays /></span>
-            <span className="rewardCopy"><b>Plan your first item</b><small>Open Planner · +5 credits</small></span>
+            <span className="rewardCopy"><b>Plan your first item</b><small>Open Planner · +1 credit</small></span>
             <ChevronRight className="rewardChevron" size={18} />
           </button>
         )}
         <button className="rewardItem actionable" type="button" onClick={onInvite}>
           <span className="rewardIcon"><Gift /></span>
-          <span className="rewardCopy"><b>Invite a friend</b><small>Share your referral link</small></span>
+          <span className="rewardCopy"><b>Invite a friend</b><small>Qualified referral · +5 credits</small></span>
           <ChevronRight className="rewardChevron" size={18} />
         </button>
       </div>
