@@ -65,12 +65,23 @@ export default function LoginPage() {
     }
   }
 
+  function deviceId() {
+    const key="zest-device-id";
+    let id=localStorage.getItem(key);
+    if(!id){id=crypto.randomUUID()+"-"+crypto.randomUUID();localStorage.setItem(key,id);}
+    return id;
+  }
+
+  async function registerDevice(supabase: ReturnType<typeof createClient>) {
+    await supabase.rpc("register_device",{p_device_id:deviceId()});
+  }
+
   async function finishReferral(supabase: ReturnType<typeof createClient>) {
     const code =
       new URLSearchParams(window.location.search).get("ref") ||
       sessionStorage.getItem("zest-referral");
     if (code) {
-      await supabase.rpc("claim_referral", { p_code: code });
+      await supabase.rpc("claim_referral_device", { p_code: code, p_device_id: deviceId() });
       sessionStorage.removeItem("zest-referral");
     }
   }
@@ -116,6 +127,8 @@ export default function LoginPage() {
           setMessage(authErrorMessage(error.code, error.message));
           return;
         }
+        await registerDevice(supabase);
+        await registerDevice(supabase);
         await finishReferral(supabase);
         window.location.assign(new URL("/app", window.location.origin).href);
         return;
