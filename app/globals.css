@@ -1199,10 +1199,10 @@ button {
 }
 
 .authPage {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: clamp(12px, 3vw, 24px);
   background: linear-gradient(145deg, #f7fafc, #eef8f6);
 }
 .authCard {
@@ -1210,36 +1210,38 @@ button {
   background: #fff;
   border: 1px solid #e3eaf0;
   border-radius: 28px;
-  padding: 34px;
+  padding: 30px;
   box-shadow: 0 24px 70px rgba(11, 31, 59, 0.09);
 }
-.authCard > .brand {
-  display: inline-block;
-  margin-bottom: 30px;
+.authBrandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.authBrandRow .brand {
+  flex: none;
+}
+.authBrandRow .eyebrow {
+  white-space: nowrap;
 }
 .authCard h1 {
   font-size: 38px;
+  line-height: 1.08;
   letter-spacing: -1.5px;
-  margin: 12px 0 8px;
+  margin: 0 0 10px;
 }
-.authCard > p {
+.authIntro {
   color: var(--muted);
-  line-height: 1.55;
-}
-.authNotice {
-  background: #fff7e7;
-  border: 1px solid #ead8aa;
-  border-radius: 13px;
-  padding: 12px;
-  color: #745e24;
-  font-size: 13px;
-  margin: 18px 0;
+  line-height: 1.5;
+  margin: 0;
 }
 .authCard form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  margin-top: 24px;
+  gap: 14px;
+  margin-top: 22px;
 }
 .authCard label > span {
   display: block;
@@ -1248,7 +1250,7 @@ button {
   margin-bottom: 6px;
 }
 .authCard label > div {
-  height: 50px;
+  min-height: 50px;
   border: 1px solid #dce5ed;
   background: #fff;
   border-radius: 13px;
@@ -1257,8 +1259,13 @@ button {
   padding: 0 13px;
   gap: 9px;
 }
+.authCard label:focus-within > div {
+  border-color: #77cfc0;
+  box-shadow: 0 0 0 3px rgba(0, 198, 167, 0.09);
+}
 .authCard label svg {
   color: #7a8da0;
+  flex: none;
 }
 .authCard input {
   border: 0;
@@ -1266,10 +1273,18 @@ button {
   flex: 1;
   font: inherit;
   min-width: 0;
+  width: 100%;
+  background: transparent;
 }
 .authSubmit {
   width: 100%;
-  margin-top: 5px;
+  min-height: 50px;
+  margin-top: 3px;
+}
+.authLinks {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
 }
 .authSwitch {
   width: 100%;
@@ -1277,25 +1292,116 @@ button {
   background: none;
   color: var(--blue);
   font-weight: 700;
-  padding: 16px 0 8px;
+  padding: 9px 4px;
   cursor: pointer;
+}
+.authDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #9aa8b6;
+  font-size: 11px;
+  margin: 8px 0;
+}
+.authDivider::before,
+.authDivider::after {
+  content: "";
+  height: 1px;
+  background: #edf1f4;
+  flex: 1;
+}
+.authDeviceButton {
+  min-height: 46px;
+  border: 1px solid #dce5ed;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #52667a;
+  font-weight: 700;
+  background: #fff;
 }
 .authFine {
   text-align: center;
   color: #7b8a99;
   font-size: 11px;
-  line-height: 1.5;
-  margin-top: 10px;
+  line-height: 1.45;
+  margin-top: 14px;
 }
 .authFine a {
   color: var(--blue);
 }
 .authMessage {
   font-size: 13px;
+  line-height: 1.4;
   color: #8b3a33;
   background: #fff2f0;
-  padding: 10px;
+  padding: 10px 12px;
   border-radius: 10px;
+}
+@media (max-width: 520px) {
+  .authPage {
+    place-items: start center;
+    padding: max(10px, env(safe-area-inset-top)) 0 max(10px, env(safe-area-inset-bottom));
+    background: #fff;
+  }
+  .authCard {
+    width: 100%;
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    padding: 24px 22px 20px;
+    box-shadow: none;
+  }
+  .authBrandRow {
+    margin-bottom: 24px;
+  }
+  .authCard h1 {
+    font-size: clamp(34px, 10vw, 42px);
+    letter-spacing: -1.7px;
+  }
+  .authIntro {
+    font-size: 15px;
+  }
+}
+@media (max-height: 760px) and (max-width: 520px) {
+  .authCard {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  .authBrandRow {
+    margin-bottom: 16px;
+  }
+  .authCard h1 {
+    font-size: 33px;
+    margin-bottom: 6px;
+  }
+  .authIntro {
+    line-height: 1.4;
+  }
+  .authCard form {
+    margin-top: 16px;
+    gap: 10px;
+  }
+  .authCard label > div,
+  .authSubmit {
+    min-height: 46px;
+  }
+  .authLinks {
+    margin-top: 5px;
+  }
+  .authSwitch {
+    padding: 7px 4px;
+  }
+  .authDivider {
+    margin: 4px 0;
+  }
+  .authDeviceButton {
+    min-height: 42px;
+  }
+  .authFine {
+    margin-top: 10px;
+  }
 }
 
 /* Core retention loop */
@@ -1781,3 +1887,46 @@ dialog::backdrop {
   padding: 10px;
   border-radius: 8px;
 }
+
+/* Interactive reward actions */
+.rewardRows > button {
+  width: 100%; border: 0; background: transparent; color: inherit; font: inherit;
+  display: flex; align-items: center; gap: 14px; text-align: left; cursor: pointer;
+}
+.rewardRows > button:disabled { cursor: default; opacity: 1; }
+.rewardRows > button > span { flex: 1; }
+.rewardRows > button svg:last-child { margin-left: auto; }
+
+/* Planner mobile flow */
+.plannerAdd { margin: 12px 0 18px; }
+.plannerOverlay { position: fixed; inset: 0; z-index: 70; background: #0b1f3b66; display: flex; align-items: flex-end; justify-content: center; }
+.plannerSheet { width: min(620px,100%); max-height: 92dvh; overflow: auto; background: #fff; border-radius: 28px 28px 0 0; padding: 22px 22px max(24px,env(safe-area-inset-bottom)); box-shadow: 0 -20px 60px #0b1f3b22; }
+.plannerSheet label { display: block; margin-top: 14px; }
+.plannerSheet label > span { display: block; font-size: 12px; font-weight: 800; color: #52667a; margin-bottom: 7px; }
+.plannerSheet input,.plannerSheet textarea { width: 100%; min-height: 48px; border: 1px solid #dce5ed; border-radius: 13px; padding: 12px; font: inherit; font-size: 16px; color: var(--ink); background: #fff; }
+.plannerKinds { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 4px 0 16px; }
+.plannerKinds button { min-height: 44px; border: 1px solid #dce5ed; border-radius: 999px; background: #fff; color: #52667a; font-weight: 800; }
+.plannerKinds button.active { background: #ecfaf7; border-color: #00b89c; color: #087865; }
+@media(max-width:600px){ .appContent > p:first-child { font-size: 12px; color: var(--muted); margin: 4px 0 18px; } .plannerSheet{padding-left:18px;padding-right:18px;} }
+
+/* Planner information architecture */
+.appStatus{display:flex;justify-content:space-between;align-items:center;min-height:36px;margin:0 0 16px;font-size:12px;color:var(--muted)}
+.appStatus span{padding:6px 10px;border-radius:999px;background:#eef7f6;color:#087865;font-weight:800}
+.appStatus a{font-weight:800;color:#52667a;text-decoration:none;padding:8px}
+.plannerHeading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.plannerHeading h1{margin-bottom:0}
+.plannerPlus{width:48px;height:48px;border:0;border-radius:16px;background:#0b1f3b;color:#fff;font-size:28px;line-height:1;cursor:pointer}
+.plannerTabs{display:flex;gap:8px;overflow-x:auto;margin:20px -2px 18px;padding:2px 2px 6px;scrollbar-width:none}
+.plannerTabs::-webkit-scrollbar{display:none}
+.plannerTabs button{white-space:nowrap;min-height:42px;border:1px solid #dce5ed;border-radius:999px;background:#fff;color:#64768a;padding:0 15px;font-weight:800}
+.plannerTabs button.active{background:#0b1f3b;color:#fff;border-color:#0b1f3b}
+.plannerSummary,.monthStrip{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px;border-radius:18px;background:#ecfaf7;margin-bottom:16px}
+.plannerSummary span,.monthStrip span{font-size:12px;color:#5e7185}
+.plannerEmpty{text-align:center;padding:34px 18px;background:#fff;border:1px solid #e1e8ee;border-radius:22px}
+.plannerEmpty>svg{width:34px;height:34px;color:#00a98f;margin-bottom:12px}
+.plannerEmpty b,.plannerEmpty span{display:block}.plannerEmpty span{color:var(--muted);font-size:13px;margin:7px 0 18px}
+@media(max-width:600px){.dataView.plannerView{padding-top:4px}.plannerView h1{font-size:34px}.plannerView>p{margin-top:8px}.appStatus{margin-top:-6px}}
+
+
+/* Production Planner */
+.plannerRoot{display:grid;gap:16px;padding-bottom:24px}.plannerHero{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.plannerHero h1{margin:4px 0 6px;font-size:32px;letter-spacing:-1.1px}.plannerHero p{margin:0;color:var(--muted)}.plannerFab{width:48px;height:48px;border:0;border-radius:16px;background:var(--blue);color:#fff;display:grid;place-items:center;flex:none}.plannerTabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:3px}.plannerTabs button{min-height:42px;padding:0 16px;border:1px solid #e1e8ee;background:#fff;border-radius:999px;font-weight:700;white-space:nowrap}.plannerTabs button.active{background:#0b1f3b;color:#fff;border-color:#0b1f3b}.plannerCalendar{background:#fff;border:1px solid #e6edf2;border-radius:20px;padding:14px}.calendarTop{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;text-align:center}.calendarTop button,.todayShortcut{min-height:40px;border:0;background:#f5f8fa;border-radius:11px}.todayShortcut{padding:0 14px;margin:8px 0}.weekdayRow,.monthGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.weekdayRow span{text-align:center;font-size:11px;color:var(--muted);padding:8px 0}.monthGrid button{position:relative;aspect-ratio:1;border:0;background:transparent;border-radius:11px;min-width:0}.monthGrid button.outside{opacity:.32}.monthGrid button.selected{background:#0b1f3b;color:#fff}.monthGrid button i{position:absolute;width:5px;height:5px;border-radius:50%;background:#00a98f;bottom:5px;left:50%;transform:translateX(-50%)}.plannerList{display:grid;gap:10px}.plannerCard{display:flex;gap:12px;background:#fff;border:1px solid #e5ecf1;border-radius:18px;padding:14px}.plannerCard.overdue{border-color:#e8b8b3}.plannerCard.completed{opacity:.72}.completeButton{width:40px;height:40px;border:1px solid #dce6ed;border-radius:12px;background:#fff;display:grid;place-items:center;flex:none}.plannerCardBody{min-width:0;flex:1}.plannerCardTop{display:flex;justify-content:space-between;gap:8px;text-transform:capitalize;font-size:11px}.plannerCardTop span{font-weight:800;color:var(--blue)}.plannerCardTop em{font-style:normal;color:var(--muted)}.plannerCard h3{margin:7px 0;font-size:17px}.plannerCard p{display:flex;align-items:center;gap:6px;margin:0;color:var(--muted);font-size:13px}.plannerCardActions,.reminderActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.plannerCardActions button,.reminderActions button{min-height:38px;border:1px solid #e0e8ee;background:#fff;border-radius:10px;padding:0 10px;display:flex;align-items:center;gap:5px;font-size:12px}.plannerCardActions svg{width:14px}.plannerEmpty{display:grid;place-items:center;text-align:center;gap:8px;padding:34px 18px;background:#fff;border:1px dashed #d8e3ea;border-radius:18px;color:var(--muted)}.plannerEmpty b{color:var(--text)}.plannerOverlay{position:fixed;inset:0;z-index:80;background:rgba(4,16,31,.42);display:flex;align-items:flex-end;justify-content:center}.plannerSheet{width:min(560px,100%);max-height:90dvh;overflow:auto;background:#fff;border-radius:24px 24px 0 0;padding:20px max(18px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));display:grid;gap:14px}.plannerSheet label{display:grid;gap:6px;font-size:13px;font-weight:700}.plannerSheet input,.plannerSheet textarea{width:100%;border:1px solid #dce5ed;border-radius:12px;padding:12px;font:inherit;background:#fff}.plannerKinds,.reminderChoices{display:flex;gap:7px;overflow-x:auto}.plannerKinds button,.reminderChoices button{min-height:42px;padding:0 13px;border:1px solid #dce5ed;border-radius:12px;background:#fff;text-transform:capitalize;white-space:nowrap}.plannerKinds button.active,.reminderChoices button.active{background:#e9f9f5;border-color:#78d7c7;color:#087866}.sheetTop{display:flex;align-items:center;justify-content:space-between}.sheetTop h2{margin:0}.fieldGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.checkLabel{display:flex!important;grid-template-columns:none!important;align-items:center}.checkLabel input{width:auto}.reminderPanel{display:grid;gap:10px}.reminderEnable,.reminderRow{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e5ecf1;border-radius:16px;padding:14px}.reminderEnable>div,.reminderRow>div:first-child{display:grid;gap:3px;flex:1}.reminderEnable span,.reminderRow span{color:var(--muted);font-size:12px}.reminderRow{align-items:flex-start}.sheetSave{width:100%;min-height:48px}@media(max-width:430px){.plannerHero h1{font-size:28px}.plannerRoot{gap:13px}.plannerCalendar{padding:10px}.monthGrid,.weekdayRow{gap:2px}.plannerCard{padding:12px}.fieldGrid{grid-template-columns:1fr}.plannerSheet{padding-top:16px}}@media(prefers-reduced-motion:reduce){.plannerOverlay *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}

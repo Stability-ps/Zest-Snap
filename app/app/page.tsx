@@ -35,6 +35,9 @@ import {
 } from "@/lib/data";
 import { eventFingerprint, validateEvent, agendaGroup } from "@/lib/events";
 import { generateIcs } from "@/lib/ics";
+import PlannerView from "./planner-view";
+import { PlannerStore } from "@/lib/planner-store";
+import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
 
 export default function App() {
   const provider = useRef<DataProvider | null>(null);
@@ -56,6 +59,7 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [plannerOpen, setPlannerOpen] = useState(false);
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
@@ -120,7 +124,7 @@ export default function App() {
         ),
       );
     const params = new URLSearchParams(window.location.search);
-    if (params.get("view") === "calendar") setView("calendar");
+    if (["calendar", "planner"].includes(params.get("view") || "")) setView("calendar");
     return () => {
       mounted = false;
     };
@@ -207,11 +211,12 @@ export default function App() {
       const preferences = await provider.current!.loadProfile();
       const timezone = preferences.timezone;
       const locale = preferences.locale;
+      const requestId = crypto.randomUUID();
       const res = await fetch("/api/extract", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Request-Id": crypto.randomUUID(),
+          "X-Request-Id": requestId,
         },
         signal: AbortSignal.timeout(65000),
         body: JSON.stringify({
@@ -253,7 +258,7 @@ export default function App() {
       }
 
       const scan: StoredScan = {
-        id: crypto.randomUUID(),
+        id: requestId,
         fileName: friendlySourceName(file),
         scannedAt: new Date().toISOString(),
         documentType: payload.documentType,
@@ -327,6 +332,24 @@ export default function App() {
     setResult({ ...result, events });
     setEditingIndex(null);
     setDraft(null);
+  }
+
+  async function saveSelectedToPlanner(indexes: number[]) {
+    if (!result || !activeScan || !indexes.length) return;
+    setBusy(true); setError("");
+    try {
+      const planner = await PlannerStore.create();
+      let saved = 0;
+      for (const index of indexes) {
+        const event = result.events[index];
+        if (!event) continue;
+        await planner.upsert(extractionToPlannerSuggestion(event, activeScan).item);
+        saved++;
+      }
+      setSuccess(saved === 1 ? "Saved to Planner." : `${saved} items saved to Planner.`);
+      setView("calendar");
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not save to Planner."); }
+    finally { setBusy(false); }
   }
 
   async function downloadIcs(events: ExtractedEvent | ExtractedEvent[]) {
@@ -406,6 +429,16 @@ export default function App() {
     }
   }
 
+  async function addPlannerItem(event: ExtractedEvent) {
+    try {
+      validateEvent(event);
+      const reward = !store.firstCalendarRewarded ? 5 : 0;
+      await persist({ ...store, events: [...store.events, { ...event, id: crypto.randomUUID(), addedAt: new Date().toISOString() }], credits: store.credits + reward, firstCalendarRewarded: true });
+      setPlannerOpen(false);
+      setSuccess(reward ? "Added to Planner - you earned 5 Zest Credits." : "Added to Planner.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not add this item."); }
+  }
+
   async function removeAgendaEvent(id: string) {
     try {
       await persist({
@@ -430,12 +463,7 @@ export default function App() {
       </header>
 
       <div className="appContent">
-        <p>
-          <a href="/settings">Settings</a> ·{" "}
-          {mode === "cloud"
-            ? "Cloud account · merge guest data in Settings"
-            : "Saved on this device"}
-        </p>
+        <div className="appStatus"><span>{mode === "cloud" ? "Cloud sync" : "On-device"}</span><a href="/settings">Settings</a></div>
         {error && (
           <div className="errorBox" role="alert">
             {error}
@@ -453,7 +481,7 @@ export default function App() {
               <h1>What do you want to remember?</h1>
               <p>
                 Capture anything with a date. Zest Snap will find it, organise
-                it and let you review it before it reaches your calendar.
+                it and let you review it before you save it to Planner.
               </p>
             </section>
 
@@ -532,11 +560,11 @@ export default function App() {
                   <CalendarDays />
                 </div>
                 <div>
-                  <b>Upcoming</b>
+                  <b>Planner</b>
                   <span>
                     {store.events.length
                       ? `${store.events.length} saved ${store.events.length === 1 ? "event" : "events"}`
-                      : "Your intelligent agenda"}
+                      : "Today & upcoming"}
                   </span>
                 </div>
                 <ChevronRight />
@@ -738,11 +766,9 @@ export default function App() {
               <button
                 className="button"
                 disabled={!selected.length}
-                onClick={() =>
-                  downloadIcs(selected.map((i) => result.events[i]))
-                }
+                onClick={() => saveSelectedToPlanner(selected)}
               >
-                Add selected
+                Save selected to Planner
               </button>
             </div>
           </>
@@ -770,9 +796,11 @@ export default function App() {
           />
         )}
         {view === "calendar" && (
-          <AgendaView events={sortedAgenda} onDelete={removeAgendaEvent} />
+          <PlannerView onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)} />
         )}
-        {view === "rewards" && <RewardsView store={store} />}
+        {view === "rewards" && <RewardsView store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { setError("Sign in to create a referral link."); return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("Referral sharing is not available yet. Sign in and try again."); } }} />}
+
+        {plannerOpen && <PlannerSheet onClose={() => setPlannerOpen(false)} onSave={addPlannerItem} />}
 
         {editingIndex !== null && draft && (
           <dialog
@@ -929,7 +957,7 @@ export default function App() {
         />
         <NavButton
           active={view === "calendar"}
-          label="Calendar"
+          label="Planner"
           onClick={() => setView("calendar")}
           icon={<CalendarDays />}
         />
@@ -1020,62 +1048,32 @@ function HistoryView({
   );
 }
 
-function AgendaView({
-  events,
-  onDelete,
-}: {
-  events: StoredEvent[];
-  onDelete: (id: string) => void;
-}) {
-  const [past, setPast] = useState(false);
-  const visible = events.filter((e) => (agendaGroup(e) === "Past") === past);
-  if (!events.length)
-    return (
-      <EmptyView
-        title="Your agenda"
-        text="Events you add from a scan will appear here automatically."
-        icon={<CalendarDays />}
-      />
-    );
+function AgendaView({ events, onDelete, onAdd }: { events: StoredEvent[]; onDelete: (id: string) => void; onAdd: () => void }) {
+  const [tab, setTab] = useState<"today" | "upcoming" | "calendar" | "reminders">("today");
+  const today = new Date().toISOString().slice(0, 10);
+  const reminderLike = (event: StoredEvent) => event.sourceText === "Manual Planner item" && /remind/i.test(event.description + " " + event.title);
+  const visible = events.filter(event => {
+    if (tab === "today") return event.startDate === today;
+    if (tab === "upcoming") return event.startDate >= today;
+    if (tab === "reminders") return reminderLike(event);
+    return event.startDate >= today;
+  });
+  const monthLabel = new Date().toLocaleDateString(undefined,{month:"long",year:"numeric"});
   return (
-    <section className="dataView">
-      <div className="eyebrow">UPCOMING</div>
-      <h1>Your Zest agenda</h1>
-      <p>Removing an item here does not remove it from an external calendar.</p>
-      <button className="textButton" onClick={() => setPast(!past)}>
-        {past ? "Show upcoming" : "Show past"}
-      </button>
-      <div className="agendaList">
-        {visible.map((event) => {
-          const status = agendaGroup(event);
-          return (
-            <article className="agendaCard" key={event.id}>
-              <div className="agendaDate">
-                <b>{event.startDate.slice(8, 10)}</b>
-                <span>{monthName(event.startDate)}</span>
-              </div>
-              <div className="agendaBody">
-                <div className="agendaTop">
-                  <span className="category">{event.category}</span>
-                  {status && <em>{status}</em>}
-                </div>
-                <h3>{event.title}</h3>
-                <p>
-                  {event.startTime || "All day"}
-                  {event.location ? " · " + event.location : ""}
-                </p>
-              </div>
-              <button
-                className="iconButton danger"
-                onClick={() => onDelete(event.id)}
-                aria-label={"Remove " + event.title + " from Zest agenda"}
-              >
-                <Trash2 />
-              </button>
-            </article>
-          );
-        })}
+    <section className="dataView plannerView">
+      <div className="plannerHeading"><div><div className="eyebrow">PLANNER</div><h1>Your planner</h1></div><button className="plannerPlus" onClick={onAdd} aria-label="Add to Planner">+</button></div>
+      <p>Events, tasks and reminders from your scans and the things you add yourself.</p>
+      <div className="plannerTabs">
+        {(["today","upcoming","calendar","reminders"] as const).map(x => <button key={x} className={tab===x?"active":""} onClick={()=>setTab(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}
       </div>
+      {tab === "today" && <div className="plannerSummary"><b>{visible.length ? visible.length + " planned today" : "Your day is clear"}</b><span>{new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}</span></div>}
+      {tab === "calendar" && <div className="monthStrip"><b>{monthLabel}</b><span>{visible.length} upcoming</span></div>}
+      {!visible.length ? <div className="plannerEmpty"><CalendarDays/><b>{tab === "reminders" ? "No reminders yet" : tab === "today" ? "Nothing planned for today" : "Nothing here yet"}</b><span>Tap + to add an event, task or reminder.</span><button className="button alt" onClick={onAdd}>Add to Planner</button></div> :
+      <div className="agendaList">{visible.map(event => <article className="agendaCard" key={event.id}>
+        <div className="agendaDate"><b>{event.startDate.slice(8,10)}</b><span>{monthName(event.startDate)}</span></div>
+        <div className="agendaBody"><div className="agendaTop"><span className="category">{event.category === "deadline" ? "task" : reminderLike(event) ? "reminder" : event.category}</span><em>{agendaGroup(event)}</em></div><h3>{event.title}</h3><p>{event.startTime || "All day"}{event.location ? " · "+event.location : ""}</p></div>
+        <button className="iconButton danger" onClick={()=>onDelete(event.id)} aria-label={"Remove "+event.title+" from Planner"}><Trash2/></button>
+      </article>)}</div>}
     </section>
   );
 }
@@ -1098,52 +1096,44 @@ function EmptyView({
   );
 }
 
-function RewardsView({ store }: { store: LocalState }) {
+function PlannerSheet({ onClose, onSave }: { onClose: () => void; onSave: (event: ExtractedEvent) => void }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [kind, setKind] = useState<"event" | "task" | "reminder">("event");
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState(today);
+  const [time, setTime] = useState("");
+  const [notes, setNotes] = useState("");
+  const submit = () => {
+    if (!title.trim() || !date) return;
+    onSave({ title: title.trim(), startDate: date, endDate: date, startTime: time, endTime: "", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", location: "", description: notes, allDay: !time, confidence: 1, confidenceReason: "Added manually", sourceText: "Manual Planner item", category: kind === "task" ? "deadline" : "event" });
+  };
+  return <div className="plannerOverlay" role="presentation" onClick={onClose}>
+    <section className="plannerSheet" role="dialog" aria-modal="true" aria-label="Add to Planner" onClick={e => e.stopPropagation()}>
+      <div className="sheetHandle" /><div className="sheetTop"><div><div className="eyebrow">NEW PLAN</div><h2>Add to Planner</h2></div><button className="iconButton" aria-label="Close" onClick={onClose}>×</button></div>
+      <div className="plannerKinds">{(["event","task","reminder"] as const).map(x => <button key={x} className={kind === x ? "active" : ""} onClick={() => setKind(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</div>
+      <label><span>Title</span><input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={kind === "task" ? "What needs to be done?" : kind === "reminder" ? "What should Zest remind you about?" : "What's happening?"} /></label>
+      <div className="fieldGrid"><label><span>Date</span><input type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label><span>Time (optional)</span><input type="time" value={time} onChange={e => setTime(e.target.value)} /></label></div>
+      <label><span>Notes (optional)</span><textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></label>
+      <button className="button sheetSave" disabled={!title.trim() || !date} onClick={submit}>Add to Planner</button>
+    </section>
+  </div>;
+}
+
+function RewardsView({ store, onPlan, onInvite }: { store: LocalState; onPlan: () => void; onInvite: () => void }) {
   return (
     <section className="rewardsView">
       <div className="eyebrow">ZEST REWARDS</div>
       <h1>Useful rewards, not gimmicks.</h1>
-      <p>
-        Credits recognise useful actions and can later unlock bonus AI scans
-        when account billing is connected.
-      </p>
-      <div className="rewardBalance">
-        <span>Current balance</span>
-        <b>{store.credits}</b>
-        <small>Zest Credits</small>
-      </div>
+      <p>Earn credits by using Zest to organise the things that matter.</p>
+      <div className="rewardBalance"><span>Current balance</span><b>{store.credits}</b><small>Zest Credits</small></div>
       <div className="rewardRows">
-        <div>
-          <CheckCircle2 />
-          <span>
-            <b>Complete your first scan</b>
-            <small>
-              {store.firstScanRewarded
-                ? "Completed · +3 credits"
-                : "+3 credits"}
-            </small>
-          </span>
-          {store.firstScanRewarded && <Check size={18} />}
-        </div>
-        <div>
-          <CalendarDays />
-          <span>
-            <b>Add your first calendar event</b>
-            <small>
-              {store.firstCalendarRewarded
-                ? "Completed · +5 credits"
-                : "+5 credits"}
-            </small>
-          </span>
-          {store.firstCalendarRewarded && <Check size={18} />}
-        </div>
-        <div>
-          <Gift />
-          <span>
-            <b>Invite a friend</b>
-            <small>Coming with cloud accounts</small>
-          </span>
-        </div>
+        <div><CheckCircle2 /><span><b>Complete your first scan</b><small>{store.firstScanRewarded ? "Completed · +3 credits" : "+3 credits"}</small></span>{store.firstScanRewarded && <Check size={18} />}</div>
+        <button type="button" onClick={onPlan} disabled={store.firstCalendarRewarded}>
+          <CalendarDays /><span><b>Plan your first item</b><small>{store.firstCalendarRewarded ? "Completed · +5 credits" : "+5 credits · Open Planner"}</small></span>{store.firstCalendarRewarded ? <Check size={18} /> : <ChevronRight size={18} />}
+        </button>
+        <button type="button" onClick={onInvite}>
+          <Gift /><span><b>Invite a friend</b><small>Share your Zest Snap referral link</small></span><ChevronRight size={18} />
+        </button>
       </div>
     </section>
   );
