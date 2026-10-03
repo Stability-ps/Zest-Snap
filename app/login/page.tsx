@@ -44,6 +44,37 @@ export default function LoginPage() {
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   }
 
+  function authErrorMessage(code?: string, fallback?: string) {
+    switch (code) {
+      case "invalid_credentials":
+        return "That email or password doesn’t match. Check your details and try again.";
+      case "email_not_confirmed":
+        return "Confirm your email first, then come back and sign in.";
+      case "user_already_exists":
+        return "An account already exists for this email. Sign in instead.";
+      case "email_address_invalid":
+        return "Enter a valid email address.";
+      case "weak_password":
+        return "Choose a stronger password with at least 8 characters.";
+      case "over_email_send_rate_limit":
+        return "Too many emails were requested. Wait a little and try again.";
+      case "signup_disabled":
+        return "New account creation is temporarily unavailable.";
+      default:
+        return fallback || "We could not complete that request. Please try again.";
+    }
+  }
+
+  async function finishReferral(supabase: ReturnType<typeof createClient>) {
+    const code =
+      new URLSearchParams(window.location.search).get("ref") ||
+      sessionStorage.getItem("zest-referral");
+    if (code) {
+      await supabase.rpc("claim_referral", { p_code: code });
+      sessionStorage.removeItem("zest-referral");
+    }
+  }
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!configured) {
@@ -80,23 +111,18 @@ export default function LoginPage() {
               });
 
       if (result.error) {
-        setMessage(
-          mode === "login"
-            ? "We couldn’t sign you in. Check your email and password and try again."
-            : "We could not complete that request. Check your details and try again.",
-        );
+        setMessage(authErrorMessage(result.error.code, result.error.message));
       } else if (mode === "forgot") {
         setMessage("If this email has an account, a reset link is on its way.");
       } else if (mode === "signup") {
-        setMessage("Check your email to confirm your Zest Snap account.");
-      } else {
-        const code =
-          new URLSearchParams(window.location.search).get("ref") ||
-          sessionStorage.getItem("zest-referral");
-        if (code) {
-          await supabase.rpc("claim_referral", { p_code: code });
-          sessionStorage.removeItem("zest-referral");
+        if (result.data.session) {
+          await finishReferral(supabase);
+          window.location.assign(new URL("/app", window.location.origin).href);
+        } else {
+          setMessage("Check your email to confirm your Zest Snap account, then sign in.");
         }
+      } else {
+        await finishReferral(supabase);
         window.location.assign(new URL("/app", window.location.origin).href);
       }
     } catch {
