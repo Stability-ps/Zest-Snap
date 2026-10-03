@@ -482,7 +482,7 @@ export default function App() {
         </div>
         <div className="appHeaderActions">
           <button className="creditPill" onClick={() => setView("rewards")}>
-            <Sparkles size={14} /> {store.credits} credits
+            <Sparkles size={14} /> {ready ? store.credits : "—"} credits
           </button>
           <a className="settingsIconButton" href="/settings" aria-label="Settings">
             <SettingsIcon aria-hidden="true" />
@@ -602,7 +602,7 @@ export default function App() {
                 </div>
                 <div>
                   <b>Zest Rewards</b>
-                  <span>{store.credits} credits earned</span>
+                  <span>{ready ? `${store.credits} credits earned` : "Syncing your rewards…"}</span>
                 </div>
                 <ChevronRight />
               </button>
@@ -1188,7 +1188,7 @@ function RewardsView({ store, onPlan, onInvite }: { store: LocalState; onPlan: (
       <div className="eyebrow">ZEST REWARDS</div>
       <h1>Useful rewards, not gimmicks.</h1>
       <p>Earn credits by using Zest to organise the things that matter.</p>
-      <div className="rewardBalance"><span>Current balance</span><b>{store.credits}</b><small>Zest Credits</small></div>
+      <div className="rewardBalance"><span>Current balance</span><b>{ready ? store.credits : "—"}</b><small>{ready ? "Zest Credits" : "Syncing…"}</small></div>
       <div className="rewardRows">
         <div className={"rewardItem " + (store.firstScanRewarded ? "completed" : "")}>
           <span className="rewardIcon"><CheckCircle2 /></span>
