@@ -2321,3 +2321,19 @@ dialog::backdrop {
   .authCard:focus-within form{gap:14px}
   .authCard:focus-within .authLinks,.authCard:focus-within .authDivider,.authCard:focus-within .authDeviceButton,.authCard:focus-within .authFine{margin-top:12px}
 }
+
+
+/* Keep the primary auth action comfortably above Android's on-screen keyboard. */
+@media(max-width:520px){
+  .authCard:focus-within{padding:12px 22px 14px}
+  .authCard:focus-within .authBrandRow{margin-bottom:10px}
+  .authCard:focus-within h1{font-size:30px;line-height:1.02;margin:0 0 6px}
+  .authCard:focus-within .authIntro{font-size:14px;line-height:1.3;margin:0 0 10px}
+  .authCard:focus-within form{margin-top:10px;gap:8px}
+  .authCard:focus-within label{gap:4px}
+  .authCard:focus-within label>div,.authCard:focus-within .authSubmit{min-height:44px}
+  .authCard:focus-within .authLinks{margin-top:4px}
+  .authCard:focus-within .authDivider{margin:3px 0}
+  .authCard:focus-within .authDeviceButton{min-height:40px}
+  .authCard:focus-within .authFine{margin-top:7px}
+}
