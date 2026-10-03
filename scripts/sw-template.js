@@ -1,4 +1,4 @@
-const CACHE = "zest-snap-shell-v3";
+const CACHE = "zest-snap-shell-v4";
 const SHELL = [
   "/app",
   "/settings",
