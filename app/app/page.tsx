@@ -844,7 +844,7 @@ export default function App() {
             onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)}
           />
         )}
-        {view === "rewards" && <RewardsView store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { window.location.href = "/login?next=/app?view=rewards"; return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("We couldn’t open sharing right now. Please try again."); } }} />}
+        {view === "rewards" && <RewardsView ready={ready} store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { window.location.href = "/login?next=/app?view=rewards"; return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch { setError("We couldn’t open sharing right now. Please try again."); } }} />}
 
         {plannerOpen && <PlannerSheet onClose={() => setPlannerOpen(false)} onSave={addPlannerItem} />}
 
@@ -1189,7 +1189,7 @@ function PlannerSheet({ onClose, onSave }: { onClose: () => void; onSave: (event
   </div>;
 }
 
-function RewardsView({ store, onPlan, onInvite }: { store: LocalState; onPlan: () => void; onInvite: () => void }) {
+function RewardsView({ ready, store, onPlan, onInvite }: { ready: boolean; store: LocalState; onPlan: () => void; onInvite: () => void }) {
   return (
     <section className="rewardsView">
       <div className="eyebrow">ZEST REWARDS</div>
