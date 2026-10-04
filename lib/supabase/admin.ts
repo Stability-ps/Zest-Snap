@@ -1,8 +1,11 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import { getSupabasePublicConfig } from "./config";
 
 export function serviceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Same project URL resolution as the browser client, so a missing public env var can't silently
+  // disable server-side allowance checks.
+  const { url } = getSupabasePublicConfig();
   const key =
     process.env.SUPABASE_SECRET_KEY ||
     process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -18,15 +18,23 @@ export default function Reset() {
             const password = String(
               new FormData(e.currentTarget).get("password"),
             );
+            if (password.length < 8) {
+              setMessage("Choose a password with at least 8 characters.");
+              return;
+            }
             setBusy(true);
             try {
               const { error } = await createClient().auth.updateUser({
                 password,
               });
               setMessage(
-                error
-                  ? "This link could not be used. Request a new reset link."
-                  : "Password updated. You can return to Zest Snap.",
+                !error
+                  ? "Password updated. You can return to Zest Snap."
+                  : error.code === "weak_password"
+                    ? "Choose a stronger password with at least 8 characters."
+                    : error.code === "same_password"
+                      ? "Choose a password you haven’t used for this account."
+                      : "This link could not be used. Request a new reset link.",
               );
             } catch {
               setMessage("Connection unavailable. Try again.");
@@ -50,7 +58,7 @@ export default function Reset() {
           </button>
         </form>
         <p role="status">{message}</p>
-        <a href="/login">Request a new link</a> ·{" "}
+        <a href="/login?mode=forgot">Request a new link</a> ·{" "}
         <a href="/app">Open Zest Snap</a>
       </div>
     </main>

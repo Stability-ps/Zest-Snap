@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { safeAuthNext } from "@/lib/auth";
-import { captureReferral, claimPendingReferral, registerDevice, setActiveUser } from "@/lib/session";
+import { captureReferral, claimPendingReferral, registerDevice, setActiveUser, signOut } from "@/lib/session";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -33,16 +33,32 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [name, setName] = useState("");
+  const [signedInAs, setSignedInAs] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     captureReferral();
     const q = new URLSearchParams(window.location.search);
     if (q.get("mode") === "signup") setMode("signup");
+    if (q.get("mode") === "forgot") setMode("forgot");
+    // Someone already signed in must never be shown a sign-in form.
+    if (configured)
+      createClient()
+        .auth.getUser()
+        .then(({ data }) => setSignedInAs(data.user ? data.user.email || "your account" : null))
+        .catch(() => setSignedInAs(null));
+    else setSignedInAs(null);
     if (q.has("error"))
       setMessage(
         "This link has expired or could not be verified. Request a new link and use the same browser.",
       );
-  }, []);
+  }, [configured]);
+
+  async function switchAccount() {
+    setBusy(true);
+    await signOut();
+    setSignedInAs(null);
+    setBusy(false);
+  }
 
   function changeMode(next: Mode) {
     setMessage("");
@@ -170,99 +186,126 @@ export default function LoginPage() {
           <div className="eyebrow">{current.eyebrow}</div>
         </div>
 
+        {signedInAs === undefined ? (
+          <p className="authIntro" role="status">
+            Checking your account…
+          </p>
+        ) : signedInAs ? (
+          <>
+            <h1>You’re signed in.</h1>
+            <p className="authIntro">
+              Signed in as <b>{signedInAs}</b>. Manage your account in Settings, or sign out to use a different account.
+            </p>
+            <a className="button authSubmit" href={nextPath() === "/app" ? "/app" : nextPath()}>
+              Continue to Zest Snap <ArrowRight size={17} />
+            </a>
+            <div className="authLinks">
+              <a className="authSwitch" href="/settings">
+                Manage account
+              </a>
+              <button className="authSwitch" onClick={switchAccount} disabled={busy}>
+                Sign out and use another account
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
         <h1>{current.title}</h1>
-        <p className="authIntro">{current.text}</p>
+          <p className="authIntro">{current.text}</p>
 
-        <form onSubmit={submit}>
-          {mode === "signup" && (
-            <label>
-              <span>Your name</span>
-              <div>
-                <User size={18} />
-                <input
-                  name="name"
-                  type="text"
-                  required
-                  autoComplete="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="What should Zest call you?"
-                />
-              </div>
-            </label>
-          )}
-          <label>
-            <span>Email</span>
-            <div>
-              <Mail size={18} />
-              <input
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                inputMode="email"
-                placeholder="you@example.com"
-              />
-            </div>
-          </label>
-
-          {mode !== "forgot" && (
-            <label>
-              <span>Password</span>
-              <div>
-                <Lock size={18} />
-                <input
-                  name="password"
-                  type="password"
-                  required
-                  minLength={8}
-                  placeholder="At least 8 characters"
-                  autoComplete={
-                    mode === "signup" ? "new-password" : "current-password"
-                  }
-                />
-              </div>
-            </label>
-          )}
-
-          {message && (
-            <div className="authMessage" role="status" aria-live="polite">
-              {message}
-            </div>
-          )}
-
-          <button className="button authSubmit" disabled={busy}>
-            {busy ? (
-              <Loader2 className="spin" />
-            ) : (
-              <>
-                {mode === "forgot"
-                  ? "Send reset link"
-                  : mode === "login"
-                    ? "Sign in"
-                    : "Create account"}
-                <ArrowRight size={17} />
-              </>
+          <form onSubmit={submit}>
+            {mode === "signup" && (
+              <label>
+                <span>Your name</span>
+                <div>
+                  <User size={18} />
+                  <input
+                    name="name"
+                    type="text"
+                    required
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="What should Zest call you?"
+                  />
+                </div>
+              </label>
             )}
-          </button>
-        </form>
+            <label>
+              <span>Email</span>
+              <div>
+                <Mail size={18} />
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  inputMode="email"
+                  placeholder="you@example.com"
+                />
+              </div>
+            </label>
 
-        <div className="authLinks">
-          {mode === "login" ? (
-            <>
-              <button className="authSwitch" onClick={() => changeMode("signup")}>
-                New to Zest Snap? Create an account
-              </button>
-              <button className="authSwitch" onClick={() => changeMode("forgot")}>
-                Forgot password?
-              </button>
-            </>
-          ) : (
-            <button className="authSwitch" onClick={() => changeMode("login")}>
-              Back to sign in
+            {mode !== "forgot" && (
+              <label>
+                <span>Password</span>
+                <div>
+                  <Lock size={18} />
+                  <input
+                    name="password"
+                    type="password"
+                    required
+                    minLength={8}
+                    placeholder="At least 8 characters"
+                    autoComplete={
+                      mode === "signup" ? "new-password" : "current-password"
+                    }
+                  />
+                </div>
+              </label>
+            )}
+
+            {message && (
+              <div className="authMessage" role="status" aria-live="polite">
+                {message}
+              </div>
+            )}
+
+            <button className="button authSubmit" disabled={busy}>
+              {busy ? (
+                <Loader2 className="spin" />
+              ) : (
+                <>
+                  {mode === "forgot"
+                    ? "Send reset link"
+                    : mode === "login"
+                      ? "Sign in"
+                      : "Create account"}
+                  <ArrowRight size={17} />
+                </>
+              )}
             </button>
-          )}
-        </div>
+          </form>
+
+          <div className="authLinks">
+            {mode === "login" ? (
+              <>
+                <button className="authSwitch" onClick={() => changeMode("signup")}>
+                  New to Zest Snap? Create an account
+                </button>
+                <button className="authSwitch" onClick={() => changeMode("forgot")}>
+                  Forgot password?
+                </button>
+              </>
+            ) : (
+              <button className="authSwitch" onClick={() => changeMode("login")}>
+                Back to sign in
+              </button>
+            )}
+          </div>
+
+          </>
+        )}
 
         <div className="authDivider">
           <span>or</span>

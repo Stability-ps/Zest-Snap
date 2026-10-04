@@ -174,7 +174,7 @@ export default function Settings() {
                 <div><span>Original uploads</span><b>Not retained</b></div>
               </div>
               <p>{provider?.mode==="cloud"?"Your Zest data stays available when you sign in on supported devices.":"Clearing app/browser data or uninstalling before signing in can remove locally stored Zest data."}</p>
-              <a className="button" href="/login">{provider?.mode==="cloud"?"Manage account":"Sign in to sync"}</a>
+              {provider?.mode==="cloud"?<button className="button" onClick={()=>setSheet("account")}>Manage account</button>:<a className="button" href="/login?next=%2Fsettings">Sign in to sync</a>}
             </div>}
             {sheet==="timezone"&&<>
               <label className="settingsSheetSearch"><Search/><input autoFocus value={sheetSearch} onChange={e=>setSheetSearch(e.target.value)} placeholder="Search city or timezone" /></label>
