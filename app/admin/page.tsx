@@ -34,7 +34,7 @@ export default async function Overview({ searchParams }: { searchParams: SearchP
   const [ov, ts, att] = await Promise.all([
     adminRpc("admin_overview", { p_from: iso(range.from), p_to: iso(range.to) }),
     adminRpc<any[]>("admin_timeseries", { p_from: iso(range.from), p_to: iso(range.to), p_bucket: range.bucket }),
-    adminRpc<Attention>("admin_attention"),
+    Promise.resolve({ data: null, error: null } as any),
   ]);
   if (ov.error) return <>{header}<Card><LoadError error={ov.error} retryHref="/admin" /></Card></>;
   const o = ov.data;
