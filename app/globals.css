@@ -2550,3 +2550,16 @@ dialog::backdrop {
  .homeHero .eyebrow{margin-bottom:7px}
  .homeHero h1{margin-top:0}
 }
+
+/* Calendar day detail sheet */
+.monthGrid button i.plannerDot{position:absolute;width:5px;height:5px;border-radius:50%;background:#00a98f;bottom:5px;left:42%;transform:translateX(-50%)}
+.monthGrid button i.reminderDot{position:absolute;width:13px;height:13px;border-radius:50%;background:#e8faf6;color:#008f7a;bottom:1px;left:62%;transform:translateX(-50%);display:grid;place-items:center}
+.monthGrid button i.reminderDot svg{width:9px;height:9px}
+.monthGrid button.selected i.reminderDot{background:#fff;color:#0b1f3b}
+.calendarDayPreview{display:grid;gap:8px;padding:12px;border:1px solid #e1e9ef;border-radius:18px;background:#f8fbfc}
+.calendarDayPreviewHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px 4px}
+.calendarDayPreviewHead>b{font-size:14px}.calendarDayPreviewHead>button{border:0;background:transparent;color:#087f72;font:inherit;font-size:13px;font-weight:800;display:flex;align-items:center;gap:2px}.calendarDayPreviewHead svg{width:15px}
+.calendarDayRow{width:100%;border:0;background:#fff;border-radius:13px;padding:10px;display:grid;grid-template-columns:32px 1fr 18px;align-items:center;gap:9px;text-align:left;color:var(--ink);font:inherit}
+.calendarDayRow>svg:first-child{width:20px;color:var(--teal)}.calendarDayRow>svg:last-child{width:16px;color:#8a9aaa}.calendarDayRow>span{display:grid;gap:2px;min-width:0}.calendarDayRow b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.calendarDayRow small{font-size:11px;color:var(--muted)}.calendarDayRow.reminder>svg:first-child{color:#00a98f}
+.calendarActionLabel{font-size:12px;font-weight:800;color:#607386;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+@media(max-width:480px){.calendarActionChoices{grid-template-columns:1fr}.calendarActionChoices button{min-height:88px}.calendarDayPreview{padding:10px}}
