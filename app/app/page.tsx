@@ -49,7 +49,7 @@ import PlannerView, { type PlannerRequest } from "./planner-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
-import { monthGrid, plannerFingerprint, plannerReferenceDate, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, type PlannerItem } from "@/lib/planner";
+import { monthGrid, plannerFingerprint, plannerReferenceDate, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, mergePlannerWithExternal, type PlannerItem } from "@/lib/planner";
 import {
   STARTUP_STATE_KEY,
   activeUser,
@@ -104,6 +104,7 @@ export default function App() {
   const [success, setSuccess] = useState("");
   const [store, setStore] = useState<LocalState>(emptyState);
   const [plannerItems, setPlannerItems] = useState<PlannerItem[]>([]);
+  const [googleCalendarItems, setGoogleCalendarItems] = useState<PlannerItem[]>([]);
   const [rules, setRules] = useState<Record<string, number>>({});
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [draft, setDraft] = useState<ExtractedEvent | null>(null);
@@ -240,7 +241,33 @@ export default function App() {
       alive = false;
     };
   }, [identity]);
-  const homeToday = useMemo(() => plannerTodayItems(plannerItems, timezone), [plannerItems, timezone]);
+  const allCalendarItems = useMemo(() => mergePlannerWithExternal(plannerItems, googleCalendarItems), [plannerItems, googleCalendarItems]);
+  const homeToday = useMemo(() => plannerTodayItems(allCalendarItems, timezone), [allCalendarItems, timezone]);
+
+  const refreshGoogleCalendar = useCallback(async () => {
+    if (mode !== "cloud" || !navigator.onLine) return setGoogleCalendarItems([]);
+    const now = new Date();
+    try {
+      const response = await fetch(`/api/calendar/google/events?timeMin=${encodeURIComponent(new Date(now.getTime()-62*86400000).toISOString())}&timeMax=${encodeURIComponent(new Date(now.getTime()+305*86400000).toISOString())}&timezone=${encodeURIComponent(timezone)}`, { cache: "no-store" });
+      if (response.status === 409) return setGoogleCalendarItems([]);
+      if (!response.ok) return;
+      const body = await response.json();
+      setGoogleCalendarItems(Array.isArray(body.events) ? body.events : []);
+    } catch {}
+  }, [mode, timezone]);
+
+  useEffect(() => {
+    refreshGoogleCalendar();
+    const onVisible = () => document.visibilityState === "visible" && refreshGoogleCalendar();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", refreshGoogleCalendar);
+    const timer = window.setInterval(refreshGoogleCalendar, 5 * 60 * 1000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", refreshGoogleCalendar);
+      window.clearInterval(timer);
+    };
+  }, [refreshGoogleCalendar]);
 
   /** Fresh authoritative data; never lets cached values override server balances. */
   const refresh = useCallback(async () => {
@@ -968,7 +995,7 @@ export default function App() {
             identity={identity}
             timezone={timezone}
             locale={locale}
-            items={plannerItems}
+            items={allCalendarItems}
             onOpenPlanner={() => openView("calendar", { tab: "today" })}
             onNotice={(kind, message) => {
               if (kind === "success") {
