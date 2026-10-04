@@ -180,7 +180,7 @@ export default function LoginPage() {
     <main className="authPage">
       <div className="authCard">
         <div className="authBrandRow">
-          <Link href="/" className="brand">
+          <Link href="https://zestsnap.app" className="brand">
             Zest <span>Snap</span>
           </Link>
           {current.eyebrow && <div className="eyebrow">{current.eyebrow}</div>}
