@@ -2649,3 +2649,8 @@ button.rewardBalance{gap:10px}
 .todoMain{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:0;color:var(--ink)}.todoMain b,.todoMain small{display:block}.todoMain b{font-size:15px}.todoMain small{margin-top:4px;color:var(--muted);font-size:12px}.todoRow.completed .todoMain b{text-decoration:line-through;color:#718293}.todoRow>svg{color:#9aaaba;flex:none}
 .todoEmpty{display:grid;place-items:center;text-align:center;gap:8px;padding:34px 18px;background:#fff;border:1px dashed #d8e3ea;border-radius:18px}.todoEmpty b{font-size:17px}.todoEmpty p{margin:0;color:var(--muted);font-size:13px}
 @media(max-width:600px){.todoView{gap:13px}.todoHero h1{font-size:29px}.todoQuickAdd{grid-template-columns:1fr auto}.todoQuickAdd input[type=date]{grid-column:1/2}.todoQuickAdd button{grid-column:2;grid-row:1/3}.todoRow{padding:10px 12px}}
+
+.todoFilters{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:1px 2px}
+.todoFilters button{min-height:38px;padding:0 14px;border:1px solid #dfe7ed;border-radius:999px;background:#fff;color:#65788a;font:inherit;font-size:12px;font-weight:800;white-space:nowrap}
+.todoFilters button.active{background:#0b1f3b;border-color:#0b1f3b;color:#fff}
+.todoGroup{scroll-margin-top:18px}
