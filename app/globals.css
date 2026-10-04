@@ -2751,3 +2751,18 @@ button.rewardBalance{gap:10px}
   .todoQuickAdd{padding:10px}
   .todoQuickAdd .todoDateButton{min-height:52px}
 }
+
+
+/* Settings: visible Pro discovery without turning Settings into an ad */
+.proLockedRow{background:#fbfcfd!important;color:#607080!important}
+.proLockedRow .settingsIcon{filter:grayscale(.25);opacity:.72}
+.proLockedRow .settingsRowCopy b{color:#4f6070}
+.proLockedRow .settingsRowCopy small:not(.upgradeHint){color:#8a98a5}
+.proBadge,.planBadge{display:inline-flex!important;align-items:center;justify-content:center;margin-left:6px;padding:2px 6px;border-radius:999px;font-size:9px!important;font-weight:900!important;letter-spacing:.06em;vertical-align:2px;background:#edf1f5;color:#68798a}
+.planBadge.pro,.proBadge{background:#e7f8f3;color:#087865}
+.upgradeHint{color:#087865!important;font-weight:800}
+.proLock{color:#9aa7b4!important;width:17px!important}
+.planUsageRow .settingsIcon{background:#eef7ff}
+.proBenefitList{display:grid;gap:10px;padding:2px 0 6px}
+.proBenefitList>div{display:flex;align-items:flex-start;gap:9px;color:#40566b;font-size:14px;line-height:1.4}
+.proBenefitList svg{width:18px;height:18px;flex:none;margin-top:1px;color:#0a9c84}
