@@ -35,7 +35,7 @@ export default function Home() {
             <a href="#how">How it works</a>
             <a href="#pricing">Pricing</a>
             <a href="#security">Security</a>
-            <a className="button" href="/app">
+            <a className="button" href="https://app.zestsnap.app/app">
               Open Zest Snap
             </a>
           </div>
@@ -56,7 +56,7 @@ export default function Home() {
               smart reminders in seconds.
             </p>
             <div className="actions">
-              <a className="button" href="/app">
+              <a className="button" href="https://app.zestsnap.app/app">
                 Try Zest Snap
               </a>
               <a className="button alt" href="#how">
@@ -74,7 +74,7 @@ export default function Home() {
                 </div>
                 <b>Snap something with a date</b>
                 <p>Photo, screenshot or PDF</p>
-                <a className="button" href="/app">
+                <a className="button" href="https://app.zestsnap.app/app">
                   Capture or upload
                 </a>
               </div>
@@ -172,7 +172,7 @@ export default function Home() {
                 AI scans to get started, event review, calendar export and your
                 upcoming agenda.
               </p>
-              <a className="button alt" href="/app">
+              <a className="button alt" href="https://app.zestsnap.app/app">
                 Get started
               </a>
             </div>
@@ -185,7 +185,7 @@ export default function Home() {
                 More AI scans, PDFs, multiple-event extraction, smart reminders
                 and richer AI understanding.
               </p>
-              <a className="button" href="/app">
+              <a className="button" href="https://app.zestsnap.app/app">
                 Start with Free
               </a>
             </div>
@@ -198,7 +198,7 @@ export default function Home() {
                 Higher allowances, business deadlines, advanced document
                 workflows and future team tools.
               </p>
-              <a className="button alt" href="/app">
+              <a className="button alt" href="https://app.zestsnap.app/app">
                 Explore Business
               </a>
             </div>
