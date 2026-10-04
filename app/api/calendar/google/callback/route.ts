@@ -3,7 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { exchangeGoogleCode, saveGoogleConnection } from "@/lib/google-calendar-server";
 
 export async function GET(request: NextRequest) {
-  const target = new URL("/settings?calendar=google", request.url);
+  // Always return OAuth callbacks to the canonical app host in production.
+  const appOrigin = process.env.VERCEL_ENV === "production"
+    ? "https://app.zestsnap.app"
+    : request.nextUrl.origin;
+  const target = new URL("/settings?calendar=google", appOrigin);
   const state = request.nextUrl.searchParams.get("state");
   const code = request.nextUrl.searchParams.get("code");
   const error = request.nextUrl.searchParams.get("error");
@@ -16,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(new URL("/login?next=%2Fsettings", request.url));
+  if (!user) return NextResponse.redirect(new URL("/login?next=%2Fsettings", appOrigin));
 
   try {
     const token = await exchangeGoogleCode(request.nextUrl.origin, code);
