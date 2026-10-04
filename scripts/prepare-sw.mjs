@@ -12,9 +12,7 @@ const version = crypto
   .update(revision + Date.now())
   .digest("hex")
   .slice(0, 16);
-fs.writeFileSync(
-  "public/sw.js",
-  fs
-    .readFileSync("scripts/sw-template.js", "utf8")
-    .replace("zest-snap-shell-v2", "zest-snap-shell-" + version),
-);
+const template = fs.readFileSync("scripts/sw-template.js", "utf8");
+if (!template.includes("__ZEST_SW_VERSION__"))
+  throw new Error("sw-template.js is missing the __ZEST_SW_VERSION__ placeholder");
+fs.writeFileSync("public/sw.js", template.replaceAll("__ZEST_SW_VERSION__", version));

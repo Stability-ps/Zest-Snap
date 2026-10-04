@@ -10,7 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/app",
     scope: "/",
     display: "standalone",
-    background_color: "#F7FAFC",
+    // Matches the icon plate so the Android splash screen has no white flash around the icon.
+    background_color: "#0B1F3B",
     theme_color: "#0B1F3B",
     orientation: "any",
     categories: ["productivity", "utilities"],
@@ -18,7 +19,7 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: "Scan something",
         short_name: "Scan",
-        url: "/app?capture=1",
+        url: "/app",
         icons: [
           {
             src: "/icons/zest-snap-192.png",
@@ -52,6 +53,12 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
+      },
+      {
+        src: "/icons/zest-snap-maskable-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "maskable",
       },
       {
         src: "/icons/zest-snap-maskable-512.png",

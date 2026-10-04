@@ -21,16 +21,22 @@ export default function PwaRegister() {
           });
         });
         reg.update().catch(() => undefined);
+        // Installed PWAs can stay open for days: look for a new release whenever the app returns to the foreground.
+        const check = () => document.visibilityState === "visible" && reg.update().catch(() => undefined);
+        document.addEventListener("visibilitychange", check);
+        cleanup = () => document.removeEventListener("visibilitychange", check);
       })
       .catch(() => undefined);
+    let cleanup = () => {};
     return () => {
       active = false;
+      cleanup();
     };
   }, []);
   if (!waiting) return null;
   return (
     <aside className="updateNotice" role="status">
-      A Zest Snap update is ready. Finish your changes first.{" "}
+      A new version of Zest Snap is ready.{" "}
       <button
         onClick={() => {
           navigator.serviceWorker.addEventListener(
