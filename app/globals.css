@@ -2491,3 +2491,23 @@ dialog::backdrop {
   .homeHeroArt{height:138px}
   .captureCardHome{padding:22px 16px 16px}
 }
+
+/* Calm Home refinement */
+.homeHeroArt{display:none!important}
+.zestCaptureMark{position:relative;overflow:visible;background:linear-gradient(145deg,#082646 0%,#0b365d 58%,#087e78 100%)!important;box-shadow:0 14px 30px rgba(8,126,120,.18)}
+.zestCaptureMark:before,.zestCaptureMark:after{content:"";position:absolute;border-radius:999px;z-index:-1}
+.zestCaptureMark:before{width:112px;height:48px;background:#dff9f3;left:50%;top:50%;transform:translate(-50%,-50%)}
+.zestCaptureMark:after{width:9px;height:9px;background:#12c8aa;right:-12px;top:8px;box-shadow:8px 11px 0 -2px #12c8aa,-88px 5px 0 -2px #12c8aa}
+@media(max-width:600px){
+ .homeHero{padding:12px 0 14px}
+ .homeHeroGrid{display:block}
+ .homeGreeting{font-size:14px;font-weight:700;margin-top:9px;color:#42556a}
+ .homeHero h1{font-size:30px;line-height:1.04;max-width:390px;margin-top:5px}
+ .homeHero p{font-size:14px;line-height:1.4;margin-top:9px;max-width:360px}
+ .captureCardHome{margin-top:0;padding:20px 18px 17px}
+ .captureCardHome .captureMark{width:72px;height:72px;margin-bottom:10px}
+ .captureCardHome h2{font-size:22px}
+ .captureCardHome>p{font-size:13px}
+ .captureCardHome .captureActions{margin-top:14px}
+ .homeToday{margin-top:11px}
+}
