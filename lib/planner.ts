@@ -9,6 +9,7 @@ export type PlannerItem = {
   dueDate:string; dueTime:string; allDay:boolean; timezone:string; location:string;
   status:PlannerItemStatus; source:PlannerSource; sourceScanId?:string; completedAt?:string;
   createdAt:string; updatedAt:string;
+  externalProvider?:"google"; externalId?:string; externalUrl?:string|null;
 };
 export type ReminderPreset="at_time"|"5m"|"15m"|"30m"|"1h"|"1d"|"1w"|"custom";
 export type ReminderDraft={preset:ReminderPreset;customMinutes?:number;allDayTime?:string};
@@ -65,4 +66,17 @@ export function plannerTodayItems(items:PlannerItem[],timezone:string,now=Tempor
 export function isPastLocal(date:string,time:string,timezone:string){
  if(!DATE.test(date)||!TIME.test(time))return false;
  try{return Temporal.PlainDateTime.from(`${date}T${time}`).toZonedDateTime(timezone||"UTC").epochMilliseconds<Date.now()-60000;}catch{return false;}
+}
+
+
+/** Google events are a live read-only overlay. Matching Zest events win so the same event is never rendered twice. */
+export function mergePlannerWithExternal(local: PlannerItem[], external: PlannerItem[]) {
+  const localPrints = new Set(local.filter(x => x.status !== "cancelled").map(plannerFingerprint));
+  const externalIds = new Set<string>();
+  const cleanExternal = external.filter((item) => {
+    if (!item.externalId || externalIds.has(item.externalId)) return false;
+    externalIds.add(item.externalId);
+    return !localPrints.has(plannerFingerprint(item));
+  });
+  return plannerSort([...local, ...cleanExternal]);
 }
