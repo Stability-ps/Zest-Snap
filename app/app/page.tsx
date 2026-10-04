@@ -14,6 +14,7 @@ import {
   MapPin,
   Sparkles,
   Download,
+  ChevronLeft,
   ChevronRight,
   FileText,
   Pencil,
@@ -48,7 +49,7 @@ import PlannerView, { type PlannerRequest } from "./planner-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
-import { plannerFingerprint, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, type PlannerItem } from "@/lib/planner";
+import { monthGrid, plannerFingerprint, plannerReferenceDate, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, type PlannerItem } from "@/lib/planner";
 import {
   STARTUP_STATE_KEY,
   activeUser,
@@ -1219,6 +1220,11 @@ function TodoView({
 }) {
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState(() => todayDate(timezone));
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [dateMonth, setDateMonth] = useState(() => {
+    const [year, month] = todayDate(timezone).split("-").map(Number);
+    return { year, month };
+  });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const todos = useMemo(
@@ -1230,6 +1236,13 @@ function TodoView({
   const overdue = open.filter((x) => plannerStatus(x, undefined, timezone) === "overdue");
   const today = open.filter((x) => plannerStatus(x, undefined, timezone) === "today");
   const upcoming = open.filter((x) => !overdue.includes(x) && !today.includes(x));
+  const livePlannerItems = useMemo(() => plannerSort(items.filter((x) => x.status !== "cancelled")), [items]);
+  const todoCalendar = useMemo(() => monthGrid(dateMonth.year, dateMonth.month, locale, timezone), [dateMonth, locale, timezone]);
+  const markedDates = useMemo(() => new Set(livePlannerItems.map(plannerReferenceDate)), [livePlannerItems]);
+  const selectedDateItems = useMemo(
+    () => livePlannerItems.filter((x) => plannerReferenceDate(x) === dueDate),
+    [livePlannerItems, dueDate],
+  );
 
   const formatDate = (date: string) => {
     if (!date) return "No date";
@@ -1348,7 +1361,20 @@ function TodoView({
           placeholder="Add a to-do"
           maxLength={500}
         />
-        <input aria-label="Due date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        <button
+          type="button"
+          className="todoDateButton"
+          aria-label={`Choose due date, currently ${formatDate(dueDate)}`}
+          onClick={() => {
+            const [year, month] = dueDate.split("-").map(Number);
+            setDateMonth({ year, month });
+            setDatePickerOpen(true);
+          }}
+        >
+          <CalendarDays />
+          <span><small>Due date</small><b>{formatDate(dueDate)}</b></span>
+          <ChevronRight />
+        </button>
         <button type="submit" disabled={!title.trim() || adding}>{adding ? "Adding…" : "Add"}</button>
       </form>
 
@@ -1364,6 +1390,91 @@ function TodoView({
       {group("Today", today)}
       {group("Upcoming", upcoming)}
       {group("Completed", completed.slice(0, 8), "done")}
+
+      {datePickerOpen && (
+        <div className="todoDateOverlay" role="presentation" onClick={() => setDatePickerOpen(false)}>
+          <section className="todoDateSheet" role="dialog" aria-modal="true" aria-label="Choose due date" onClick={(e) => e.stopPropagation()}>
+            <div className="todoDateSheetTop">
+              <div>
+                <small>Choose due date</small>
+                <h2>{formatDate(dueDate)}</h2>
+              </div>
+              <button type="button" className="iconButton" aria-label="Close date picker" onClick={() => setDatePickerOpen(false)}><X /></button>
+            </div>
+
+            <div className="todoCalendarTop">
+              <button
+                type="button"
+                aria-label="Previous month"
+                onClick={() => setDateMonth((m) => m.month === 1 ? { year: m.year - 1, month: 12 } : { year: m.year, month: m.month - 1 })}
+              ><ChevronLeft /></button>
+              <strong>{new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(dateMonth.year, dateMonth.month - 1, 15)))}</strong>
+              <button
+                type="button"
+                aria-label="Next month"
+                onClick={() => setDateMonth((m) => m.month === 12 ? { year: m.year + 1, month: 1 } : { year: m.year, month: m.month + 1 })}
+              ><ChevronRight /></button>
+            </div>
+
+            <div className="todoWeekdays" aria-hidden="true">
+              {todoCalendar.weekdayLabels.map((label, i) => <span key={i}>{label}</span>)}
+            </div>
+            <div className="todoMonthGrid">
+              {todoCalendar.cells.map((cell) => (
+                <button
+                  type="button"
+                  key={cell.date}
+                  className={`${cell.inMonth ? "" : "outside"} ${dueDate === cell.date ? "selected" : ""}`}
+                  aria-label={formatDate(cell.date) + (markedDates.has(cell.date) ? ", has Planner items" : "")}
+                  aria-pressed={dueDate === cell.date}
+                  onClick={() => setDueDate(cell.date)}
+                >
+                  <span>{Number(cell.date.slice(-2))}</span>
+                  {markedDates.has(cell.date) && <i />}
+                </button>
+              ))}
+            </div>
+
+            <div className="todoDateAgenda">
+              <div className="todoDateAgendaHead">
+                <b>On this day</b>
+                <span>{selectedDateItems.length} {selectedDateItems.length === 1 ? "item" : "items"}</span>
+              </div>
+              {selectedDateItems.length ? (
+                <div className="todoDateAgendaList">
+                  {selectedDateItems.slice(0, 5).map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => {
+                        setDatePickerOpen(false);
+                        onOpenPlanner();
+                      }}
+                    >
+                      <span className={`todoDateType ${item.type}`}>{item.type === "task" ? "To-do" : item.type}</span>
+                      <b>{item.title}</b>
+                      <small>{plannerReferenceTime(item) || (item.allDay ? "All day" : "")}</small>
+                      <ChevronRight />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p>No Planner or To-do items on this date.</p>
+              )}
+            </div>
+
+            <div className="todoDateActions">
+              <button type="button" className="button alt" onClick={() => {
+                const current = todayDate(timezone);
+                const [year, month] = current.split("-").map(Number);
+                setDueDate(current);
+                setDateMonth({ year, month });
+              }}>Today</button>
+              <button type="button" className="button" onClick={() => setDatePickerOpen(false)}>Use this date</button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
