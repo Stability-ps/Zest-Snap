@@ -53,6 +53,7 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [insights, setInsights] = useState(true);
   const [displayName, setDisplayName] = useState("");
+  const [startupCredits, setStartupCredits] = useState<number | null>(null);
   const [mode, setMode] = useState("local");
   const [activeScan, setActiveScan] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -180,18 +181,23 @@ export default function App() {
     try {
       const raw = localStorage.getItem(STARTUP_STATE_KEY);
       if (raw) {
-        const cached = JSON.parse(raw) as { state?: LocalState; displayName?: string; mode?: string };
-        if (cached.state) {
-          setStore(cached.state);
-          setReady(true);
-        }
+        const cached = JSON.parse(raw) as { credits?: number; displayName?: string; mode?: string; state?: LocalState };
+        const credits = typeof cached.credits === "number" ? cached.credits : cached.state?.credits;
+        if (typeof credits === "number") setStartupCredits(credits);
         if (cached.displayName?.trim()) setDisplayName(cached.displayName.trim());
         if (cached.mode) setMode(cached.mode);
+        if (cached.state) {
+          localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({
+            credits: cached.state.credits,
+            displayName: cached.displayName || lastName || "",
+            mode: cached.mode || "local",
+          }));
+        }
       }
       const planner = PlannerStore.loadLastUsed();
       if (planner.length) setHomePlannerItems(planner);
     } catch {
-      // A damaged startup snapshot should never block the live provider.
+      localStorage.removeItem(STARTUP_STATE_KEY);
     }
   }, []);
 
@@ -252,7 +258,8 @@ export default function App() {
           setMode(p.mode);
           setReady(true);
           try {
-            localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({ state: data, displayName: pref.displayName.trim(), mode: p.mode }));
+            localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({ credits: data.credits, displayName: pref.displayName.trim(), mode: p.mode }));
+            setStartupCredits(data.credits);
           } catch {}
         }
       })
@@ -294,7 +301,8 @@ export default function App() {
     if (provider.current.mode === "cloud") next = await provider.current.load();
     setStore(next);
     try {
-      localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({ state: next, displayName, mode: provider.current.mode }));
+      localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({ credits: next.credits, displayName, mode: provider.current.mode }));
+      setStartupCredits(next.credits);
     } catch {}
   }
 
@@ -601,7 +609,7 @@ export default function App() {
         </div>
         <div className="appHeaderActions">
           <button className="creditPill" onClick={() => setView("rewards")}>
-            <Sparkles size={14} /> {ready ? store.credits : "—"} credits
+            <Sparkles size={14} /> {ready ? store.credits : startupCredits ?? "—"} credits
           </button>
           <a className="settingsIconButton" href="/settings" aria-label="Settings">
             <SettingsIcon aria-hidden="true" />
