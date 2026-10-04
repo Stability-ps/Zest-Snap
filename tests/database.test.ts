@@ -105,6 +105,14 @@ test("AI credits: atomic reservation, idempotent ids, refunds on failure, cached
   await db.exec(`delete from public.reward_ledger where reason='seed'`);
   await age(db);
   await assert.rejects(() => reserve(db, A, req(4), "doc-4"), /allowance_exhausted/);
+  // A scan killed mid-flight (never finished) is expired and refunded instead of blocking the user.
+  await db.exec(`insert into public.reward_ledger(user_id,entry_type,amount,reason) values('${A}','earn',10,'seed2')`);
+  await reserve(db, A, req(5), "doc-5");
+  const before = await balance(db, A);
+  await db.exec(`update public.scan_requests set created_at=now()-interval '4 minutes' where id='${req(5)}'`);
+  await reserve(db, A, req(6), "doc-6");
+  assert.equal((await db.query<{ status: string }>(`select status from public.scan_requests where id='${req(5)}'`)).rows[0].status, "failed");
+  assert.equal(await balance(db, A), before /* +10 refund for req5, -10 spend for req6 */);
   // Milestones are once-only.
   await asService(db, `select public.award_milestone($1,'first_scan')`, [A]);
   assert.equal((await db.query(`select 1 from public.reward_ledger where reason='first_scan'`)).rows.length, 1);

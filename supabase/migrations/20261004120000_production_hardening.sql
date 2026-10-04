@@ -148,6 +148,7 @@ declare
 begin
   perform pg_advisory_xact_lock(hashtextextended(p_user::text, 0));
   if not exists (select 1 from public.feature_flags where key = 'ai_scanning' and enabled) then raise exception 'scanning_disabled'; end if;
+  perform private.expire_stale_reservations(p_user);
   eligible := private.link_device(p_user, p_device_id);
 
   if exists (select 1 from public.scan_requests where id = p_request) then raise exception 'repeat_request'; end if;
@@ -264,6 +265,8 @@ returns jsonb language plpgsql set search_path = '' as $$
 declare h text := private.device_hash(p_device_id); used integer; cached jsonb; pages integer;
 begin
   perform pg_advisory_xact_lock(hashtextextended('guest:' || h, 0));
+  update public.guest_scan_usage set status = 'failed', completed_at = now()
+   where device_hash = h and status = 'reserved' and created_at < now() - interval '3 minutes';
   if not exists (select 1 from public.feature_flags where key = 'ai_scanning' and enabled)
      or not exists (select 1 from public.feature_flags where key = 'guest_trial' and enabled) then
     raise exception 'sign_in_required';
@@ -300,6 +303,26 @@ returns void language sql set search_path = '' as $$
 $$;
 revoke all on function public.finish_guest_scan(uuid, text, jsonb) from public, anon, authenticated;
 grant execute on function public.finish_guest_scan(uuid, text, jsonb) to service_role;
+
+-- A request killed mid-flight (e.g. platform timeout) never reaches finish_scan. Expire it so the
+-- allowance and any credits are refunded and the user is not blocked by an "in progress" scan.
+create or replace function private.expire_stale_reservations(p_user uuid default null)
+returns integer language plpgsql security definer set search_path = '' as $$
+declare r record; n integer := 0;
+begin
+  for r in select id from public.scan_requests
+            where status = 'reserved' and created_at < now() - interval '3 minutes'
+              and (p_user is null or user_id = p_user)
+            limit 500 loop
+    perform public.finish_scan(r.id, 'failed', 0, 0, 0, 0);
+    n := n + 1;
+  end loop;
+  update public.guest_scan_usage set status = 'failed', completed_at = now()
+   where status = 'reserved' and created_at < now() - interval '3 minutes';
+  return n;
+end $$;
+revoke all on function private.expire_stale_reservations(uuid) from public, anon, authenticated;
+grant execute on function private.expire_stale_reservations(uuid) to service_role;
 
 ------------------------------------------------------------------------------------------
 -- 5. Rewards: milestones, feedback and referrals respect device eligibility and stay once-only.
@@ -486,3 +509,4 @@ end $$;
 revoke all on function private.enforce_retention() from public, anon, authenticated;
 
 select cron.schedule('zest-enforce-retention', '17 3 * * *', $$ select private.enforce_retention() $$);
+select cron.schedule('zest-expire-stale-scans', '*/10 * * * *', $$ select private.expire_stale_reservations(null) $$);
