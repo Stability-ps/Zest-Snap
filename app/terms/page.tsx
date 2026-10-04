@@ -4,9 +4,9 @@ export default function Terms() {
   return (
     <main className="legalPage">
       <div className="legalWrap">
-        <div className="brand">
+        <Link className="brand" href="https://zestsnap.app" aria-label="Zest Snap home">
           Zest <span>Snap</span>
-        </div>
+        </Link>
         <Link href="/">← Home</Link>
         <h1>Terms</h1>
         <p className="legalLead">
