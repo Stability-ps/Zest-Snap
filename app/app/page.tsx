@@ -659,17 +659,7 @@ export default function App() {
     setError("");
     try {
       let addedDirectly = false;
-      if (deviceCalendarAvailable()) {
-        // Native apps: the system "New Event" editor, pre-filled. Independent of Google Calendar.
-        if ((await addExtractedEventToDevice(event)) === "cancelled") return;
-        if (!store.events.some((x) => eventKey(x) === eventKey(event))) {
-          const now = new Date().toISOString();
-          await persist({ ...store, events: [...store.events, { ...event, id: crypto.randomUUID(), addedAt: now, exportedAt: now }], firstCalendarRewarded: true });
-        }
-        hapticSuccess();
-        setSuccess("Sent to your calendar.");
-        return;
-      }
+      let sentToDevice = false;
       if (mode === "cloud") {
         const response = await fetch("/api/calendar/google/events", {
           method: "POST",
@@ -690,7 +680,12 @@ export default function App() {
         }
       }
 
-      if (!addedDirectly) {
+      if (!addedDirectly && deviceCalendarAvailable()) {
+        // iOS/Android apps without a Google Calendar connection: the system "New Event" editor, pre-filled.
+        if ((await addExtractedEventToDevice(event)) === "cancelled") return;
+        sentToDevice = true;
+        hapticSuccess();
+      } else if (!addedDirectly) {
         // Guests and users who have not connected Google Calendar get a pre-filled Google
         // Calendar screen. This is the fallback only; it never downloads an .ics file.
         const url = googleCalendarUrl(event, timezone);
@@ -706,7 +701,7 @@ export default function App() {
           firstCalendarRewarded: true,
         });
       }
-      setSuccess(addedDirectly ? "Added to Google Calendar." : "Google Calendar opened with the event ready to save.");
+      setSuccess(addedDirectly ? "Added to Google Calendar." : sentToDevice ? "Sent to your calendar." : "Google Calendar opened with the event ready to save.");
     } catch (e) {
       showError(e instanceof Error ? e.message : "Could not add this event to your calendar.");
     }

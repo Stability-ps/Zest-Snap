@@ -421,7 +421,8 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
                         <Bell /> {itemReminders ? `Reminder · ${itemReminders}` : "Reminder"}
                       </button>
                     )}
-                    {deviceCalendarAvailable() && item.status !== "cancelled" && (
+                    {/* Native apps only; hidden when the item already lives in Google Calendar (synced or imported), so nothing is duplicated. */}
+                    {deviceCalendarAvailable() && item.status !== "cancelled" && !item.googleEventId && item.externalProvider !== "google" && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
