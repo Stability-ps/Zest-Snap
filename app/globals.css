@@ -2396,3 +2396,12 @@ dialog::backdrop {
 .addNotes{align-self:flex-start;border:0;background:transparent;padding:5px 0;color:#087e78;font:inherit;font-weight:750}.stickySave{min-height:54px;margin-top:0}
 .nestedSheetBackdrop{position:fixed;inset:0;background:rgba(5,25,48,.38);z-index:30;display:flex;align-items:flex-end}.nestedSheet{width:100%;background:#fff;border-radius:28px 28px 0 0;padding:10px 20px max(22px,env(safe-area-inset-bottom));box-shadow:0 -16px 50px rgba(7,29,54,.16)}.nestedSheetHandle{width:42px;height:5px;border-radius:999px;background:#d5dce2;margin:0 auto 14px}.nestedSheet h3{margin:0 0 10px;font-size:22px}.nestedSheet button{width:100%;min-height:48px;border:0;border-top:1px solid #edf0f2;background:transparent;display:flex;align-items:center;justify-content:space-between;font:inherit;font-weight:650;text-align:left}.nestedSheet button.selected{color:#087e78}
 @media(max-width:380px){.plannerEditorV2{padding-left:16px;padding-right:16px}.localTime{max-width:165px}.plannerEditorV2 .sheetTop h2{font-size:27px}}
+
+/* Mobile scan review action bar */
+@media(max-width:600px){
+ .stickyAction{left:14px;right:14px;bottom:calc(76px + env(safe-area-inset-bottom));padding:12px 14px;border-radius:20px;gap:10px}
+ .stickyAction>div:first-child b{font-size:18px}.stickyAction>div:first-child span{font-size:12px}
+ .stickyActions{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+ .stickyActions .button{min-width:0;min-height:48px;padding:10px 8px;font-size:14px;line-height:1.15;white-space:nowrap;justify-content:center}
+ .stickyActions .button svg{flex:0 0 auto}
+}
