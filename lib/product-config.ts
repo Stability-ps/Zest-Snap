@@ -5,7 +5,7 @@ export const plans = {
     id: "free" as const,
     name: "Free",
     monthlyUsd: 0,
-    monthlyScans: 10,
+    monthlyScans: 3,
     pdfPagesPerScan: 3,
     smartReminders: false,
     bulkExtraction: false,
