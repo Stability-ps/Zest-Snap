@@ -40,6 +40,10 @@ import {
   type NotificationState,
   type ReminderRecord,
 } from "@/lib/reminders";
+import { addPlannerItemToDevice, deviceCalendarAvailable } from "@/lib/native/calendar";
+import { hapticSuccess } from "@/lib/native/haptics";
+import { isNative } from "@/lib/native/runtime";
+import { openAppSettings } from "@/lib/native/permissions";
 
 type Tab = "today" | "upcoming" | "calendar" | "reminders";
 type ReminderFilter = "all" | "today" | "upcoming" | "overdue";
@@ -393,7 +397,7 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
                     className="completeButton"
                     aria-pressed={item.status === "completed"}
                     aria-label={item.status === "completed" ? `Mark ${item.title} as not done` : `Mark ${item.title} as done`}
-                    onClick={(e) => { e.stopPropagation(); act(() => store!.setCompleted(item.id, item.status !== "completed").then(() => undefined)); }}
+                    onClick={(e) => { e.stopPropagation(); act(() => store!.setCompleted(item.id, item.status !== "completed").then(() => { if (item.status !== "completed") hapticSuccess(); })); }}
                   >
                     {item.status === "completed" ? <CheckCircle2 /> : <Check />}
                   </button>
@@ -415,6 +419,22 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
                     {item.type !== "reminder" && (
                       <button onClick={(e) => { e.stopPropagation(); setReminderItem(item); }} aria-label={`Add reminder for ${item.title}`}>
                         <Bell /> {itemReminders ? `Reminder · ${itemReminders}` : "Reminder"}
+                      </button>
+                    )}
+                    {deviceCalendarAvailable() && item.status !== "cancelled" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          act(async () => {
+                            if ((await addPlannerItemToDevice(item)) === "added") {
+                              hapticSuccess();
+                              notice("success", "Sent to your calendar.");
+                            }
+                          });
+                        }}
+                        aria-label={`Add ${item.title} to your calendar`}
+                      >
+                        <CalendarDays /> Calendar
                       </button>
                     )}
                     <button onClick={(e) => { e.stopPropagation(); setEditing(item); }} aria-label={`Edit ${item.title}`}>
@@ -818,6 +838,11 @@ function RemindersPage({
         {!signedIn && onSignIn && (
           <button className="button alt" onClick={onSignIn}>
             Sign in
+          </button>
+        )}
+        {signedIn && notificationState === "blocked" && isNative() && (
+          <button className="button alt" onClick={() => openAppSettings()}>
+            Open Settings
           </button>
         )}
         {signedIn && notificationState === "available" && (

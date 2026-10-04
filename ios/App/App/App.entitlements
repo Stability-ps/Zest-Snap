@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links. Requires the Associated Domains capability on the app.zestsnap App ID and
+	     https://app.zestsnap.app/.well-known/apple-app-site-association (served when APPLE_TEAM_ID is set). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:app.zestsnap.app</string>
+	</array>
+</dict>
+</plist>

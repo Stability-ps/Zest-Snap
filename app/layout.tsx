@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ReferralCapture from "./referral-capture";
+import NativeBridge from "./native-bridge";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://zestsnap.app"),
@@ -61,10 +62,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // The class is added before first paint inside the iOS/Android apps (Capacitor injects its bridge at document
+    // start), so native safe-area styles apply without a layout jump; hence suppressHydrationWarning.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{var c=window.Capacitor;if(c&&c.isNativePlatform&&c.isNativePlatform()){var d=document.documentElement;d.classList.add("native","native-"+c.getPlatform());d.dataset.runtime=c.getPlatform()}}catch(e){}',
+          }}
+        />
+      </head>
       <body>
         {children}
         <ReferralCapture />
+        <NativeBridge />
       </body>
     </html>
   );

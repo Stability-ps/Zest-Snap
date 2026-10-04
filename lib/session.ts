@@ -73,6 +73,8 @@ export async function signOut() {
     } catch {}
     await db.auth.signOut().catch(() => undefined);
   }
+  // Native apps: disarm this account's reminder notifications so the next person on the device never sees them.
+  await import("./native/notifications").then((m) => m.clearNativeReminders()).catch(() => undefined);
   clearAccountCaches();
 }
 

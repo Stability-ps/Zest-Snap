@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="zest_navy">#0B1F3B</color>
+    <color name="zest_teal">#00C6A7</color>
+    <!-- The app's own page background, shown behind system bars on older WebViews. -->
+    <color name="zest_surface">#F7FAFC</color>
+    <color name="colorPrimary">#0B1F3B</color>
+    <color name="colorPrimaryDark">#0B1F3B</color>
+    <color name="colorAccent">#00C6A7</color>
+</resources>

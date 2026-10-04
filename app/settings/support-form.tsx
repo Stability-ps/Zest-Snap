@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { productConfig } from "@/lib/product-config";
+import { appVersionLabel } from "@/lib/native/runtime";
 
 const supportCategories = [
   ["account", "Account"], ["billing", "Billing"], ["scan", "Scan problem"], ["planner", "Planner"], ["reminder", "Reminders"],
@@ -13,10 +14,11 @@ const reportKinds = [
 ] as const;
 
 /** Basic, non-identifying context that helps support reproduce a problem. No document contents. */
-function context() {
+async function context() {
   return {
     route: window.location.pathname,
-    appVersion: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || "dev",
+    // e.g. "android 1.0.0 (1) · web 35adcd3" — tells support which platform and build the person is on.
+    appVersion: (await appVersionLabel()).slice(0, 60),
     userAgent: navigator.userAgent.slice(0, 400),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
@@ -93,11 +95,11 @@ export default function SupportForm({ kind, onDone }: { kind: "support" | "repor
     const db = createClient();
     const { data, error } =
       kind === "support"
-        ? await db.rpc("create_support_ticket" as never, { p_subject: subject, p_category: category, p_body: body, p_context: context() } as never)
+        ? await db.rpc("create_support_ticket" as never, { p_subject: subject, p_category: category, p_body: body, p_context: await context() } as never)
         : await db.rpc("submit_user_report" as never, {
             p_kind: category,
             p_description: body,
-            p_context: { ...context(), requestId: /^[0-9a-f-]{36}$/i.test(requestId.trim()) ? requestId.trim() : undefined },
+            p_context: { ...(await context()), requestId: /^[0-9a-f-]{36}$/i.test(requestId.trim()) ? requestId.trim() : undefined },
           } as never);
     setBusy(false);
     if (error) {

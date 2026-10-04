@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import { isNative } from "@/lib/native/runtime";
 export default function PwaRegister() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
+    // The iOS/Android apps always load the live site and handle offline natively, so no service worker there.
+    if (!("serviceWorker" in navigator) || isNative()) return;
     let active = true;
     navigator.serviceWorker
       .register("/sw.js", { scope: "/app", updateViaCache: "none" })

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/zest_navy</item>
+        <item name="colorPrimaryDark">@color/zest_navy</item>
+        <item name="colorAccent">@color/zest_teal</item>
+        <item name="android:windowBackground">@color/zest_navy</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <!-- Same colour as Zest Snap's pages, so system bars and page always match (dark bar icons). -->
+        <item name="android:windowBackground">@color/zest_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:background">@null</item>
+    </style>
+
+    <!-- Android 12+ system splash: brand mark on navy, then hands over to the app theme. -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/zest_navy</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:background">@drawable/splash</item>
+    </style>
+</resources>

@@ -45,6 +45,11 @@ import {
 } from "@/lib/data";
 import { eventFingerprint, validateEvent } from "@/lib/events";
 import { googleCalendarUrl } from "@/lib/google-calendar";
+import { isNative } from "@/lib/native/runtime";
+import { CaptureCancelled, capturePhoto, nativeCameraAvailable } from "@/lib/native/camera";
+import { addExtractedEventToDevice, deviceCalendarAvailable } from "@/lib/native/calendar";
+import { hapticSuccess } from "@/lib/native/haptics";
+import { shareTextNatively } from "@/lib/native/share";
 import PlannerView, { type PlannerRequest } from "./planner-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
@@ -100,7 +105,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [scanStage, setScanStage] = useState("");
   const [error, setError] = useState("");
-  const [errorAction, setErrorAction] = useState<"signup" | null>(null);
+  const [errorAction, setErrorAction] = useState<"signup" | "plans" | null>(null);
   const [success, setSuccess] = useState("");
   const [store, setStore] = useState<LocalState>(emptyState);
   const [plannerItems, setPlannerItems] = useState<PlannerItem[]>([]);
@@ -119,7 +124,7 @@ export default function App() {
   // The static HTML can't know who is signed in, so the greeting stays invisible until identity is known.
   const [greetingReady, setGreetingReady] = useState(false);
 
-  const showError = useCallback((message: string, action: "signup" | null = null) => {
+  const showError = useCallback((message: string, action: "signup" | "plans" | null = null) => {
     setError(message);
     setErrorAction(action);
   }, []);
@@ -180,23 +185,33 @@ export default function App() {
         reminderId,
       });
     else window.history.replaceState({ view: "home" }, "", window.location.pathname + window.location.search);
-    if (!("serviceWorker" in navigator)) return;
+    const openUrl = (raw: string) => {
+      const url = new URL(raw, window.location.origin);
+      const target = viewFromUrl(url.search);
+      const act = url.searchParams.get("reminderAction");
+      openView(target.view, {
+        tab: target.tab,
+        reminderAction: act === "snooze" || act === "done" ? act : undefined,
+        reminderId: url.searchParams.get("reminderId") || undefined,
+      });
+      window.dispatchEvent(new Event("zest-reminders-changed"));
+    };
+    // Native notification taps and deep links (app/native-bridge.tsx) arrive as a window event.
+    const onAppOpen = (e: Event) => {
+      const url = (e as CustomEvent<{ url?: unknown }>).detail?.url;
+      if (typeof url === "string") openUrl(url);
+    };
+    window.addEventListener("zest-open", onAppOpen);
+    if (!("serviceWorker" in navigator)) return () => window.removeEventListener("zest-open", onAppOpen);
     const onMessage = (e: MessageEvent) => {
       if (e.data?.type === "zest-reminders-changed") window.dispatchEvent(new Event("zest-reminders-changed"));
-      if (e.data?.type === "zest-open" && typeof e.data.url === "string") {
-        const url = new URL(e.data.url, window.location.origin);
-        const target = viewFromUrl(url.search);
-        const act = url.searchParams.get("reminderAction");
-        openView(target.view, {
-          tab: target.tab,
-          reminderAction: act === "snooze" || act === "done" ? act : undefined,
-          reminderId: url.searchParams.get("reminderId") || undefined,
-        });
-        window.dispatchEvent(new Event("zest-reminders-changed"));
-      }
+      if (e.data?.type === "zest-open" && typeof e.data.url === "string") openUrl(e.data.url);
     };
     navigator.serviceWorker.addEventListener("message", onMessage);
-    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("zest-open", onAppOpen);
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+    };
   }, [openView]);
 
   useEffect(() => {
@@ -506,6 +521,10 @@ export default function App() {
           showError(message, "signup");
           return;
         }
+        if ((code === "allowance_exhausted" || code === "device_free_limit") && mode === "cloud") {
+          showError(message, "plans");
+          return;
+        }
         throw new Error(message);
       }
       if (!payload || !("events" in payload) || !Array.isArray(payload.events)) throw new Error("The scan finished, but the result could not be read. Please try again.");
@@ -524,6 +543,7 @@ export default function App() {
 
       setActiveScan(scan.id);
       setResult(payload);
+      hapticSuccess();
       setSelected(payload.events.map((_: ExtractedEvent, i: number) => i).filter((i: number) => !duplicateOf(payload.events[i])));
       openView("review");
       if (mode === "local" && typeof payload.trialRemaining === "number")
@@ -539,6 +559,17 @@ export default function App() {
       setScanStage("");
       if (cameraRef.current) cameraRef.current.value = "";
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  /** Native camera inside the iOS/Android apps; the browser camera input everywhere else. */
+  async function takePhoto() {
+    if (!nativeCameraAvailable()) return cameraRef.current?.click();
+    try {
+      await scanFile(await capturePhoto("camera"));
+    } catch (e) {
+      if (e instanceof CaptureCancelled) return;
+      showError(e instanceof Error && e.message ? e.message : "The camera couldn’t open. Try Upload instead.");
     }
   }
 
@@ -628,6 +659,17 @@ export default function App() {
     setError("");
     try {
       let addedDirectly = false;
+      if (deviceCalendarAvailable()) {
+        // Native apps: the system "New Event" editor, pre-filled. Independent of Google Calendar.
+        if ((await addExtractedEventToDevice(event)) === "cancelled") return;
+        if (!store.events.some((x) => eventKey(x) === eventKey(event))) {
+          const now = new Date().toISOString();
+          await persist({ ...store, events: [...store.events, { ...event, id: crypto.randomUUID(), addedAt: now, exportedAt: now }], firstCalendarRewarded: true });
+        }
+        hapticSuccess();
+        setSuccess("Sent to your calendar.");
+        return;
+      }
       if (mode === "cloud") {
         const response = await fetch("/api/calendar/google/events", {
           method: "POST",
@@ -697,7 +739,7 @@ export default function App() {
         )}
         {view === "home" && (
           <>
-            {!installed && installPrompt && (
+            {!installed && installPrompt && !isNative() && (
               <button className="button alt" onClick={installApp}>
                 Install Zest Snap
               </button>
@@ -718,7 +760,7 @@ export default function App() {
               <h2>Capture something with a date</h2>
               <p>Appointments, notices, bookings, schedules and PDFs.</p>
               <div className="captureActions">
-                <button className="button" onClick={() => cameraRef.current?.click()} disabled={busy || !ready}>
+                <button className="button" onClick={takePhoto} disabled={busy || !ready}>
                   {busy ? <Loader2 className="spin" size={20} /> : <Camera size={20} />} Take photo
                 </button>
                 <button className="button alt" onClick={() => fileRef.current?.click()} disabled={busy || !ready}>
@@ -740,6 +782,11 @@ export default function App() {
                   {errorAction === "signup" && (
                     <button className="textButton" onClick={goToSignUp}>
                       Create a free account
+                    </button>
+                  )}
+                  {errorAction === "plans" && (
+                    <button className="textButton" onClick={() => router.push("/settings?sheet=plans")}>
+                      See plans
                     </button>
                   )}
                 </div>
@@ -1042,6 +1089,8 @@ export default function App() {
                 const code = await provider.current?.createReferral();
                 if (!code) return goToSignUp();
                 const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+                const nativeShare = await shareTextNatively({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url });
+                if (nativeShare) return;
                 if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url });
                 else {
                   await navigator.clipboard.writeText(url);

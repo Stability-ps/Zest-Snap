@@ -15,6 +15,10 @@ import { PlannerStore } from "@/lib/planner-store";
 import { timezoneOptions as allTimezones, timezoneLabel as zoneLabel } from "@/lib/timezones";
 import { productConfig } from "@/lib/product-config";
 import SupportForm from "./support-form";
+import PlansSheet from "./plans-sheet";
+import { billingAvailability } from "@/lib/native/billing";
+import NativeAppSettings from "./native-app-settings";
+import { shareFileNatively } from "@/lib/native/share";
 /** Removes Zest data from this browser only. Keeps the anonymous device id so free-trial limits still apply. */
 function clearDeviceData() {
   clearAccountCaches();
@@ -35,6 +39,12 @@ export default function Settings() {
     [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email?: string | null }>({ connected: false }),
     [googleCalendarLoading, setGoogleCalendarLoading] = useState(true);
   const displayNameInputRef = useRef<HTMLInputElement>(null);
+  // Deep link into a sheet, e.g. /settings?sheet=plans from the scan-limit message.
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("sheet");
+    if (requested === "plans" || requested === "pro") setSheet("pro");
+    else if (requested === "support" || requested === "report") setSheet(requested);
+  }, []);
   useEffect(() => {
     getDataProvider()
       .then(async (p) => {
@@ -79,6 +89,9 @@ export default function Settings() {
         };
   }
   async function downloadBlob(blob: Blob, fileName: string, title: string) {
+    // iOS/Android apps: native share sheet (preview, Save to Files/Drive, send) — never a hidden download.
+    const native = await shareFileNatively(blob, fileName, title);
+    if (native) return native === "cancelled" ? ("cancelled" as const) : ("shared" as const);
     const file = new File([blob], fileName, { type: blob.type || "application/octet-stream" });
     // Installed Android PWAs are more reliable when the native share/save sheet handles generated files.
     if (navigator.canShare?.({ files: [file] })) {
@@ -278,6 +291,7 @@ export default function Settings() {
           <button type="button" className="settingsRow planUsageRow" onClick={()=>setSheet("pro")}><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Monthly scans <span className={isPro ? "planBadge pro" : "planBadge"}>{isPro ? "PRO" : "FREE"}</span></b><small>{usage ? `${usage.scans} of ${usage.allowance} ${isPro ? "" : "free "}scans used this month` : "Loading usage…"}</small>{!isPro&&<small className="upgradeHint">Upgrade for more scans</small>}</span><ChevronRight /></button>
           <a className="settingsRow" href="/app?view=rewards"><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Zest Credits</b><small>View rewards and earned credits</small></span><ChevronRight /></a>
         </section>
+        <NativeAppSettings />
 
         <h2 className="settingsSectionTitle">Privacy & data</h2>
         <section className="settingsGroup">
@@ -350,7 +364,7 @@ export default function Settings() {
               </> : <a className="button" href="/api/calendar/google/connect">Connect Google Calendar</a>}
               <span>After a scan, confirm the detected event and tap <b>Calendar</b>. Connected accounts are added directly; otherwise Zest opens a ready-to-save Google Calendar event.</span>
             </div>}
-            {sheet==="pro"&&<div className="settingsSheetActions proUpsellSheet"><div className="proBenefitList"><div><Check/> <span>More AI scans every month</span></div><div><Check/> <span>Full searchable scan history</span></div><div><Check/> <span>Longer scan-history access</span></div><div><Check/> <span>Advanced reminders and insights as they become available</span></div></div><a className="button" href="https://zestsnap.app/#pricing">See Pro plans</a><button className="button alt" type="button" onClick={()=>setSheet(null)}>Not now</button></div>}
+            {sheet==="pro"&&<div className="settingsSheetActions proUpsellSheet"><div className="proBenefitList"><div><Check/> <span>More AI scans every month</span></div><div><Check/> <span>Full searchable scan history</span></div><div><Check/> <span>Longer scan-history access</span></div><div><Check/> <span>Advanced reminders and insights as they become available</span></div></div>{billingAvailability()==="web_not_connected" ? <><a className="button" href="https://zestsnap.app/#pricing">See Pro plans</a><button className="button alt" type="button" onClick={()=>setSheet(null)}>Not now</button></> : <PlansSheet onDone={(m)=>{setSheet(null);setMessage(m);}} />}</div>}
             {sheet==="export"&&<div className="settingsSheetActions">
               <button className="button" disabled={busy} onClick={()=>run(async()=>{await downloadPdfExport();})}><Download size={18}/> Save or share readable PDF</button>
               <button className="button alt" disabled={busy} onClick={()=>run(async()=>{await downloadJsonExport();})}><Download size={18}/> Save full data (JSON)</button>

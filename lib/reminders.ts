@@ -2,6 +2,7 @@
 import { createClient, isSupabaseConfigured } from "./supabase/client";
 import type { PlannerItem, ReminderDraft } from "./planner";
 import { calculateReminderAt, reminderMinutes } from "./planner";
+import { enableNativeNotifications, nativeNotificationsAvailable, nativeNotificationState } from "./native/notifications";
 
 // Web Push delivery is handled by the Supabase deliver-reminders Edge Function (pg_cron, every minute).
 export type ReminderRecord = {
@@ -169,6 +170,8 @@ export async function migrateGuestReminders(itemIds: Map<string, string>, storag
 
 export type NotificationState = "unsupported" | "blocked" | "available" | "enabled";
 export function notificationSupport() {
+  // In the iOS/Android apps reminders are delivered as OS-scheduled local notifications (lib/native/notifications).
+  if (nativeNotificationsAvailable()) return true;
   return typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
 }
 async function registration() {
@@ -180,6 +183,7 @@ async function registration() {
 }
 /** Reflects both the browser permission and whether this device actually holds a push subscription. */
 export async function getNotificationState(): Promise<NotificationState> {
+  if (nativeNotificationsAvailable()) return nativeNotificationState();
   if (!notificationSupport()) return "unsupported";
   if (Notification.permission === "denied") return "blocked";
   if (Notification.permission !== "granted") return "available";
@@ -202,6 +206,11 @@ const VAPID_PUBLIC_KEY =
   "BLfn6Z34FtBgi3t9IqHP9gtUjk9RXxoh7Msm7r8YDdj-_8v8V8Tv1KZJyqVAPrhRygU3MRWaKE-Zvv84JFI-Ekw";
 
 export async function enablePushNotifications() {
+  if (nativeNotificationsAvailable()) {
+    await enableNativeNotifications();
+    window.dispatchEvent(new Event("zest-reminders-changed"));
+    return true;
+  }
   if (!notificationSupport()) throw new Error("This browser can’t show background notifications. Try Chrome on Android or install Zest Snap.");
   const db = await signedIn();
   if (!db) throw new Error("Sign in to get reminder notifications on this device.");
@@ -221,6 +230,7 @@ export async function enablePushNotifications() {
  * (re)attach it to whoever is signed in now. Fixes devices shared between accounts and rotated endpoints.
  */
 export async function syncPushSubscription() {
+  if (nativeNotificationsAvailable()) return; // native reminders are re-armed by lib/native/bridge on every change
   if (!notificationSupport() || Notification.permission !== "granted") return;
   const db = await signedIn();
   if (!db) return;

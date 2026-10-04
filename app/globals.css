@@ -2783,3 +2783,48 @@ button.rewardBalance{gap:10px}
     font-size:16px;
   }
 }
+/* Plans sheet (Settings). */
+.plansSheet { display: grid; gap: 12px; }
+.planOption { border: 1px solid #e3e8ef; border-radius: 16px; padding: 14px; display: grid; gap: 10px; background: #fff; }
+.planOption.current { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+.planOptionTop { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.planOptionTop b { font-size: 16px; }
+.planOptionTop span { color: var(--muted); font-weight: 700; font-size: 13px; }
+.planOption.current .planOptionTop span { color: #087866; }
+.planOption ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.planOption li { display: flex; gap: 8px; align-items: center; }
+.planOption li svg { color: #087866; flex: none; }
+.plansNote { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.plansNote a { text-decoration: underline; }
+
+/* Native iOS/Android apps: the same safe-area treatment as the installed PWA (html.native is set before first paint). */
+html.native body {
+  overscroll-behavior-y: none;
+}
+html.native .appHeader {
+  padding-top: max(0px, env(safe-area-inset-top));
+  height: calc(70px + env(safe-area-inset-top));
+}
+html.native .appShell {
+  min-height: 100dvh;
+}
+@media (max-width: 600px) {
+  html.native .appHeader {
+    height: calc(62px + env(safe-area-inset-top));
+  }
+}
+/* Full-screen pages outside the app shell also clear the status bar / notch in the apps and installed PWA. */
+html.native .settingsPage { padding-top: calc(40px + env(safe-area-inset-top)); }
+html.native .legalPage { padding-top: calc(45px + env(safe-area-inset-top)); }
+html.native .onboardingPage { padding-top: calc(28px + env(safe-area-inset-top)); padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+html.native .offlinePage { padding-top: calc(24px + env(safe-area-inset-top)); }
+@media (max-width: 600px) {
+  html.native .settingsPage { padding-top: calc(22px + env(safe-area-inset-top)); }
+}
+@media (display-mode: standalone) {
+  .settingsPage { padding-top: calc(40px + env(safe-area-inset-top)); }
+  .legalPage { padding-top: calc(45px + env(safe-area-inset-top)); }
+}
+@media (display-mode: standalone) and (max-width: 600px) {
+  .settingsPage { padding-top: calc(22px + env(safe-area-inset-top)); }
+}

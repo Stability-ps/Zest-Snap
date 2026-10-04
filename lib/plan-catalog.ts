@@ -75,7 +75,8 @@ export async function getPublicPlanCatalog(): Promise<CatalogPlan[]> {
   if (!isSupabaseConfigured()) return fallbackCatalog();
   try {
     const { url, key } = getSupabasePublicConfig();
-    const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    // Read-only public pricing: an isolated anonymous client that never touches the signed-in session.
+    const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: "zest-public-catalog" } });
     const { data, error } = await db
       .from("plan_rules")
       .select("id,name,description,monthly_price,annual_price,currency,monthly_scans,pdf_pages,smart_reminders,bulk_extraction,priority_processing,rewards_multiplier,calendar_integrations,recommended,active,display_order,is_public")

@@ -1,6 +1,6 @@
 {
   "name": "zest-snap",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,10 +10,33 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "prebuild": "node scripts/prepare-sw.mjs",
-    "predev": "node scripts/prepare-sw.mjs"
+    "predev": "node scripts/prepare-sw.mjs",
+    "mobile:sync": "node scripts/mobile-sync.mjs",
+    "mobile:android": "node scripts/mobile-sync.mjs android && cap run android",
+    "mobile:ios": "node scripts/mobile-sync.mjs ios && cap run ios",
+    "mobile:open:android": "cap open android",
+    "mobile:open:ios": "cap open ios",
+    "mobile:assets": "node scripts/mobile-assets.mjs && capacitor-assets generate --assetPath mobile/assets --iconBackgroundColor '#0B1F3B' --iconBackgroundColorDark '#0B1F3B' --splashBackgroundColor '#0B1F3B' --splashBackgroundColorDark '#0B1F3B' --ios --android",
+    "mobile:version": "node scripts/mobile-version.mjs",
+    "mobile:build:android": "node scripts/mobile-sync.mjs android && cd android && ./gradlew assembleDebug bundleRelease",
+    "mobile:build:ios": "node scripts/mobile-sync.mjs ios && cd ios/App && xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphoneos -archivePath ../build/ZestSnap.xcarchive archive"
   },
   "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/camera": "8.2.5",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/filesystem": "8.1.4",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.2",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4",
+    "@ebarooni/capacitor-calendar": "8.8.0",
     "@js-temporal/polyfill": "0.5.1",
+    "@revenuecat/purchases-capacitor": "13.7.0",
     "@supabase/ssr": "0.7.0",
     "@supabase/supabase-js": "2.117.2",
     "lucide-react": "^0.468.0",
@@ -24,6 +47,8 @@
     "server-only": "0.0.1"
   },
   "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.2",
     "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "1.63.0",
     "@types/node": "^22.10.2",

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zest Snap</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0B1F3B; color: #fff; display: grid; place-items: center; text-align: center;
+    padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  }
+  main { max-width: 340px; display: grid; gap: 14px; justify-items: center; }
+  svg { width: 84px; height: 84px; }
+  h1 { margin: 6px 0 0; font-size: 22px; letter-spacing: -0.3px; }
+  p { margin: 0; color: #b9c6d8; line-height: 1.5; font-size: 15px; }
+  button {
+    margin-top: 10px; min-height: 50px; padding: 0 28px; border: 0; border-radius: 14px;
+    background: #00C6A7; color: #0B1F3B; font: inherit; font-weight: 800; font-size: 16px;
+  }
+  button:disabled { opacity: .6; }
+  small { color: #7f95b5; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<main>
+  <svg viewBox="0 0 512 512" aria-hidden="true">
+    <rect width="512" height="512" rx="118" fill="#102D51"/>
+    <path d="M148 150h216c12 0 19 14 11 24L232 338h132v48H148c-12 0-19-14-11-24l143-164H148v-48Z" fill="#FFFFFF"/>
+    <path d="M315 126h72l-42 58h48l-89 108 25-78h-48l34-88Z" fill="#00C6A7"/>
+  </svg>
+  <h1>You're offline</h1>
+  <p>Zest Snap needs an internet connection to open your scans, Planner and reminders. Reminders already scheduled on this device will still arrive.</p>
+  <button id="retry" type="button">Try again</button>
+  <small id="status" role="status"></small>
+</main>
+<script>window.ZEST_SERVER_URL = "https://app.zestsnap.app/app"; /* set by scripts/mobile-sync.mjs */</script>
+<script>
+  // Shown by Capacitor (server.errorPath) when the app can't reach https://app.zestsnap.app.
+  // This page is served from the app's local origin, so the server URL is written in at sync time.
+  var target = window.ZEST_SERVER_URL || "https://app.zestsnap.app/app";
+  var button = document.getElementById("retry"), status = document.getElementById("status");
+  function retry() {
+    // If the server is still unreachable, Capacitor shows this page again.
+    button.disabled = true; status.textContent = "Connecting…";
+    location.replace(target);
+  }
+  button.addEventListener("click", retry);
+  window.addEventListener("online", retry);
+  try { window.Capacitor && window.Capacitor.Plugins.SplashScreen && window.Capacitor.Plugins.SplashScreen.hide(); } catch (e) {}
+</script>
+</body>
+</html>
