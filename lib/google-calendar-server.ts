@@ -275,26 +275,23 @@ function previousDate(value: string) {
   return addDays(value, -1);
 }
 
-export async function listGoogleCalendarEvents(
-  userId: string,
-  opts: { timeMin: string; timeMax: string; fallbackTimezone?: string },
-) {
-  const { token, connection } = await googleAccessToken(userId);
-  const calendarId = encodeURIComponent(connection.calendar_id || "primary");
-  const items: GoogleEventListItem[] = [];
-  let pageToken = "";
+type GoogleCalendarListEntry = {
+  id?: string;
+  summary?: string;
+  primary?: boolean;
+  selected?: boolean;
+  hidden?: boolean;
+  accessRole?: string;
+  timeZone?: string;
+};
 
+async function listVisibleGoogleCalendars(token: string, primaryId: string) {
+  const calendars: GoogleCalendarListEntry[] = [];
+  let pageToken = "";
   do {
-    const params = new URLSearchParams({
-      timeMin: opts.timeMin,
-      timeMax: opts.timeMax,
-      singleEvents: "true",
-      orderBy: "startTime",
-      showDeleted: "false",
-      maxResults: "2500",
-    });
+    const params = new URLSearchParams({ maxResults: "250", showHidden: "false" });
     if (pageToken) params.set("pageToken", pageToken);
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?${params}`, {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/users/me/calendarList?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -302,21 +299,77 @@ export async function listGoogleCalendarEvents(
       if (res.status === 401 || res.status === 403) throw new Error("google_calendar_reconnect_required");
       throw new Error("google_calendar_list_failed");
     }
-    const body = (await res.json()) as { items?: GoogleEventListItem[]; nextPageToken?: string };
-    items.push(...(body.items || []));
+    const body = (await res.json()) as { items?: GoogleCalendarListEntry[]; nextPageToken?: string };
+    calendars.push(...(body.items || []));
     pageToken = body.nextPageToken || "";
   } while (pageToken);
 
+  const readable = calendars.filter(
+    (calendar) =>
+      calendar.id &&
+      !calendar.hidden &&
+      (calendar.primary || calendar.selected !== false) &&
+      calendar.accessRole !== "none",
+  );
+
+  // CalendarList should contain the primary calendar, but keep it as a safety fallback.
+  if (!readable.some((calendar) => calendar.primary || calendar.id === primaryId))
+    readable.unshift({ id: primaryId, summary: "Google Calendar", primary: true, selected: true });
+
+  // Avoid runaway API fan-out on accounts with a very large number of subscriptions.
+  return readable.slice(0, 40);
+}
+
+export async function listGoogleCalendarEvents(
+  userId: string,
+  opts: { timeMin: string; timeMax: string; fallbackTimezone?: string },
+) {
+  const { token, connection } = await googleAccessToken(userId);
+  const primaryId = connection.calendar_id || "primary";
+  const calendars = await listVisibleGoogleCalendars(token, primaryId);
+  const collected: Array<{ event: GoogleEventListItem; calendar: GoogleCalendarListEntry }> = [];
+
+  for (const calendar of calendars) {
+    if (!calendar.id) continue;
+    let pageToken = "";
+    do {
+      const params = new URLSearchParams({
+        timeMin: opts.timeMin,
+        timeMax: opts.timeMax,
+        singleEvents: "true",
+        orderBy: "startTime",
+        showDeleted: "false",
+        maxResults: "2500",
+      });
+      if (pageToken) params.set("pageToken", pageToken);
+      const calendarId = encodeURIComponent(calendar.id);
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        if (res.status === 401) throw new Error("google_calendar_reconnect_required");
+        // A subscribed/shared calendar can become unavailable without breaking the whole account.
+        if (res.status === 403 || res.status === 404) break;
+        throw new Error("google_calendar_list_failed");
+      }
+      const body = (await res.json()) as { items?: GoogleEventListItem[]; nextPageToken?: string };
+      for (const event of body.items || []) collected.push({ event, calendar });
+      pageToken = body.nextPageToken || "";
+    } while (pageToken);
+  }
+
   const fallbackTimezone = opts.fallbackTimezone || "UTC";
-  return items
-    .filter((event) => event.id && event.status !== "cancelled" && (event.start?.date || event.start?.dateTime))
-    .map((event) => {
+  return collected
+    .filter(({ event }) => event.id && event.status !== "cancelled" && (event.start?.date || event.start?.dateTime))
+    .map(({ event, calendar }) => {
       const allDay = Boolean(event.start?.date);
       const startDate = allDay ? event.start!.date! : datePart(event.start?.dateTime);
       const googleEndDate = allDay ? event.end?.date || startDate : datePart(event.end?.dateTime) || startDate;
       const endDate = allDay ? previousDate(googleEndDate) : googleEndDate;
+      const calendarKey = calendar.id || "primary";
       return {
-        id: `google:${event.id}`,
+        id: `google:${calendarKey}:${event.id}`,
         type: "event" as const,
         title: event.summary?.trim() || "Google Calendar event",
         description: event.description || "",
@@ -327,15 +380,17 @@ export async function listGoogleCalendarEvents(
         dueDate: startDate,
         dueTime: "",
         allDay,
-        timezone: event.start?.timeZone || event.end?.timeZone || fallbackTimezone,
+        timezone: event.start?.timeZone || event.end?.timeZone || calendar.timeZone || fallbackTimezone,
         location: event.location || "",
         status: "open" as const,
         source: "import" as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         externalProvider: "google" as const,
-        externalId: event.id!,
+        externalId: `${calendarKey}:${event.id!}`,
         externalUrl: event.htmlLink || null,
+        externalCalendarName: calendar.summary || (calendar.primary ? "Google Calendar" : "Google calendar"),
+        externalCalendarPrimary: Boolean(calendar.primary),
       };
     });
 }
