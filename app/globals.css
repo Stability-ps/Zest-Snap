@@ -2363,3 +2363,24 @@ dialog::backdrop {
 
 /* Rewards feedback */
 .feedbackSheet{max-width:520px}.feedbackStars{display:flex;gap:8px;margin:6px 0 4px}.feedbackStars button{width:48px;height:48px;border:1px solid #dce5ed;border-radius:15px;background:#fff;color:#a5b0bd;display:grid;place-items:center}.feedbackStars button.active{background:#fff8df;color:#e8a600;border-color:#f0d57d}.feedbackStars svg{width:23px;fill:currentColor}.feedbackPolicy{margin:0;color:var(--muted);font-size:12px;line-height:1.4}
+
+/* Compact mobile Planner editor */
+.plannerEditorCompact{gap:16px;padding-bottom:max(22px,env(safe-area-inset-bottom))}
+.plannerEditorCompact label{gap:7px}
+.plannerEditorCompact .plannerKinds{margin:0}
+.compactFields{gap:12px}
+.plannerTimezoneRow,.plannerReminderSelect{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid var(--line,#d9e0e5);border-radius:18px;padding:14px 16px;background:#fff}
+.plannerTimezoneRow div,.plannerReminderSelect>div{display:flex;flex-direction:column;gap:3px}
+.plannerTimezoneRow span,.plannerReminderSelect span{font-weight:700;color:#667684}
+.plannerTimezoneRow b{font-size:15px;color:#102a4a}
+.plannerTimezoneRow small,.plannerReminderSelect small{color:#7a8792;font-size:12px}
+.plannerReminderSelect select{max-width:170px;border:0;background:transparent;font:inherit;font-weight:700;color:#102a4a;text-align:right}
+.timeTextInput{font-variant-numeric:tabular-nums}
+.plannerEditorCompact textarea{min-height:88px}
+.plannerEditorCompact .sheetSave{margin-top:0}
+@media(max-width:600px){
+ .plannerHero{padding-bottom:12px}
+ .plannerTabs{margin-top:8px}
+ .plannerEditorCompact{max-height:calc(100dvh - 72px);overflow:auto}
+ .plannerEditorCompact .sheetTop{position:sticky;top:0;background:#fff;z-index:2;padding-bottom:6px}
+}
