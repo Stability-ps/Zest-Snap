@@ -16,6 +16,17 @@ Zest Snap is an international AI-powered calendar assistant by StabiFlow. It tur
 ## Planned integrations
 Apple Calendar / ICS, Google Calendar, Microsoft Outlook, AI document extraction, authentication, payments and transactional email.
 
+## Platforms
+One codebase ships as the web app, the installable PWA, and native **iOS** and **Android** apps (Capacitor 8, bundle/application id `app.zestsnap`).
+The apps load `https://app.zestsnap.app` and add native camera, device calendar, local reminder notifications, share sheet,
+deep links and store billing. See **[docs/mobile/README.md](docs/mobile/README.md)** for setup, builds, release and QA.
+
+```bash
+npm run mobile:sync          # sync native projects (production server)
+npm run mobile:open:ios      # Xcode
+npm run mobile:open:android  # Android Studio
+```
+
 ## Domains
 Primary: zestsnap.app  
 Regional/defensive: zestsnap.co.za and zest-snap.co.za
