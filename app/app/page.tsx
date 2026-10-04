@@ -46,6 +46,7 @@ import PlannerView from "./planner-view";
 import { PlannerStore } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
+import { plannerReferenceDate, todayDate, type PlannerItem } from "@/lib/planner";
 
 export default function App() {
   const provider = useRef<DataProvider | null>(null);
@@ -63,6 +64,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [store, setStore] = useState<LocalState>(emptyState);
+  const [homePlannerItems, setHomePlannerItems] = useState<PlannerItem[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [draft, setDraft] = useState<ExtractedEvent | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -109,6 +111,59 @@ export default function App() {
       window.removeEventListener("appinstalled", appInstalled);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (view !== "home") return;
+    PlannerStore.create()
+      .then(async (planner) => {
+        const cached = planner.loadCached();
+        if (!cancelled && cached.length) setHomePlannerItems(cached);
+        const items = await planner.load();
+        if (!cancelled) setHomePlannerItems(items);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [view]);
+
+  const homeTodayPlanner = useMemo(
+    () =>
+      homePlannerItems.filter(
+        (item) =>
+          item.status !== "cancelled" &&
+          plannerReferenceDate(item) === todayDate(item.timezone || "UTC"),
+      ),
+    [homePlannerItems],
+  );
+  const homeTodayEvents = useMemo(() => {
+    const seen = new Set(
+      homeTodayPlanner.map(
+        (item) =>
+          `${item.title.trim().toLowerCase()}|${plannerReferenceDate(item)}|${item.startTime || item.dueTime || ""}`,
+      ),
+    );
+    const legacy = store.events.filter((event) => {
+      if (agendaGroup(event) !== "Today") return false;
+      const key = `${event.title.trim().toLowerCase()}|${event.startDate}|${event.startTime || ""}`;
+      return !seen.has(key);
+    });
+    return [
+      ...homeTodayPlanner.map((item) => ({
+        id: item.id,
+        title: item.title,
+        startTime: item.startTime || item.dueTime || "",
+        location: item.location,
+        allDay: item.allDay,
+      })),
+      ...legacy.map((event) => ({
+        id: event.id,
+        title: event.title,
+        startTime: event.startTime || "",
+        location: event.location,
+        allDay: event.allDay,
+      })),
+    ].sort((a, b) => (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
+  }, [homeTodayPlanner, store.events]);
 
   async function installApp() {
     if (!installPrompt) return;
@@ -571,17 +626,17 @@ export default function App() {
 
             <section className="homeToday">
               <div className="homeTodayHead">
-                <div className="homeTodayTitle"><span><CalendarDays/></span><div><h2>Today</h2><p>{store.events.filter(e=>agendaGroup(e)==="Today").length} things in your day</p></div></div>
+                <div className="homeTodayTitle"><span><CalendarDays/></span><div><h2>Today</h2><p>{homeTodayEvents.length} things in your day</p></div></div>
                 <button className="homeViewAll" onClick={()=>openView("calendar")}>View all <ChevronRight size={17}/></button>
               </div>
               <div className="homeTimeline">
-                {store.events.filter(e=>agendaGroup(e)==="Today").slice(0,3).map((event,i)=><button key={event.id} className={"homeTimelineItem tone"+(i%3)} onClick={()=>openView("calendar")}>
+                {homeTodayEvents.slice(0,3).map((event,i)=><button key={event.id} className={"homeTimelineItem tone"+(i%3)} onClick={()=>openView("calendar")}>
                   <span className="homeTimelineTime">{event.startTime || "All day"}</span>
                   <span className="homeTimelineDot"/>
                   <span className="homeTimelineBody"><b>{event.title}</b><small>{event.location || (event.startTime ? "Today" : "All day")}</small></span>
                   <ChevronRight size={18}/>
                 </button>)}
-                {!store.events.some(e=>agendaGroup(e)==="Today")&&<button className="homeTodayEmpty" onClick={()=>openView("calendar")}><span>Your day is clear.</span><b>Open Planner <ChevronRight size={16}/></b></button>}
+                {!homeTodayEvents.length&&<button className="homeTodayEmpty" onClick={()=>openView("calendar")}><span>Your day is clear.</span><b>Open Planner <ChevronRight size={16}/></b></button>}
               </div>
             </section>
           </>
