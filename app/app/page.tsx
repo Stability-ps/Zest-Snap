@@ -1252,7 +1252,7 @@ function TodoView({
     const [year, month] = todayDate(timezone).split("-").map(Number);
     return { year, month };
   });
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyIds, setBusyIds] = useState<Set<string>>(() => new Set());
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState<"all" | "today" | "upcoming" | "completed">("all");
   const todos = useMemo(
@@ -1319,15 +1319,21 @@ function TodoView({
   };
 
   const toggle = async (item: PlannerItem) => {
-    if (busyId) return;
-    setBusyId(item.id);
+    // Only lock the row being saved. A fast second tap is intentionally ignored while
+    // the first state is persisted, rather than making the whole To-do list unresponsive.
+    if (busyIds.has(item.id)) return;
+    setBusyIds((current) => new Set(current).add(item.id));
     try {
       const store = await sharedPlannerStore(identity);
       await store.setCompleted(item.id, item.status !== "completed");
     } catch (e) {
       onNotice("error", e instanceof Error ? e.message : "Could not update this to-do.");
     } finally {
-      setBusyId(null);
+      setBusyIds((current) => {
+        const next = new Set(current);
+        next.delete(item.id);
+        return next;
+      });
     }
   };
 
@@ -1346,7 +1352,7 @@ function TodoView({
                 className="todoCheck"
                 aria-label={item.status === "completed" ? "Mark as not done" : "Mark as done"}
                 aria-pressed={item.status === "completed"}
-                disabled={busyId === item.id}
+                aria-busy={busyIds.has(item.id)}
                 onClick={() => toggle(item)}
               >
                 {item.status === "completed" && <Check />}
