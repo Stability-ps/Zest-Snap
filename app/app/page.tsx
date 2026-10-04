@@ -318,20 +318,16 @@ export default function App() {
         warnings: payload.warnings,
       };
 
-      const firstReward = !store.firstScanRewarded ? 1 : 0;
       await persist({
         ...store,
         scans: [scan, ...store.scans],
-        credits: store.credits + firstReward,
-        firstScanRewarded: true,
       });
 
       setActiveScan(scan.id);
       setResult(payload);
       setSelected(payload.events.map((_: ExtractedEvent, i: number) => i));
       setView("review");
-      if (firstReward && mode === "local")
-        setSuccess("First scan complete - you earned 1 Zest Credit.");
+      // Cloud reward balances are authoritative and refreshed by persist().
     } catch (e) {
       setError(e instanceof Error ? e.message : "We could not scan this file.");
     } finally {
@@ -825,14 +821,14 @@ export default function App() {
                   disabled={!selected.length}
                   onClick={() => downloadIcs(selected.map((i) => result!.events[i]).filter(Boolean))}
                 >
-                  <Download size={16} /> Add selected to calendar
+                  <Download size={16} /> Calendar
                 </button>
                 <button
                   className="button"
                   disabled={!selected.length}
                   onClick={() => saveSelectedToPlanner(selected)}
                 >
-                  Save selected to Planner
+                  Save to Planner
                 </button>
               </div>
             </div>
