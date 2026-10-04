@@ -1227,6 +1227,7 @@ function TodoView({
   });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [filter, setFilter] = useState<"all" | "today" | "upcoming" | "completed">("all");
   const todos = useMemo(
     () => plannerSort(items.filter((x) => (x.type === "task" || x.type === "deadline") && x.status !== "cancelled")),
     [items],
@@ -1347,10 +1348,10 @@ function TodoView({
       </div>
 
       <div className="todoFilters" role="tablist" aria-label="To-do filters">
-        <button type="button" className="active" role="tab" aria-selected="true">All</button>
-        <button type="button" role="tab" onClick={() => document.getElementById("todo-today")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Today</button>
-        <button type="button" role="tab" onClick={() => document.getElementById("todo-upcoming")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Upcoming</button>
-        <button type="button" role="tab" onClick={() => document.getElementById("todo-completed")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Completed</button>
+        <button type="button" className={filter === "all" ? "active" : ""} role="tab" aria-selected={filter === "all"} onClick={() => setFilter("all")}>All</button>
+        <button type="button" className={filter === "today" ? "active" : ""} role="tab" aria-selected={filter === "today"} onClick={() => setFilter("today")}>Today</button>
+        <button type="button" className={filter === "upcoming" ? "active" : ""} role="tab" aria-selected={filter === "upcoming"} onClick={() => setFilter("upcoming")}>Upcoming</button>
+        <button type="button" className={filter === "completed" ? "active" : ""} role="tab" aria-selected={filter === "completed"} onClick={() => setFilter("completed")}>Completed</button>
       </div>
 
       <form className="todoQuickAdd" onSubmit={addTodo}>
@@ -1386,10 +1387,32 @@ function TodoView({
         </div>
       )}
 
-      {group("Overdue", overdue, "urgent")}
-      {group("Today", today)}
-      {group("Upcoming", upcoming)}
-      {group("Completed", completed.slice(0, 8), "done")}
+      {filter === "all" && group("Overdue", overdue, "urgent")}
+      {(filter === "all" || filter === "today") && group("Today", today)}
+      {(filter === "all" || filter === "upcoming") && group("Upcoming", upcoming)}
+      {(filter === "all" || filter === "completed") && group("Completed", completed.slice(0, 8), "done")}
+
+      {filter === "today" && !today.length && (
+        <div className="todoEmpty">
+          <span className="todoEmptyIcon"><Check /></span>
+          <b>Nothing due today</b>
+          <p>Your open to-dos due today will appear here.</p>
+        </div>
+      )}
+      {filter === "upcoming" && !upcoming.length && (
+        <div className="todoEmpty">
+          <span className="todoEmptyIcon"><Check /></span>
+          <b>No upcoming to-dos</b>
+          <p>Future tasks and deadlines will appear here.</p>
+        </div>
+      )}
+      {filter === "completed" && !completed.length && (
+        <div className="todoEmpty">
+          <span className="todoEmptyIcon"><Check /></span>
+          <b>No completed to-dos yet</b>
+          <p>Finished items will appear here after you mark them done.</p>
+        </div>
+      )}
 
       {datePickerOpen && (
         <div className="todoDateOverlay" role="presentation" onClick={() => setDatePickerOpen(false)}>
