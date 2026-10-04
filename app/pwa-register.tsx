@@ -6,7 +6,7 @@ export default function PwaRegister() {
     if (!("serviceWorker" in navigator)) return;
     let active = true;
     navigator.serviceWorker
-      .register("/sw.js", { scope: "/", updateViaCache: "none" })
+      .register("/sw.js", { scope: "/app", updateViaCache: "none" })
       .then((reg) => {
         if (reg.waiting) setWaiting(reg.waiting);
         reg.addEventListener("updatefound", () => {
