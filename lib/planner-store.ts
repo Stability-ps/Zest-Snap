@@ -131,6 +131,13 @@ export class PlannerStore {
     this.write({ items, pending });
     return items;
   }
+  private async syncGoogle(item: PlannerItem) {
+    if (this.mode !== "cloud" || !navigator.onLine || item.externalProvider === "google") return;
+    const event = { ...item, startDate: item.startDate || item.dueDate, startTime: item.startTime || item.dueTime, endDate: item.endDate || item.dueDate || item.startDate, allDay: item.allDay || !(item.startTime || item.dueTime), sourceText: "" };
+    const response = await fetch("/api/calendar/google/events", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plannerItemId: item.id, event, timezone: item.timezone }) });
+    if (response.status === 409) return; // Google is optional until connected.
+    if (!response.ok) throw new Error("Saved to Zest, but Google Calendar could not sync.");
+  }
   async upsert(item: PlannerItem) {
     validatePlannerItem(item);
     const c = this.cache();
@@ -147,6 +154,7 @@ export class PlannerStore {
       this.write({ ...this.cache(), items: previous });
       throw new Error("Planner item could not be saved. Check your connection and try again.");
     }
+    await this.syncGoogle(item);
   }
   async remove(id: string) {
     const c = this.cache();
@@ -158,6 +166,8 @@ export class PlannerStore {
       return this.write(c);
     }
     this.write(c);
+    const google = await fetch(`/api/calendar/google/events?plannerItemId=${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!google.ok && google.status !== 409) { this.write({ ...this.cache(), items: previous }); throw new Error("Could not remove this item from Google Calendar."); }
     const { error } = await this.db!.from("planner_items").delete().eq("id", id).eq("user_id", this.userId!);
     if (error) {
       this.write({ ...this.cache(), items: previous });
