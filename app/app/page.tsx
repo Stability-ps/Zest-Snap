@@ -648,9 +648,9 @@ export default function App() {
   return (
     <main className="appShell">
       <header className="appHeader">
-        <div className="brand">
+        <a className="brand" href="https://zestsnap.app" aria-label="Zest Snap home">
           Zest <span>Snap</span>
-        </div>
+        </a>
         <div className="appHeaderActions">
           <button className="creditPill" onClick={() => openView("rewards")} aria-label={mode === "cloud" ? "Zest Credits and rewards" : "Open rewards"}>
             <Sparkles size={14} aria-hidden="true" />{" "}
