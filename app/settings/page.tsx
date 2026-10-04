@@ -70,7 +70,17 @@ export default function Settings() {
           reminders: JSON.parse(localStorage.getItem("zest-reminders-v1") || "[]"),
         };
   }
-  function downloadBlob(blob: Blob, fileName: string) {
+  async function downloadBlob(blob: Blob, fileName: string, title: string) {
+    const file = new File([blob], fileName, { type: blob.type || "application/octet-stream" });
+    // Installed Android PWAs are more reliable when the native share/save sheet handles generated files.
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title });
+        return "shared" as const;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return "cancelled" as const;
+      }
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -79,12 +89,13 @@ export default function Settings() {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    return "downloaded" as const;
   }
   async function downloadJsonExport() {
     const data = await collectExportData();
-    downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" }), "zest-snap-data.json");
-    setMessage("JSON export downloaded");
+    const result = await downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" }), "zest-snap-data.json", "Zest Snap data export");
+    if (result !== "cancelled") setMessage(result === "shared" ? "Data export ready to save or share" : "JSON export downloaded");
   }
   async function downloadPdfExport() {
     const data = await collectExportData();
@@ -182,8 +193,8 @@ export default function Settings() {
 
     const bytes = await pdf.save();
     const pdfBytes = Uint8Array.from(bytes);
-    downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), "zest-snap-data.pdf");
-    setMessage("PDF export downloaded");
+    const result = await downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), "zest-snap-data.pdf", "Zest Snap data export");
+    if (result !== "cancelled") setMessage(result === "shared" ? "PDF ready to save or share" : "PDF export downloaded");
   }
 
   async function saveProfile(next: Profile) {
@@ -325,8 +336,8 @@ export default function Settings() {
               <span>After a scan, confirm the detected event and tap <b>Calendar</b>. Connected accounts are added directly; otherwise Zest opens a ready-to-save Google Calendar event.</span>
             </div>}
             {sheet==="export"&&<div className="settingsSheetActions">
-              <button className="button" disabled={busy} onClick={()=>run(async()=>{await downloadPdfExport();setSheet(null);})}><Download size={18}/> Download readable PDF</button>
-              <button className="button alt" disabled={busy} onClick={()=>run(async()=>{await downloadJsonExport();setSheet(null);})}><Download size={18}/> Download full data (JSON)</button>
+              <button className="button" disabled={busy} onClick={()=>run(async()=>{await downloadPdfExport();})}><Download size={18}/> Save or share readable PDF</button>
+              <button className="button alt" disabled={busy} onClick={()=>run(async()=>{await downloadJsonExport();})}><Download size={18}/> Save full data (JSON)</button>
               <span>PDF is easier to read. JSON is intended for backup, portability or technical use.</span>
             </div>}
             {sheet==="clear"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{if(provider?.mode==="cloud")await signOut();clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Clear device data</button></div>}
