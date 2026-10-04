@@ -2543,3 +2543,10 @@ dialog::backdrop {
   .homeTimelineBody small{font-size:11px}
   .homeTodayEmpty{padding:10px 11px;font-size:13px}
 }
+
+/* Greeting-first Home hierarchy */
+@media(max-width:600px){
+ .homeHero .homeGreeting{margin:0 0 7px;font-size:15px;color:#243c55;font-weight:750}
+ .homeHero .eyebrow{margin-bottom:7px}
+ .homeHero h1{margin-top:0}
+}
