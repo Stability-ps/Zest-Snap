@@ -9,7 +9,7 @@ export type PlannerItem = {
   dueDate:string; dueTime:string; allDay:boolean; timezone:string; location:string;
   status:PlannerItemStatus; source:PlannerSource; sourceScanId?:string; completedAt?:string;
   createdAt:string; updatedAt:string;
-  externalProvider?:"google"; externalId?:string; externalUrl?:string|null;
+  externalProvider?:"google"; externalId?:string; externalUrl?:string|null; externalCalendarName?:string; externalCalendarPrimary?:boolean;
 };
 export type ReminderPreset="at_time"|"5m"|"15m"|"30m"|"1h"|"1d"|"1w"|"custom";
 export type ReminderDraft={preset:ReminderPreset;customMinutes?:number;allDayTime?:string};
