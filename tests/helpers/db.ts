@@ -45,10 +45,10 @@ export async function migratedDb(upTo?: string) {
   return db;
 }
 
-export async function as(db: PGlite, user: string | null, sql: string, params: unknown[] = []) {
+export async function as<T = Record<string, any>>(db: PGlite, user: string | null, sql: string, params: unknown[] = []) {
   await db.exec(user ? `set role authenticated; set request.jwt.claim.sub='${user}';` : `set role anon; set request.jwt.claim.sub='';`);
   try {
-    return await db.query(sql, params);
+    return await db.query<T>(sql, params);
   } finally {
     await db.exec(`reset role; set request.jwt.claim.sub='';`);
   }

@@ -75,7 +75,7 @@ test("RLS isolates users and protects privileged data", async () => {
   for (const fn of [`public.reserve_scan('${A}','${req(9)}','h','${DEVICE_1}')`, `public.award_milestone('${A}','first_scan')`,
     `public.finish_scan('${req(9)}','failed',0,0,0,0)`, `public.claim_due_reminders(10)`, `public.qualify_referral('${A}')`,
     `public.reserve_guest_scan('${req(9)}','h','${DEVICE_1}',null)`, `public.get_push_delivery_config()`])
-    await assert.rejects(() => as(db, A, `select ${fn}`), undefined, fn);
+    await assert.rejects(() => as(db, A, `select ${fn}`), Error, fn);
   await assert.rejects(() => as(db, null, `select * from public.scans`));
   await assert.rejects(() => as(db, null, `truncate public.scans`));
   await assert.rejects(() => as(db, A, `truncate public.planner_items`));
@@ -119,7 +119,7 @@ test("one device: two free accounts, then no free value; deletion cannot reset i
   await assert.rejects(() => reserve(db, C, req(3), "c"), /device_free_limit/);
   // The third account can still sign in and use Zest; it is simply not free-benefit eligible here.
   await as(db, C, `select public.register_device('${DEVICE_1}')`);
-  assert.equal((await db.query(`select free_benefit_eligible e from public.device_accounts where user_id='${C}'`)).rows[0]?.["e" as never], false);
+  assert.equal((await db.query<{ e: boolean }>(`select free_benefit_eligible e from public.device_accounts where user_id='${C}'`)).rows[0]?.e, false);
   // Ineligible accounts do not earn promotional credits.
   await asService(db, `select public.award_milestone($1,'first_planner_item')`, [C]);
   assert.equal(await balance(db, C), 0);
@@ -140,23 +140,23 @@ test("one device: two free accounts, then no free value; deletion cannot reset i
 test("honest feedback earns the same reward once, whatever the rating", async () => {
   const db = await migratedDb();
   await users(db, A, B, C, D);
-  assert.equal(Number((await as(db, A, `select public.submit_product_feedback(1,'Too slow') r`)).rows[0]["r" as never]), 2);
-  assert.equal(Number((await as(db, A, `select public.submit_product_feedback(5,'Love it') r`)).rows[0]["r" as never]), 0);
-  assert.equal(Number((await as(db, B, `select public.submit_product_feedback(5,null) r`)).rows[0]["r" as never]), 2);
+  assert.equal(Number((await as(db, A, `select public.submit_product_feedback(1,'Too slow') r`)).rows[0].r), 2);
+  assert.equal(Number((await as(db, A, `select public.submit_product_feedback(5,'Love it') r`)).rows[0].r), 0);
+  assert.equal(Number((await as(db, B, `select public.submit_product_feedback(5,null) r`)).rows[0].r), 2);
   assert.equal(await balance(db, A), 2);
   await assert.rejects(() => as(db, C, `select public.submit_product_feedback(null,'   ')`), /feedback_required/);
   await assert.rejects(() => as(db, C, `select public.submit_product_feedback(9,'x')`), /invalid_rating/);
   await assert.rejects(() => as(db, null, `select public.submit_product_feedback(3,'x')`));
   // Third account on an exhausted device: feedback is stored but earns nothing.
   for (const u of [A, B, D]) await as(db, u, `select public.register_device('${DEVICE_1}')`);
-  assert.equal(Number((await as(db, D, `select public.submit_product_feedback(3,'ok') r`)).rows[0]["r" as never]), 0);
+  assert.equal(Number((await as(db, D, `select public.submit_product_feedback(3,'ok') r`)).rows[0].r), 0);
   await db.close();
 });
 
 test("referrals: qualified, once, no self/same-device/loops, many invitees per code, monthly cap", async () => {
   const db = await migratedDb();
   await users(db, A, B, C, D, E);
-  const code = String((await as(db, A, `select public.create_referral() c`)).rows[0]["c" as never]);
+  const code = String((await as(db, A, `select public.create_referral() c`)).rows[0].c);
   await as(db, A, `select public.register_device('${DEVICE_1}')`);
   await assert.rejects(() => as(db, A, `select public.claim_referral_device($1,'${DEVICE_2}')`, [code]), /invalid_referral/);
   await assert.rejects(() => as(db, B, `select public.claim_referral_device($1,'${DEVICE_1}')`, [code]), /same_device_referral/);
@@ -165,7 +165,7 @@ test("referrals: qualified, once, no self/same-device/loops, many invitees per c
   await as(db, C, `select public.claim_referral_device($1,'${DEVICE_2}')`, [code]); // repeat is a no-op
   assert.equal((await db.query(`select 1 from public.referrals where referrer_id='${A}'`)).rows.length, 2);
   // A referrer cannot then be "referred" by their own invitee.
-  const codeC = String((await as(db, C, `select public.create_referral() c`)).rows[0]["c" as never]);
+  const codeC = String((await as(db, C, `select public.create_referral() c`)).rows[0].c);
   await assert.rejects(() => as(db, A, `select public.claim_referral_device($1,'${DEVICE_1}')`, [codeC]), /invalid_referral/);
   // Opening a link or signing up earns nothing; a completed metered scan qualifies once.
   assert.equal(await balance(db, A), 0);
