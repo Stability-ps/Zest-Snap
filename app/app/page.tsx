@@ -530,22 +530,15 @@ export default function App() {
             )}
             <section className="appIntro homeHero">
               <div className="eyebrow">YOUR DAY</div>
-              <div className="homeHeroGrid">
-                <div>
-                  <div className="homeGreeting">Good morning <span aria-hidden="true">👋</span></div>
-                  <h1>What do you want to remember?</h1>
-                  <p>Snap or upload it. Zest finds the important dates.</p>
-                </div>
-                <div className="homeHeroArt" aria-hidden="true">
-                  <FileText/><CalendarDays/><Camera/>
-                </div>
-              </div>
+              <div className="homeGreeting">Good morning <span aria-hidden="true">👋</span></div>
+              <h1>What do you want to remember?</h1>
+              <p>Snap or upload it. Zest finds the important dates.</p>
             </section>
 
             <section className="captureCard captureCardHome">
-              <div className="captureMark"><Camera /></div>
-              <h2>Snap something with a date</h2>
-              <p>Appointments, notices, screenshots, travel bookings, invoices, schedules and PDFs.</p>
+              <div className="captureMark zestCaptureMark"><Camera /></div>
+              <h2>Capture something with a date</h2>
+              <p>Appointments, notices, bookings, schedules and PDFs.</p>
               <div className="captureActions">
                 <button className="button" onClick={() => cameraRef.current?.click()} disabled={busy || !ready}>
                   {busy ? <Loader2 className="spin" size={20} /> : <Camera size={20} />} Take photo
