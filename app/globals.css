@@ -2708,3 +2708,26 @@ button.rewardBalance{gap:10px}
   .todoFilters button{padding:0 5px;font-size:11px}
   .todoHero h1{font-size:28px}
 }
+
+/* In-app support and problem reports (Settings sheet). */
+.supportForm { display: grid; gap: 12px; }
+.supportForm label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.supportForm input, .supportForm select, .supportForm textarea {
+  width: 100%; font: inherit; font-weight: 500; font-size: 15px; color: var(--ink); background: #fff;
+  border: 1px solid #d7dee8; border-radius: 12px; padding: 11px 12px;
+}
+.supportForm textarea { resize: vertical; min-height: 110px; }
+.supportForm input:focus, .supportForm select:focus, .supportForm textarea:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: transparent; }
+.supportForm small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.supportFormError { margin: 0; color: #b42318; font-size: 13px; font-weight: 600; }
+.supportThreads { display: grid; gap: 8px; margin-bottom: 16px; }
+.supportThreads > b { font-size: 13px; }
+.supportThread { border: 1px solid #e3e8ef; border-radius: 12px; overflow: hidden; }
+.supportThread > button { width: 100%; display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 11px 12px; background: #fff; border: 0; font: inherit; font-weight: 650; text-align: left; color: var(--ink); cursor: pointer; }
+.supportThread > button small { color: var(--teal); font-weight: 700; white-space: nowrap; }
+.supportMessages { display: grid; gap: 8px; padding: 0 12px 12px; }
+.supportMessages p { margin: 0; padding: 9px 11px; border-radius: 10px; background: #f3f6f9; white-space: pre-wrap; font-size: 14px; }
+.supportMessages p.staff { background: #e6f8f4; }
+.supportMessages p small { display: block; color: var(--muted); font-size: 11.5px; margin-bottom: 3px; }
+.supportMessages form { display: grid; gap: 8px; }
+.supportMessages textarea { width: 100%; font: inherit; font-size: 15px; border: 1px solid #d7dee8; border-radius: 10px; padding: 9px 11px; resize: vertical; }

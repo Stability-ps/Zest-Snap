@@ -14,6 +14,7 @@ import { clearAccountCaches, signOut } from "@/lib/session";
 import { PlannerStore } from "@/lib/planner-store";
 import { timezoneOptions as allTimezones, timezoneLabel as zoneLabel } from "@/lib/timezones";
 import { productConfig } from "@/lib/product-config";
+import SupportForm from "./support-form";
 /** Removes Zest data from this browser only. Keeps the anonymous device id so free-trial limits still apply. */
 function clearDeviceData() {
   clearAccountCaches();
@@ -27,7 +28,7 @@ export default function Settings() {
     [message, setMessage] = useState(""),
     [editingDisplayName, setEditingDisplayName] = useState(false),
     [busy, setBusy] = useState(false),
-    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|null>(null),
+    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|"support"|"report"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
     [accountEmail, setAccountEmail] = useState(""),
     [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email?: string | null }>({ connected: false });
@@ -279,7 +280,10 @@ export default function Settings() {
 
         <h2 className="settingsSectionTitle">Support</h2>
         <section className="settingsGroup">
-          <a className="settingsRow" href={"mailto:"+productConfig.supportEmail}><span className="settingsIcon"><LifeBuoy /></span><span className="settingsRowCopy"><b>Contact support</b><small>{productConfig.supportEmail}</small></span><ChevronRight /></a>
+          {provider?.mode==="cloud" ? <>
+            <button type="button" className="settingsRow" onClick={()=>setSheet("support")}><span className="settingsIcon"><LifeBuoy /></span><span className="settingsRowCopy"><b>Contact support</b><small>Send us a message from the app</small></span><ChevronRight /></button>
+            <button type="button" className="settingsRow" onClick={()=>setSheet("report")}><span className="settingsIcon"><LifeBuoy /></span><span className="settingsRowCopy"><b>Report a problem</b><small>Something broken or a scan got it wrong</small></span><ChevronRight /></button>
+          </> : <a className="settingsRow" href={"mailto:"+productConfig.supportEmail}><span className="settingsIcon"><LifeBuoy /></span><span className="settingsRowCopy"><b>Contact support</b><small>{productConfig.supportEmail}</small></span><ChevronRight /></a>}
           <a className="settingsRow" href="/privacy"><span className="settingsRowCopy"><b>Privacy</b></span><ChevronRight /></a>
           <a className="settingsRow" href="/terms"><span className="settingsRowCopy"><b>Terms</b></span><ChevronRight /></a>
         </section>
@@ -288,13 +292,15 @@ export default function Settings() {
           <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
             <div className="settingsSheetTop">
               <div>
-                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="export"?"Export my data":sheet==="delete"?"Delete your account?":"Clear device data?"}</h2>
+                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="export"?"Export my data":sheet==="delete"?"Delete your account?":sheet==="support"?"Contact support":sheet==="report"?"Report a problem":"Clear device data?"}</h2>
                 {sheet==="account"&&<p>You’re signed in. Manage this account without signing in again.</p>}
                 {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
                 {sheet==="calendar"&&<p>{googleCalendar.connected ? "Google Calendar is connected. Zest can add confirmed scan events directly — no file download or manual import." : "Connect Google Calendar once to add confirmed scan events directly. Until then, Zest opens a pre-filled Google Calendar event for you to save; it does not download a calendar file."}</p>}
                 {sheet==="export"&&<p>Choose a readable PDF for normal use, or JSON if you need the complete machine-readable copy of your Zest data.</p>}
                 {sheet==="clear"&&<p>{provider?.mode==="cloud"?"This removes cached scans, Planner, reminders and preferences from this device and signs you out. Your account and cloud data are not deleted.":"This permanently clears Zest scans, Planner, reminders and preferences stored on this device. It can’t be undone."}</p>}
+                {sheet==="support"&&<p>We usually reply within one working day. You can also email {productConfig.supportEmail}.</p>}
+                {sheet==="report"&&<p>Reports go straight to the Zest team so we can fix problems quickly.</p>}
                 {sheet==="delete"&&<p>This permanently deletes your Zest account, scans, Planner, reminders, rewards, feedback and notification subscriptions. Events you already added to another calendar app are not affected. This can’t be undone.</p>}
               </div>
               <button className="iconButton" onClick={()=>setSheet(null)} aria-label="Close"><X/></button>
@@ -340,6 +346,7 @@ export default function Settings() {
               <button className="button alt" disabled={busy} onClick={()=>run(async()=>{await downloadJsonExport();})}><Download size={18}/> Save full data (JSON)</button>
               <span>PDF is easier to read. JSON is intended for backup, portability or technical use.</span>
             </div>}
+            {(sheet==="support"||sheet==="report")&&<SupportForm kind={sheet} onDone={(m)=>{setSheet(null);setMessage(m);}} />}
             {sheet==="clear"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{if(provider?.mode==="cloud")await signOut();clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Clear device data</button></div>}
             {sheet==="delete"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{await provider!.deleteData();await signOut().catch(()=>undefined);clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Delete account</button></div>}
           </section>

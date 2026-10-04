@@ -148,16 +148,19 @@ test("auth redirect allowlist rejects external and protocol-relative links", () 
     "https://evil.test",
     "//evil.test",
     "/\\evil.test",
-    "/admin",
     "%2f%2fevil.test",
+    "/admin/../../evil",
+    "/adminx",
   ])
     assert.equal(safeAuthNext(x), "/app");
   assert.equal(safeAuthNext("/reset-password"), "/reset-password");
+  // The admin console is a same-site return path; access is still enforced server-side on arrival.
+  assert.equal(safeAuthNext("/admin"), "/admin");
 });
 test("manifest has supported raster icons and app scope", () => {
   const m = manifest();
   assert.equal(m.start_url, "/app");
-  assert.equal(m.scope, "/");
+  assert.equal(m.scope, "/app");
   assert.ok(m.icons?.some((i) => i.sizes === "192x192"));
   assert.ok(
     m.icons?.some((i) => i.purpose === "maskable" && i.sizes === "512x512"),

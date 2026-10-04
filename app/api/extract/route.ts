@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { readBoundedJson, validateUpload } from "@/lib/upload";
 import {
   finishReservation,
   logScan,
   requestIdFrom,
+  recordScanMeta,
   reserveScan,
   type Reservation,
 } from "@/lib/scan-security";
@@ -123,7 +124,9 @@ const ERRORS: Record<string, [number, string]> = {
 export async function POST(req: NextRequest) {
   const requestId = requestIdFrom(req);
   const started = Date.now();
+  let failureCode: string | null = null;
   const fail = (code: string, extra: Record<string, string | number | boolean> = {}) => {
+    failureCode = code;
     const [status, message] = ERRORS[code] || ERRORS.cloud_unavailable;
     logScan("scan_rejected", requestId, { code, status, ...extra });
     return NextResponse.json(
@@ -168,6 +171,8 @@ export async function POST(req: NextRequest) {
   }
   if (pdfPages > reservation.pages) {
     await finishReservation(reservation, requestId, { status: "failed" });
+    const meta = { mimeType: upload.mimeType, pages: pdfPages, durationMs: Date.now() - started, errorCode: "pdf_page_limit" };
+    after(() => recordScanMeta(reservation, requestId, meta));
     return NextResponse.json(
       { error: `This PDF has ${pdfPages} pages. Your plan reads up to ${reservation.pages} pages per scan — split it and try again. Nothing was charged.`, code: "pdf_page_limit", requestId },
       { status: 413, headers: { "Cache-Control": "no-store" } },
@@ -203,6 +208,8 @@ export async function POST(req: NextRequest) {
   ].join("\n");
 
   let completed = false;
+  let eventCount: number | undefined, warningCount: number | undefined;
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
   let inputTokens = 0,
     outputTokens = 0;
   let cost: number | null = null;
@@ -216,7 +223,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           store: false,
           max_output_tokens: 12000,
-          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          model,
           instructions,
           input: [
             {
@@ -273,6 +280,8 @@ export async function POST(req: NextRequest) {
       result,
     });
     completed = true;
+    eventCount = result.events.length;
+    warningCount = Array.isArray(result.warnings) ? result.warnings.length : 0;
     logScan("scan_succeeded", requestId, { who, events: result.events.length, ms: Date.now() - started });
     return NextResponse.json(
       reservation.kind === "guest" ? { ...result, trialRemaining: reservation.remaining } : result,
@@ -289,5 +298,16 @@ export async function POST(req: NextRequest) {
         output: outputTokens,
         cost,
       }).catch(() => logScan("metering_write_failed", requestId));
+    // Recorded after the response is sent, so operations metadata never slows a scan down.
+    const meta = {
+      mimeType,
+      pages: pdfPages,
+      durationMs: Date.now() - started,
+      eventCount,
+      warningCount,
+      errorCode: completed ? undefined : failureCode || "unexpected",
+      model,
+    };
+    after(() => recordScanMeta(reservation, requestId, meta));
   }
 }

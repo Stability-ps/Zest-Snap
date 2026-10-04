@@ -4,7 +4,7 @@ import { updateSession } from "@/lib/supabase/proxy";
 
 const APP_HOST = "app.zestsnap.app";
 const MARKETING_HOSTS = new Set(["zestsnap.app", "www.zestsnap.app"]);
-const PRODUCT_PATHS = ["/app", "/login", "/settings", "/onboarding", "/reset-password"];
+const PRODUCT_PATHS = ["/app", "/login", "/settings", "/onboarding", "/reset-password", "/admin"];
 
 export async function proxy(request: NextRequest) {
   const host = (request.headers.get("host") || "").toLowerCase().split(":")[0];

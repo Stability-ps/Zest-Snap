@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 const SUPABASE_STUBS = `
 create role anon; create role authenticated; create role service_role bypassrls;
 create schema auth; create schema storage; create schema extensions; create schema vault; create schema cron; create schema net;
-create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
+create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb default '{}', last_sign_in_at timestamptz, email_confirmed_at timestamptz);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create table storage.buckets(id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
 create table storage.objects(id uuid default gen_random_uuid(), bucket_id text, name text);

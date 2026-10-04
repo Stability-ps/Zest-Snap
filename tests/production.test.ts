@@ -101,7 +101,7 @@ test("auth redirects stay inside the app and keep Rewards return paths", async (
   const { safeAuthNext } = await import("../lib/auth");
   assert.equal(safeAuthNext("/app?view=rewards"), "/app?view=rewards");
   assert.equal(safeAuthNext("/settings"), "/settings");
-  for (const bad of ["https://evil.example/app", "//evil.example", "/\\evil.example", "javascript:alert(1)", "/admin", null])
+  for (const bad of ["https://evil.example/app", "//evil.example", "/\\evil.example", "javascript:alert(1)", "/adminx", null])
     assert.equal(safeAuthNext(bad as string | null), "/app");
 });
 

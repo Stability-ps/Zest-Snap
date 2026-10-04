@@ -156,6 +156,45 @@ export async function finishReservation(
   }
 }
 
+export type ScanMeta = {
+  mimeType: string;
+  pages: number;
+  durationMs: number;
+  eventCount?: number;
+  warningCount?: number;
+  errorCode?: string;
+  model?: string;
+};
+
+/** Content-free operational metadata for the admin console. Best effort: never blocks or fails a scan. */
+export async function recordScanMeta(reservation: Reservation, requestId: string, meta: ScanMeta) {
+  if (reservation.kind !== "account" && reservation.kind !== "guest") return;
+  const errorCode = meta.errorCode && /^[a-z_]{1,40}$/.test(meta.errorCode) ? meta.errorCode : null;
+  try {
+    const db = serviceClient();
+    const { error } =
+      reservation.kind === "account"
+        ? await db.from("scan_requests").update({
+            mime_type: meta.mimeType,
+            page_count: meta.pages,
+            event_count: meta.eventCount ?? null,
+            warning_count: meta.warningCount ?? null,
+            duration_ms: Math.max(0, Math.round(meta.durationMs)),
+            error_code: errorCode,
+            model: meta.model ? meta.model.slice(0, 80) : null,
+          } as never).eq("id", requestId)
+        : await db.from("guest_scan_usage").update({
+            mime_type: meta.mimeType,
+            event_count: meta.eventCount ?? null,
+            duration_ms: Math.max(0, Math.round(meta.durationMs)),
+            error_code: errorCode,
+          } as never).eq("request_id", requestId);
+    if (error) logScan("scan_meta_write_failed", requestId);
+  } catch {
+    logScan("scan_meta_write_failed", requestId);
+  }
+}
+
 /** Structured, content-free server log line. Never pass document text, file names or tokens. */
 export function logScan(
   event: string,

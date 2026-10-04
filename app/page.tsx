@@ -1,4 +1,4 @@
-import { productConfig, plans } from "@/lib/product-config";
+import { formatPlanPrice, getPublicPlanCatalog, type CatalogPlan } from "@/lib/plan-catalog";
 import {
   Camera,
   CalendarDays,
@@ -7,7 +7,26 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-export default function Home() {
+// Prices and allowances come from the same plan_rules rows that enforce usage; refreshed every few minutes
+// and immediately when an admin saves a plan.
+export const revalidate = 300;
+
+const planCta: Record<string, string> = { free: "Get started", plus: "Start with Free", business: "Explore Business" };
+
+function planCopy(plan: CatalogPlan) {
+  const parts = [
+    `${plan.monthlyScans} AI scans each month`,
+    `PDFs up to ${plan.pdfPagesPerScan} pages`,
+    plan.bulkExtraction && "multiple-event extraction",
+    plan.smartReminders && "smart reminders",
+    plan.priorityProcessing && "priority processing",
+  ].filter(Boolean) as string[];
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
+  return `${list}.${plan.description ? " " + plan.description : ""}`;
+}
+
+export default async function Home() {
+  const catalog = await getPublicPlanCatalog();
   const features = [
     [
       "01",
@@ -167,43 +186,19 @@ export default function Home() {
             where available.
           </p>
           <div className="cards">
-            <div className="card">
-              <h3>Free</h3>
-              <div className="price">${plans.free.monthlyUsd}</div>
-              <p>
-                ${plans.free.monthlyScans} AI scans each month, event review, calendar export and your
-                upcoming agenda.
-              </p>
-              <a className="button alt" href="https://app.zestsnap.app/app">
-                Get started
-              </a>
-            </div>
-            <div className="card">
-              <h3>Zest Snap+</h3>
-              <div className="price">
-                ${plans.plus.monthlyUsd.toFixed(2)} <small>/ month</small>
+            {catalog.map((plan) => (
+              <div className="card" key={plan.id}>
+                <h3>{plan.name}</h3>
+                <div className="price">
+                  {formatPlanPrice(plan.monthlyPrice, plan.currency)}
+                  {plan.monthlyPrice > 0 && <small> / month</small>}
+                </div>
+                <p>{planCopy(plan)}</p>
+                <a className={plan.recommended ? "button" : "button alt"} href="https://app.zestsnap.app/app">
+                  {planCta[plan.id] || "Get started"}
+                </a>
               </div>
-              <p>
-                ${plans.plus.monthlyScans} AI scans each month, PDFs up to ${plans.plus.pdfPagesPerScan} pages, multiple-event extraction,
-                smart reminders and richer AI understanding.
-              </p>
-              <a className="button" href="https://app.zestsnap.app/app">
-                Start with Free
-              </a>
-            </div>
-            <div className="card">
-              <h3>Business</h3>
-              <div className="price">
-                ${plans.business.monthlyUsd.toFixed(2)} <small>/ month</small>
-              </div>
-              <p>
-                ${plans.business.monthlyScans} AI scans each month, PDFs up to ${plans.business.pdfPagesPerScan} pages, business deadlines,
-                advanced document workflows and priority processing.
-              </p>
-              <a className="button alt" href="https://app.zestsnap.app/app">
-                Explore Business
-              </a>
-            </div>
+            ))}
           </div>
         </div>
       </section>

@@ -4,7 +4,7 @@ export function safeAuthNext(value: string | null) {
   try {
     const url = new URL(value, "https://zestsnap.app");
     if (url.origin !== "https://zestsnap.app") return "/app";
-    if (url.pathname === "/reset-password" || url.pathname === "/settings" || url.pathname === "/app" || url.pathname === "/admin")
+    if (url.pathname === "/reset-password" || url.pathname === "/settings" || url.pathname === "/app" || url.pathname === "/admin" || /^\/admin\/[a-z0-9/_-]{1,120}$/i.test(url.pathname))
       return url.pathname + url.search;
   } catch {}
   return "/app";
