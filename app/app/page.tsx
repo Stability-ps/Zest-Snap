@@ -51,6 +51,7 @@ export default function App() {
   const provider = useRef<DataProvider | null>(null);
   const [ready, setReady] = useState(false);
   const [insights, setInsights] = useState(true);
+  const [displayName, setDisplayName] = useState("");
   const [mode, setMode] = useState("local");
   const [activeScan, setActiveScan] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -143,6 +144,7 @@ export default function App() {
           data = await p.load();
         }
         const pref = await p.loadProfile();
+        if (mounted) setDisplayName(pref.displayName.trim());
         if (pref.retentionDays > 0) {
           const next = {
             ...data,
@@ -529,8 +531,8 @@ export default function App() {
               </button>
             )}
             <section className="appIntro homeHero">
+              <div className="homeGreeting">Good morning{displayName ? `, ${displayName.split(" ")[0]}` : ""} <span aria-hidden="true">👋</span></div>
               <div className="eyebrow">YOUR DAY</div>
-              <div className="homeGreeting">Good morning <span aria-hidden="true">👋</span></div>
               <h1>What do you want to remember?</h1>
               <p>Snap or upload it. Zest finds the important dates.</p>
             </section>
