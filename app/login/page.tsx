@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { ArrowRight, Loader2, Lock, Mail } from "lucide-react";
+import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type Mode = "login" | "signup" | "forgot";
@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("login");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [name, setName] = useState("");
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("error"))
@@ -133,11 +134,17 @@ export default function LoginPage() {
         return;
       }
 
+      const cleanName = name.trim();
+      if (!cleanName) {
+        setMessage("Tell us your name so Zest can personalise your experience.");
+        return;
+      }
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: window.location.origin + "/auth/callback",
+          data: { display_name: cleanName, full_name: cleanName },
         },
       });
       if (error) {
@@ -176,6 +183,23 @@ export default function LoginPage() {
         <p className="authIntro">{current.text}</p>
 
         <form onSubmit={submit}>
+          {mode === "signup" && (
+            <label>
+              <span>Your name</span>
+              <div>
+                <User size={18} />
+                <input
+                  name="name"
+                  type="text"
+                  required
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="What should Zest call you?"
+                />
+              </div>
+            </label>
+          )}
           <label>
             <span>Email</span>
             <div>
