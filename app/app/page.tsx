@@ -1292,7 +1292,7 @@ function TodoView({
 
   const group = (label: string, rows: PlannerItem[], tone?: string) =>
     rows.length ? (
-      <section className={"todoGroup " + (tone || "")}>
+      <section id={"todo-" + label.toLowerCase()} className={"todoGroup " + (tone || "")}>
         <div className="todoGroupHead">
           <h2>{label}</h2>
           <span>{rows.length}</span>
@@ -1334,6 +1334,13 @@ function TodoView({
         <button type="button" className="todoPlannerLink" onClick={onOpenPlanner}>
           Planner <ChevronRight size={17} />
         </button>
+      </div>
+
+      <div className="todoFilters" role="tablist" aria-label="To-do filters">
+        <button type="button" className="active" role="tab" aria-selected="true">All</button>
+        <button type="button" role="tab" onClick={() => document.getElementById("todo-today")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Today</button>
+        <button type="button" role="tab" onClick={() => document.getElementById("todo-upcoming")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Upcoming</button>
+        <button type="button" role="tab" onClick={() => document.getElementById("todo-completed")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Completed</button>
       </div>
 
       <form className="todoQuickAdd" onSubmit={addTodo}>
