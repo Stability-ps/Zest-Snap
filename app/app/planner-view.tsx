@@ -877,7 +877,10 @@ function Editor({ item, busy, onClose, onSave }: { item: PlannerItem; busy: bool
     patch = (p: Partial<PlannerItem>) => setD({ ...d, ...p, updatedAt: new Date().toISOString() });
   const time = task ? d.dueTime : d.startTime,
     setTime = (v: string) => patch(task ? { dueTime: v } : { startTime: v });
-  const tz = (d.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC").replace(/_/g, " ");
+  // Legacy items may have been created while the app still defaulted to UTC.
+  // For editing, use the current Planner timezone unless the item has a real non-UTC zone.
+  const effectiveTimezone = d.timezone && d.timezone !== "UTC" ? d.timezone : item.timezone && item.timezone !== "UTC" ? item.timezone : Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const tz = effectiveTimezone.replace(/_/g, " ");
   const reminderLabels: Record<string, string> = {
     none: "None",
     at_time: "At time",
@@ -981,7 +984,7 @@ function Editor({ item, busy, onClose, onSave }: { item: PlannerItem; busy: bool
           <textarea rows={3} maxLength={10000} value={d.description} onChange={(e) => patch({ description: e.target.value })} />
         </label>
       )}
-      <button className="button sheetSave stickySave" disabled={busy || !d.title.trim() || (!d.allDay && !time)} onClick={() => onSave(d, reminder === "none" ? undefined : { preset: reminder })}>
+      <button className="button sheetSave stickySave" disabled={busy || !d.title.trim() || (!d.allDay && !time)} onClick={() => onSave({ ...d, timezone: effectiveTimezone }, reminder === "none" ? undefined : { preset: reminder })}>
         {busy ? "Saving…" : reminder === "none" ? "Save to Planner" : "Save with reminder"}
       </button>
       {!d.allDay && !time && <p className="sheetHint">Add a time, or switch on All day.</p>}

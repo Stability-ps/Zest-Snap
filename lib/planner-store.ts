@@ -10,7 +10,7 @@ const cloudKey = (u: string) => `zest-planner-cloud-${u}`;
 type Pending = { op: "upsert"; item: PlannerItem } | { op: "delete"; id: string };
 type Cache = { items: PlannerItem[]; pending: Pending[] };
 const COLUMNS =
-  "id,type,title,description,start_date,end_date,start_time,end_time,due_date,due_time,all_day,timezone,location,status,source,source_scan_id,completed_at,created_at,updated_at";
+  "id,type,title,description,start_date,end_date,start_time,end_time,due_date,due_time,all_day,timezone,location,status,source,source_scan_id,completed_at,created_at,updated_at,google_event_id,google_synced_at";
 
 function parse(raw: string | null): Cache {
   if (!raw) return { items: [], pending: [] };
@@ -30,6 +30,8 @@ function row(r: Record<string, any>): PlannerItem {
     allDay: Boolean(r.all_day), timezone: r.timezone || "UTC", location: r.location || "",
     status: r.status, source: r.source, sourceScanId: r.source_scan_id || undefined, completedAt: r.completed_at || undefined,
     createdAt: r.created_at, updatedAt: r.updated_at,
+    googleEventId: r.google_event_id || undefined,
+    googleSyncedAt: r.google_synced_at || undefined,
   };
 }
 function dbRow(i: PlannerItem, u: string) {
@@ -129,14 +131,34 @@ export class PlannerStore {
     const pending = this.cache().pending;
     const items = applyPending((data || []).map(row), pending);
     this.write({ items, pending });
+    // Retry Google for rows that have never synced or changed since their last Google sync.
+    for (const item of items) {
+      const stale = !item.googleSyncedAt || Date.parse(item.googleSyncedAt) < Date.parse(item.updatedAt);
+      if (stale) this.syncGoogle(item).catch(() => undefined);
+    }
     return items;
   }
   private async syncGoogle(item: PlannerItem) {
     if (this.mode !== "cloud" || !navigator.onLine || item.externalProvider === "google") return;
-    const event = { ...item, startDate: item.startDate || item.dueDate, startTime: item.startTime || item.dueTime, endDate: item.endDate || item.dueDate || item.startDate, allDay: item.allDay || !(item.startTime || item.dueTime), sourceText: "" };
-    const response = await fetch("/api/calendar/google/events", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plannerItemId: item.id, event, timezone: item.timezone }) });
-    if (response.status === 409) return; // Google is optional until connected.
-    if (!response.ok) throw new Error("Saved to Zest, but Google Calendar could not sync.");
+    const dueBased = item.type === "task" || item.type === "deadline";
+    const referenceDate = dueBased ? (item.dueDate || item.startDate) : (item.startDate || item.dueDate);
+    const referenceTime = dueBased ? (item.dueTime || item.startTime) : (item.startTime || item.dueTime);
+    const event = {
+      ...item,
+      startDate: referenceDate,
+      startTime: referenceTime,
+      endDate: dueBased ? referenceDate : (item.endDate || referenceDate),
+      endTime: dueBased ? "" : item.endTime,
+      allDay: item.allDay || !referenceTime,
+      sourceText: "",
+    };
+    const response = await fetch("/api/calendar/google/events", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plannerItemId: item.id, event, timezone: item.timezone }),
+    });
+    if (response.status === 409) return;
+    if (!response.ok) throw new Error("google_calendar_sync_failed");
   }
   async upsert(item: PlannerItem) {
     validatePlannerItem(item);
@@ -154,7 +176,9 @@ export class PlannerStore {
       this.write({ ...this.cache(), items: previous });
       throw new Error("Planner item could not be saved. Check your connection and try again.");
     }
-    await this.syncGoogle(item);
+    // Zest is the source of truth. Google sync must never trap the editor on "Saving".
+    // A failed Google write is retried from load() below.
+    this.syncGoogle(item).catch(() => undefined);
   }
   async remove(id: string) {
     const c = this.cache();
