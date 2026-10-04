@@ -48,7 +48,7 @@ import PlannerView, { type PlannerRequest } from "./planner-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
-import { plannerFingerprint, plannerReferenceTime, plannerTodayItems, type PlannerItem } from "@/lib/planner";
+import { plannerFingerprint, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, type PlannerItem } from "@/lib/planner";
 import {
   STARTUP_STATE_KEY,
   activeUser,
@@ -62,7 +62,7 @@ import {
 } from "@/lib/session";
 import { syncPushSubscription } from "@/lib/reminders";
 
-type View = "home" | "review" | "history" | "calendar" | "rewards";
+type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards";
 type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
 const deviceTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const REFRESH_INTERVAL = 30_000;
@@ -73,7 +73,7 @@ function viewFromUrl(search: string): { view: View; tab?: PlannerRequest["tab"] 
   const tab = q.get("tab");
   if (v === "calendar" || v === "planner")
     return { view: "calendar", tab: tab === "reminders" || tab === "upcoming" || tab === "calendar" || tab === "today" ? tab : undefined };
-  if (v === "rewards" || v === "history") return { view: v };
+  if (v === "rewards" || v === "history" || v === "todo") return { view: v };
   return { view: "home" };
 }
 function greeting(timezone: string) {
@@ -962,6 +962,22 @@ export default function App() {
             />
           </div>
         )}
+        {view === "todo" && identity && (
+          <TodoView
+            identity={identity}
+            timezone={timezone}
+            locale={locale}
+            items={plannerItems}
+            onOpenPlanner={() => openView("calendar", { tab: "today" })}
+            onNotice={(kind, message) => {
+              if (kind === "success") {
+                setError("");
+                setSuccess(message);
+                window.setTimeout(() => setSuccess(""), 1800);
+              } else showError(message);
+            }}
+          />
+        )}
         {view === "rewards" && (
           <RewardsView
             ready={ready}
@@ -1160,7 +1176,7 @@ export default function App() {
       <nav className="bottomNav" aria-label="Main">
         <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
         <NavButton active={view === "calendar"} label="Planner" onClick={() => openView("calendar")} icon={<CalendarDays />} />
-        <NavButton active={view === "history"} label="History" onClick={() => openView("history")} icon={<Clock />} />
+        <NavButton active={view === "todo"} label="To-do" onClick={() => openView("todo")} icon={<span className="todoNavGlyph"><Check /></span>} />
         <NavButton active={view === "rewards"} label="Rewards" onClick={() => openView("rewards")} icon={<Gift />} />
       </nav>
     </main>
@@ -1183,6 +1199,168 @@ function NavButton({
       {icon}
       <small>{label}</small>
     </button>
+  );
+}
+
+function TodoView({
+  identity,
+  timezone,
+  locale,
+  items,
+  onOpenPlanner,
+  onNotice,
+}: {
+  identity: string;
+  timezone: string;
+  locale: string;
+  items: PlannerItem[];
+  onOpenPlanner: () => void;
+  onNotice: (kind: "success" | "error", message: string) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState(() => todayDate(timezone));
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const todos = useMemo(
+    () => plannerSort(items.filter((x) => (x.type === "task" || x.type === "deadline") && x.status !== "cancelled")),
+    [items],
+  );
+  const open = todos.filter((x) => x.status !== "completed");
+  const completed = todos.filter((x) => x.status === "completed");
+  const overdue = open.filter((x) => plannerStatus(x, undefined, timezone) === "overdue");
+  const today = open.filter((x) => plannerStatus(x, undefined, timezone) === "today");
+  const upcoming = open.filter((x) => !overdue.includes(x) && !today.includes(x));
+
+  const formatDate = (date: string) => {
+    if (!date) return "No date";
+    try {
+      return new Intl.DateTimeFormat(locale || undefined, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(date + "T12:00:00Z"));
+    } catch {
+      return date;
+    }
+  };
+
+  const addTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = title.trim();
+    if (!clean || adding) return;
+    setAdding(true);
+    try {
+      const now = new Date().toISOString();
+      const item: PlannerItem = {
+        id: crypto.randomUUID(),
+        type: "task",
+        title: clean,
+        description: "",
+        startDate: dueDate,
+        endDate: dueDate,
+        startTime: "",
+        endTime: "",
+        dueDate,
+        dueTime: "",
+        allDay: true,
+        timezone,
+        location: "",
+        status: "open",
+        source: "manual",
+        createdAt: now,
+        updatedAt: now,
+      };
+      const store = await sharedPlannerStore(identity);
+      await store.upsert(item);
+      setTitle("");
+      onNotice("success", "To-do added.");
+    } catch (e) {
+      onNotice("error", e instanceof Error ? e.message : "Could not add this to-do.");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const toggle = async (item: PlannerItem) => {
+    if (busyId) return;
+    setBusyId(item.id);
+    try {
+      const store = await sharedPlannerStore(identity);
+      await store.setCompleted(item.id, item.status !== "completed");
+    } catch (e) {
+      onNotice("error", e instanceof Error ? e.message : "Could not update this to-do.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const group = (label: string, rows: PlannerItem[], tone?: string) =>
+    rows.length ? (
+      <section className={"todoGroup " + (tone || "")}>
+        <div className="todoGroupHead">
+          <h2>{label}</h2>
+          <span>{rows.length}</span>
+        </div>
+        <div className="todoRows">
+          {rows.map((item) => (
+            <article className={"todoRow " + (item.status === "completed" ? "completed" : "")} key={item.id}>
+              <button
+                type="button"
+                className="todoCheck"
+                aria-label={item.status === "completed" ? "Mark as not done" : "Mark as done"}
+                aria-pressed={item.status === "completed"}
+                disabled={busyId === item.id}
+                onClick={() => toggle(item)}
+              >
+                {item.status === "completed" && <Check />}
+              </button>
+              <button type="button" className="todoMain" onClick={onOpenPlanner}>
+                <b>{item.title}</b>
+                <small>{item.type === "deadline" ? "Deadline" : "To-do"} · {formatDate(item.dueDate || item.startDate)}</small>
+              </button>
+              <ChevronRight size={18} />
+            </article>
+          ))}
+        </div>
+      </section>
+    ) : null;
+
+  return (
+    <section className="todoView">
+      <div className="todoHero">
+        <div>
+          <span className="todoHeroIcon"><Check /></span>
+          <div>
+            <h1>To-do</h1>
+            <p>{open.length ? `${open.length} still to do` : "You’re all caught up."}</p>
+          </div>
+        </div>
+        <button type="button" className="todoPlannerLink" onClick={onOpenPlanner}>
+          Planner <ChevronRight size={17} />
+        </button>
+      </div>
+
+      <form className="todoQuickAdd" onSubmit={addTodo}>
+        <input
+          aria-label="New to-do"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Add a to-do"
+          maxLength={500}
+        />
+        <input aria-label="Due date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        <button type="submit" disabled={!title.trim() || adding}>{adding ? "Adding…" : "Add"}</button>
+      </form>
+
+      {!open.length && !completed.length && (
+        <div className="todoEmpty">
+          <span className="todoEmptyIcon"><Check /></span>
+          <b>Nothing on your list yet</b>
+          <p>Add something above, or save a task or deadline from a scan.</p>
+        </div>
+      )}
+
+      {group("Overdue", overdue, "urgent")}
+      {group("Today", today)}
+      {group("Upcoming", upcoming)}
+      {group("Completed", completed.slice(0, 8), "done")}
+    </section>
   );
 }
 
