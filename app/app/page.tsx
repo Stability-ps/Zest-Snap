@@ -1049,9 +1049,8 @@ function HistoryView({
     );
   return (
     <section className="dataView historyView">
-      <div className="eyebrow">HISTORY</div>
       <div className="historyHeading">
-        <div><h1>Your scans</h1><p>{scans.length} saved {scans.length === 1 ? "scan" : "scans"}</p></div>
+        <div><h1>Your scan history</h1><p>{scans.length} saved {scans.length === 1 ? "scan" : "scans"} · everything you’ve captured in Zest</p></div>
       </div>
       <label className="historySearch">
         <Search size={17} aria-hidden="true" />
@@ -1180,8 +1179,7 @@ function RewardsView({ ready, store, onPlan, onInvite, onFeedback }: { ready: bo
   const submitFeedback=async()=>{if(sending)return;setSending(true);const ok=await onFeedback(rating,feedback);setSending(false);if(ok)setFeedbackOpen(false);};
   return (
     <section className="rewardsView">
-      <div className="eyebrow">ZEST REWARDS</div>
-      <h1>Useful rewards, not gimmicks.</h1>
+      <h1>Your rewards</h1>
       <p>Earn small milestone credits, and earn more by helping Zest grow.</p>
       <div className="rewardBalance"><span>Current balance</span><b>{ready ? store.credits : "—"}</b><small>{ready ? "Zest Credits" : "Syncing…"}</small></div>
       <div className="rewardRows">
