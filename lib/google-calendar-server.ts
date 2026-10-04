@@ -1,4 +1,5 @@
 import "server-only";
+import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import type { ExtractedEvent } from "@/lib/extraction-types";
 import { serviceClient } from "@/lib/supabase/admin";
 
@@ -20,6 +21,46 @@ function googleConfig() {
 }
 
 const PRODUCTION_APP_ORIGIN = "https://app.zestsnap.app";
+const GOOGLE_STATE_TTL_MS = 10 * 60 * 1000;
+
+function stateSecret() {
+  const secret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+  if (!secret) throw new Error("google_calendar_not_configured");
+  return secret;
+}
+
+function signStatePayload(payload: string) {
+  return createHmac("sha256", stateSecret()).update(payload).digest("base64url");
+}
+
+export function createGoogleOAuthState(userId: string) {
+  const payload = Buffer.from(JSON.stringify({
+    userId,
+    nonce: randomBytes(24).toString("hex"),
+    expiresAt: Date.now() + GOOGLE_STATE_TTL_MS,
+  })).toString("base64url");
+  return payload + "." + signStatePayload(payload);
+}
+
+export function verifyGoogleOAuthState(state: string) {
+  const [payload, signature, extra] = state.split(".");
+  if (!payload || !signature || extra) return null;
+  const expected = signStatePayload(payload);
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      userId?: string;
+      expiresAt?: number;
+    };
+    if (!parsed.userId || !parsed.expiresAt || parsed.expiresAt < Date.now()) return null;
+    if (!/^[0-9a-f-]{36}$/i.test(parsed.userId)) return null;
+    return parsed.userId;
+  } catch {
+    return null;
+  }
+}
 
 export function googleCalendarRedirectUri(origin: string) {
   // Vercel may expose its internal *.vercel.app origin to server routes even when
