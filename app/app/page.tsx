@@ -599,10 +599,34 @@ export default function App() {
     }
     setError("");
     try {
-      const url = googleCalendarUrl(event, timezone);
-      // Open synchronously from the user's tap so mobile browsers do not treat it as a popup.
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
-      if (!opened) window.location.assign(url);
+      let addedDirectly = false;
+      if (mode === "cloud") {
+        const response = await fetch("/api/calendar/google/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event, timezone }),
+        });
+        if (response.ok) {
+          addedDirectly = true;
+        } else {
+          const body = await response.json().catch(() => ({}));
+          if (body?.error === "google_calendar_reconnect_required") {
+            showError("Reconnect Google Calendar in Settings, then try again.");
+            return;
+          }
+          if (body?.error !== "google_calendar_not_connected" && response.status !== 409) {
+            throw new Error("Could not add this event to Google Calendar.");
+          }
+        }
+      }
+
+      if (!addedDirectly) {
+        // Guests and users who have not connected Google Calendar get a pre-filled Google
+        // Calendar screen. This is the fallback only; it never downloads an .ics file.
+        const url = googleCalendarUrl(event, timezone);
+        const opened = window.open(url, "_blank", "noopener,noreferrer");
+        if (!opened) window.location.assign(url);
+      }
 
       if (!store.events.some((x) => eventKey(x) === eventKey(event))) {
         const now = new Date().toISOString();
@@ -612,9 +636,9 @@ export default function App() {
           firstCalendarRewarded: true,
         });
       }
-      setSuccess("Google Calendar opened with the event ready to save. No calendar file was downloaded.");
+      setSuccess(addedDirectly ? "Added to Google Calendar." : "Google Calendar opened with the event ready to save.");
     } catch (e) {
-      showError(e instanceof Error ? e.message : "Could not open your calendar.");
+      showError(e instanceof Error ? e.message : "Could not add this event to your calendar.");
     }
   }
 
