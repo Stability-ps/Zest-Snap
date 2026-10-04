@@ -2627,8 +2627,8 @@ button.rewardBalance{gap:10px}
 
 
 /* To-do: a daily action surface in the former History nav slot. */
-.todoNavGlyph{width:27px;height:27px;border:2px solid currentColor;border-radius:50%;display:grid;place-items:center;box-sizing:border-box}
-.todoNavGlyph svg{width:17px!important;height:17px!important;stroke-width:2.6}
+.todoNavGlyph{width:24px;height:24px;border:1.8px solid currentColor;border-radius:50%;display:grid;place-items:center;box-sizing:border-box}
+.todoNavGlyph svg{width:15px!important;height:15px!important;stroke-width:2.6}
 .todoView{display:grid;gap:16px;padding-bottom:24px}
 .todoHero{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .todoHero>div{display:flex;align-items:center;gap:12px;min-width:0}
