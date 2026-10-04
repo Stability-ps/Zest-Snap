@@ -118,10 +118,19 @@ export default function App() {
   }
 
   useEffect(() => {
+    const lastName = localStorage.getItem("zest-last-display-name")?.trim();
+    if (lastName) setDisplayName(lastName);
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     getDataProvider()
       .then(async (p) => {
         const cached = p.loadCached?.();
+        const cachedProfile = p.loadCachedProfile?.();
+        if (mounted && cachedProfile?.displayName) {
+          setDisplayName(cachedProfile.displayName.trim());
+        }
         if (mounted && cached) {
           provider.current = p;
           setStore(cached);
@@ -144,7 +153,11 @@ export default function App() {
           data = await p.load();
         }
         const pref = await p.loadProfile();
-        if (mounted) setDisplayName(pref.displayName.trim());
+        if (mounted) {
+          const nextName = pref.displayName.trim();
+          setDisplayName(nextName);
+          if (nextName) localStorage.setItem("zest-last-display-name", nextName);
+        }
         if (pref.retentionDays > 0) {
           const next = {
             ...data,
