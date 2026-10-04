@@ -179,7 +179,8 @@ export default function Settings() {
     }
 
     const bytes = await pdf.save();
-    downloadBlob(new Blob([bytes], { type: "application/pdf" }), "zest-snap-data.pdf");
+    const pdfBytes = Uint8Array.from(bytes);
+    downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), "zest-snap-data.pdf");
     setMessage("PDF export downloaded");
   }
 
