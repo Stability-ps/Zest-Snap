@@ -26,7 +26,7 @@ export default function Settings() {
     [usage, setUsage] = useState<Usage | null>(null),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"clear"|"delete"|null>(null),
+    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
     [accountEmail, setAccountEmail] = useState(""),
     [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email?: string | null }>({ connected: false });
@@ -58,6 +58,132 @@ export default function Settings() {
       setBusy(false);
     }
   }
+  async function collectExportData() {
+    if (!provider) throw new Error("Your data is still loading.");
+    return provider.mode === "cloud"
+      ? await provider.exportData()
+      : {
+          ...(await provider.exportData() as object),
+          planner: PlannerStore.guestItems(),
+          reminders: JSON.parse(localStorage.getItem("zest-reminders-v1") || "[]"),
+        };
+  }
+  function downloadBlob(blob: Blob, fileName: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  async function downloadJsonExport() {
+    const data = await collectExportData();
+    downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" }), "zest-snap-data.json");
+    setMessage("JSON export downloaded");
+  }
+  async function downloadPdfExport() {
+    const data = await collectExportData();
+    const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const pageSize: [number, number] = [595.28, 841.89];
+    const margin = 48;
+    const maxWidth = pageSize[0] - margin * 2;
+    let page = pdf.addPage(pageSize);
+    let y = pageSize[1] - margin;
+
+    const clean = (value: unknown) => String(value ?? "").replace(/[\u0000-\u001f]+/g, " ").trim();
+    const wrap = (text: string, size = 10) => {
+      const words = clean(text).split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let line = "";
+      for (const word of words) {
+        const next = line ? line + " " + word : word;
+        if (font.widthOfTextAtSize(next, size) <= maxWidth) line = next;
+        else {
+          if (line) lines.push(line);
+          line = word;
+        }
+      }
+      if (line) lines.push(line);
+      return lines.length ? lines : [""];
+    };
+    const ensure = (height: number) => {
+      if (y - height >= margin) return;
+      page = pdf.addPage(pageSize);
+      y = pageSize[1] - margin;
+    };
+    const heading = (text: string, size = 16) => {
+      ensure(size + 18);
+      page.drawText(clean(text), { x: margin, y, size, font: bold, color: rgb(0.04, 0.12, 0.23) });
+      y -= size + 10;
+    };
+    const line = (label: string, value: unknown) => {
+      const text = label + ": " + clean(value || "—");
+      const lines = wrap(text, 10);
+      ensure(lines.length * 14 + 4);
+      for (const row of lines) {
+        page.drawText(row, { x: margin, y, size: 10, font, color: rgb(0.22, 0.29, 0.36) });
+        y -= 14;
+      }
+      y -= 2;
+    };
+    const list = (title: string, items: unknown[]) => {
+      heading(title, 13);
+      if (!items.length) {
+        line("Status", "None");
+        return;
+      }
+      items.slice(0, 100).forEach((item, index) => {
+        const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
+        const primary = record.title || record.summary || record.fileName || record.name || ("Item " + (index + 1));
+        const secondary = record.dueDate || record.startDate || record.scannedAt || record.createdAt || "";
+        line(String(index + 1), secondary ? clean(primary) + " — " + clean(secondary) : primary);
+      });
+      if (items.length > 100) line("More", (items.length - 100) + " additional items are included in the JSON export");
+    };
+
+    const root = data && typeof data === "object" ? data as Record<string, unknown> : {};
+    const exportedProfile = root.profile && typeof root.profile === "object" ? root.profile as Record<string, unknown> : {};
+    const scans = Array.isArray(root.scans) ? root.scans : Array.isArray((root.data as Record<string, unknown> | undefined)?.scans) ? (root.data as Record<string, unknown>).scans as unknown[] : [];
+    const events = Array.isArray(root.events) ? root.events : Array.isArray((root.data as Record<string, unknown> | undefined)?.events) ? (root.data as Record<string, unknown>).events as unknown[] : [];
+    const planner = Array.isArray(root.planner) ? root.planner : [];
+    const reminders = Array.isArray(root.reminders) ? root.reminders : [];
+
+    heading("Zest Snap data export", 22);
+    line("Generated", new Intl.DateTimeFormat(profile.locale || undefined, { dateStyle: "long", timeStyle: "short" }).format(new Date()));
+    line("Display name", exportedProfile.displayName || profile.displayName);
+    line("Timezone", exportedProfile.timezone || profile.timezone);
+    line("Language & region", exportedProfile.locale || profile.locale);
+    line("Scan history retention", retentionLabel);
+    line("Monthly scans", usage ? usage.scans + " of " + usage.allowance : "Unavailable");
+    if ("credits" in root) line("Zest Credits", root.credits);
+    else if (root.data && typeof root.data === "object" && "credits" in (root.data as Record<string, unknown>)) line("Zest Credits", (root.data as Record<string, unknown>).credits);
+
+    y -= 8;
+    list("Scan history", scans);
+    list("Saved calendar events", events);
+    list("Planner", planner);
+    list("Reminders", reminders);
+
+    y -= 8;
+    heading("About this export", 13);
+    for (const row of wrap("This PDF is a readable summary of your Zest Snap data. For the complete machine-readable record, use the JSON export in Settings.", 10)) {
+      ensure(14);
+      page.drawText(row, { x: margin, y, size: 10, font, color: rgb(0.32, 0.39, 0.46) });
+      y -= 14;
+    }
+
+    const bytes = await pdf.save();
+    const pdfBytes = Uint8Array.from(bytes);
+    downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), "zest-snap-data.pdf");
+    setMessage("PDF export downloaded");
+  }
+
   async function saveProfile(next: Profile) {
     setProfile(next);
     if (!provider) return;
@@ -133,7 +259,7 @@ export default function Settings() {
 
         <h2 className="settingsSectionTitle">Privacy & data</h2>
         <section className="settingsGroup">
-          <button className="settingsRow" disabled={busy||!provider} onClick={()=>run(async()=>{const data=provider!.mode==="cloud"?await provider!.exportData():{...(await provider!.exportData() as object),planner:PlannerStore.guestItems(),reminders:JSON.parse(localStorage.getItem("zest-reminders-v1")||"[]")};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zest-snap-data.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage("Data export prepared");})}><span className="settingsIcon"><Download /></span><span className="settingsRowCopy"><b>Export my data</b><small>Download a copy of your Zest data</small></span><ChevronRight /></button>
+          <button className="settingsRow" disabled={busy||!provider} onClick={()=>setSheet("export")}><span className="settingsIcon"><Download /></span><span className="settingsRowCopy"><b>Export my data</b><small>Get a readable PDF or full data file</small></span><ChevronRight /></button>
           <button className="settingsRow dangerRow" disabled={busy||!provider} onClick={()=>setSheet("clear")}><span className="settingsIcon"><Trash2 /></span><span className="settingsRowCopy"><b>Clear device data</b><small>{provider?.mode==="cloud"?"Removes Zest data saved on this device only":"Removes everything Zest stored on this device"}</small></span><ChevronRight /></button>
           {provider?.mode==="cloud"&&<button className="settingsRow dangerRow" disabled={busy||!provider} onClick={()=>setSheet("delete")}><span className="settingsIcon"><Trash2 /></span><span className="settingsRowCopy"><b>Delete my account</b><small>Permanently deletes your account and cloud data</small></span><ChevronRight /></button>}
         </section>
@@ -149,11 +275,12 @@ export default function Settings() {
           <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
             <div className="settingsSheetTop">
               <div>
-                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="delete"?"Delete your account?":"Clear device data?"}</h2>
+                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="export"?"Export my data":sheet==="delete"?"Delete your account?":"Clear device data?"}</h2>
                 {sheet==="account"&&<p>You’re signed in. Manage this account without signing in again.</p>}
                 {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
                 {sheet==="calendar"&&<p>{googleCalendar.connected ? "Google Calendar is connected. Zest can add confirmed scan events directly — no file download or manual import." : "Connect Google Calendar once to add confirmed scan events directly. Until then, Zest opens a pre-filled Google Calendar event for you to save; it does not download a calendar file."}</p>}
+                {sheet==="export"&&<p>Choose a readable PDF for normal use, or JSON if you need the complete machine-readable copy of your Zest data.</p>}
                 {sheet==="clear"&&<p>{provider?.mode==="cloud"?"This removes cached scans, Planner, reminders and preferences from this device and signs you out. Your account and cloud data are not deleted.":"This permanently clears Zest scans, Planner, reminders and preferences stored on this device. It can’t be undone."}</p>}
                 {sheet==="delete"&&<p>This permanently deletes your Zest account, scans, Planner, reminders, rewards, feedback and notification subscriptions. Events you already added to another calendar app are not affected. This can’t be undone.</p>}
               </div>
@@ -194,6 +321,11 @@ export default function Settings() {
                 <a className="button" href="/app">Go to scans</a>
               </> : <a className="button" href="/api/calendar/google/connect">Connect Google Calendar</a>}
               <span>After a scan, confirm the detected event and tap <b>Calendar</b>. Connected accounts are added directly; otherwise Zest opens a ready-to-save Google Calendar event.</span>
+            </div>}
+            {sheet==="export"&&<div className="settingsSheetActions">
+              <button className="button" disabled={busy} onClick={()=>run(async()=>{await downloadPdfExport();setSheet(null);})}><Download size={18}/> Download readable PDF</button>
+              <button className="button alt" disabled={busy} onClick={()=>run(async()=>{await downloadJsonExport();setSheet(null);})}><Download size={18}/> Download full data (JSON)</button>
+              <span>PDF is easier to read. JSON is intended for backup, portability or technical use.</span>
             </div>}
             {sheet==="clear"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{if(provider?.mode==="cloud")await signOut();clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Clear device data</button></div>}
             {sheet==="delete"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{await provider!.deleteData();await signOut().catch(()=>undefined);clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Delete account</button></div>}

@@ -1331,9 +1331,6 @@ function TodoView({
             <p>{open.length ? `${open.length} still to do` : "You’re all caught up."}</p>
           </div>
         </div>
-        <button type="button" className="todoPlannerLink" onClick={onOpenPlanner}>
-          Planner <ChevronRight size={17} />
-        </button>
       </div>
 
       <div className="todoFilters" role="tablist" aria-label="To-do filters">

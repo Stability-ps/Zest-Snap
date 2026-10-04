@@ -2306,6 +2306,20 @@ dialog::backdrop {
 .settingsSheetActions{display:grid;gap:12px}.settingsSheetActions span{color:var(--muted);font-size:13px;line-height:1.45}.settingsSheetActions .button{text-align:center}
 .dangerActions{grid-template-columns:1fr 1fr}.dangerButton{background:#a43f36!important;border-color:#a43f36!important;color:#fff!important}
 @media(max-width:600px){.settingsOverlay{padding:0}.settingsSheet{width:100%;max-height:82dvh;border-radius:28px 28px 0 0;padding:20px 20px max(20px,env(safe-area-inset-bottom))}.settingsValue{max-width:145px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+@media(max-width:480px){
+  .settingsGroup .settingsRow{gap:10px}
+  .settingsRowCopy b{overflow-wrap:normal;word-break:normal;hyphens:none}
+  .settingsRowCopy small{overflow-wrap:break-word}
+  .settingsGroup .settingsRow:has(.settingsValue){display:grid;grid-template-columns:38px minmax(0,1fr) 18px;column-gap:10px;row-gap:2px;align-items:center}
+  .settingsGroup .settingsRow:has(.settingsValue) .settingsIcon{grid-column:1;grid-row:1/3}
+  .settingsGroup .settingsRow:has(.settingsValue) .settingsRowCopy{grid-column:2;grid-row:1}
+  .settingsGroup .settingsRow:has(.settingsValue) .settingsValue{grid-column:2;grid-row:2;max-width:100%;font-size:11.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .settingsGroup .settingsRow:has(.settingsValue)>svg{grid-column:3;grid-row:1/3}
+  .settingsGroup .editable{display:grid;grid-template-columns:38px minmax(0,1fr);column-gap:10px;row-gap:4px}
+  .settingsGroup .editable .settingsIcon{grid-column:1;grid-row:1/3}
+  .settingsGroup .editable .settingsRowCopy{grid-column:2;grid-row:1}
+  .settingsGroup .editable input{grid-column:2;grid-row:2;width:100%;padding:0;text-align:left;font-size:12px}
+}
 
 
 /* Storage status sheet */
@@ -2626,31 +2640,55 @@ button.rewardBalance{gap:10px}
 .monthGrid button:focus-visible,.plannerTabs button:focus-visible,.reminderFilters button:focus-visible{outline:3px solid #78d7c7;outline-offset:2px}
 
 
-/* To-do: a daily action surface in the former History nav slot. */
+/* To-do: focused daily action surface in the former History nav slot. */
 .todoNavGlyph{width:24px;height:24px;border:1.8px solid currentColor;border-radius:50%;display:grid;place-items:center;box-sizing:border-box}
 .todoNavGlyph svg{width:15px!important;height:15px!important;stroke-width:2.6}
-.todoView{display:grid;gap:16px;padding-bottom:24px}
-.todoHero{display:flex;align-items:center;justify-content:space-between;gap:14px}
-.todoHero>div{display:flex;align-items:center;gap:12px;min-width:0}
-.todoHeroIcon,.todoEmptyIcon{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#e8f8f4;color:#087866;flex:none}
+.todoView{display:grid;gap:15px;padding:6px 0 24px}
+.todoHero{display:flex;align-items:center;min-width:0}
+.todoHero>div{display:flex;align-items:center;gap:13px;min-width:0}
+.todoHeroIcon,.todoEmptyIcon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#e8f8f4;color:#087866;flex:none}
 .todoHeroIcon svg,.todoEmptyIcon svg{width:25px;height:25px;stroke-width:2.7}
-.todoHero h1{margin:0;font-size:32px;letter-spacing:-1px}.todoHero p{margin:3px 0 0;color:var(--muted)}
-.todoPlannerLink{min-height:42px;padding:0 13px;border:1px solid #dfe7ed;border-radius:999px;background:#fff;display:flex;align-items:center;gap:3px;font-weight:800;color:var(--ink)}
-.todoQuickAdd{display:grid;grid-template-columns:minmax(0,1fr) 145px auto;gap:8px;padding:12px;background:#fff;border:1px solid #e2e9ef;border-radius:18px}
-.todoQuickAdd input{min-width:0;border:1px solid #dce5ed;border-radius:12px;padding:11px 12px;font:inherit;background:#fff}
-.todoQuickAdd button{border:0;border-radius:12px;padding:0 17px;background:var(--blue);color:#fff;font-weight:800}
+.todoHero h1{margin:0;font-size:32px;line-height:1.05;letter-spacing:-1px}
+.todoHero p{margin:4px 0 0;color:var(--muted);line-height:1.35}
+.todoQuickAdd{display:grid;grid-template-columns:minmax(0,1fr) 145px auto;gap:8px;padding:12px;background:#fff;border:1px solid #e2e9ef;border-radius:18px;box-shadow:0 8px 24px rgba(11,31,59,.025)}
+.todoQuickAdd input{min-width:0;min-height:48px;border:1px solid #dce5ed;border-radius:12px;padding:11px 12px;font:inherit;background:#fff;color:var(--ink);box-sizing:border-box}
+.todoQuickAdd button{min-height:48px;border:0;border-radius:12px;padding:0 17px;background:var(--blue);color:#fff;font:inherit;font-weight:800}
 .todoQuickAdd button:disabled{opacity:.5}
-.todoGroup{display:grid;gap:8px}.todoGroupHead{display:flex;align-items:center;justify-content:space-between;padding:0 3px}.todoGroupHead h2{margin:0;font-size:14px}.todoGroupHead span{min-width:25px;height:25px;padding:0 7px;border-radius:999px;background:#edf3f6;display:grid;place-items:center;font-size:11px;font-weight:800;color:#617386}
+.todoGroup{display:grid;gap:8px;scroll-margin-top:18px}
+.todoGroupHead{display:flex;align-items:center;justify-content:space-between;padding:0 3px}
+.todoGroupHead h2{margin:0;font-size:14px}
+.todoGroupHead span{min-width:25px;height:25px;padding:0 7px;border-radius:999px;background:#edf3f6;display:grid;place-items:center;font-size:11px;font-weight:800;color:#617386}
 .todoGroup.urgent .todoGroupHead h2{color:#a43f36}.todoGroup.done{opacity:.76}
 .todoRows{overflow:hidden;border:1px solid #e3eaf0;border-radius:18px;background:#fff}
-.todoRow{min-height:68px;display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid #edf1f4}.todoRow:last-child{border-bottom:0}
+.todoRow{min-height:68px;display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid #edf1f4}
+.todoRow:last-child{border-bottom:0}
 .todoCheck{width:30px;height:30px;border:2px solid #9aaaba;border-radius:50%;background:#fff;display:grid;place-items:center;flex:none;color:#fff}
 .todoCheck svg{width:18px;height:18px;stroke-width:3}.todoRow.completed .todoCheck{background:var(--teal);border-color:var(--teal)}
-.todoMain{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:0;color:var(--ink)}.todoMain b,.todoMain small{display:block}.todoMain b{font-size:15px}.todoMain small{margin-top:4px;color:var(--muted);font-size:12px}.todoRow.completed .todoMain b{text-decoration:line-through;color:#718293}.todoRow>svg{color:#9aaaba;flex:none}
-.todoEmpty{display:grid;place-items:center;text-align:center;gap:8px;padding:34px 18px;background:#fff;border:1px dashed #d8e3ea;border-radius:18px}.todoEmpty b{font-size:17px}.todoEmpty p{margin:0;color:var(--muted);font-size:13px}
-@media(max-width:600px){.todoView{gap:13px}.todoHero h1{font-size:29px}.todoQuickAdd{grid-template-columns:1fr auto}.todoQuickAdd input[type=date]{grid-column:1/2}.todoQuickAdd button{grid-column:2;grid-row:1/3}.todoRow{padding:10px 12px}}
-
+.todoMain{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:0;color:var(--ink)}
+.todoMain b,.todoMain small{display:block}.todoMain b{font-size:15px}.todoMain small{margin-top:4px;color:var(--muted);font-size:12px}
+.todoRow.completed .todoMain b{text-decoration:line-through;color:#718293}.todoRow>svg{color:#9aaaba;flex:none}
+.todoEmpty{display:grid;place-items:center;text-align:center;gap:8px;padding:32px 18px;background:#fff;border:1px dashed #d8e3ea;border-radius:18px}
+.todoEmpty b{font-size:17px}.todoEmpty p{margin:0;max-width:320px;color:var(--muted);font-size:13px;line-height:1.45}
 .todoFilters{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:1px 2px}
-.todoFilters button{min-height:38px;padding:0 14px;border:1px solid #dfe7ed;border-radius:999px;background:#fff;color:#65788a;font:inherit;font-size:12px;font-weight:800;white-space:nowrap}
+.todoFilters::-webkit-scrollbar{display:none}
+.todoFilters button{min-height:40px;padding:0 14px;border:1px solid #dfe7ed;border-radius:999px;background:#fff;color:#65788a;font:inherit;font-size:12px;font-weight:800;white-space:nowrap}
 .todoFilters button.active{background:#0b1f3b;border-color:#0b1f3b;color:#fff}
-.todoGroup{scroll-margin-top:18px}
+
+@media(max-width:600px){
+  .todoView{gap:13px;padding-top:4px}
+  .todoHero h1{font-size:30px}
+  .todoHeroIcon{width:46px;height:46px}
+  .todoFilters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;overflow:visible;padding:0}
+  .todoFilters button{width:100%;padding:0 7px;font-size:11.5px}
+  .todoQuickAdd{grid-template-columns:minmax(0,1fr) 88px;gap:8px;padding:11px;border-radius:17px}
+  .todoQuickAdd input:first-child{grid-column:1;grid-row:1}
+  .todoQuickAdd button{grid-column:2;grid-row:1;padding:0 12px}
+  .todoQuickAdd input[type=date]{grid-column:1/-1;grid-row:2;width:100%}
+  .todoRow{padding:10px 12px}
+  .todoEmpty{padding:28px 16px}
+}
+@media(max-width:380px){
+  .todoFilters{gap:5px}
+  .todoFilters button{padding:0 5px;font-size:11px}
+  .todoHero h1{font-size:28px}
+}
