@@ -182,6 +182,25 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
   }, [signedIn, timezone, notice]);
 
   useEffect(() => {
+    if (signedIn && navigator.onLine) {
+      const key = "zest-google-planner-backfill-v1";
+      if (localStorage.getItem(key) !== "done") {
+        fetch("/api/calendar/google/events", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ timezone }),
+        }).then(async (response) => {
+          if (response.ok) {
+            const result = await response.json();
+            if (!result.failed) localStorage.setItem(key, "done");
+            refreshGoogle();
+          }
+        }).catch(() => undefined);
+      }
+    }
+  }, [signedIn, timezone, refreshGoogle]);
+
+  useEffect(() => {
     refreshGoogle();
     const onVisible = () => document.visibilityState === "visible" && refreshGoogle();
     const onOnline = () => refreshGoogle();

@@ -89,3 +89,48 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: code }, { status });
   }
 }
+
+
+/** One-time/idempotent backfill of existing active Zest Planner items into Google Calendar. */
+export async function PUT(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
+  let timezone = "UTC";
+  try { timezone = (await request.json())?.timezone || "UTC"; } catch {}
+  const { data: items, error } = await supabase
+    .from("planner_items")
+    .select("id,type,title,description,start_date,end_date,start_time,end_time,due_date,due_time,all_day,timezone,location,status,google_event_id")
+    .eq("user_id", user.id)
+    .neq("status", "cancelled")
+    .is("google_event_id", null);
+  if (error) return NextResponse.json({ error: "planner_load_failed" }, { status: 500 });
+
+  let synced = 0, skipped = 0, failed = 0;
+  for (const item of items || []) {
+    const startDate = item.start_date || item.due_date;
+    if (!startDate) { skipped++; continue; }
+    const event = {
+      title: item.title,
+      description: item.description || "",
+      startDate,
+      endDate: item.end_date || item.due_date || startDate,
+      startTime: item.start_time ? String(item.start_time).slice(0, 5) : item.due_time ? String(item.due_time).slice(0, 5) : "",
+      endTime: item.end_time ? String(item.end_time).slice(0, 5) : "",
+      allDay: Boolean(item.all_day) || !(item.start_time || item.due_time),
+      timezone: item.timezone || timezone,
+      location: item.location || "",
+      sourceText: "",
+    } as ExtractedEvent;
+    try {
+      await upsertPlannerGoogleEvent(user.id, item.id, event, item.timezone || timezone);
+      synced++;
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "";
+      if (code === "google_calendar_not_connected" || code === "google_calendar_reconnect_required")
+        return NextResponse.json({ error: code, synced, skipped, failed }, { status: code === "google_calendar_not_connected" ? 409 : 401 });
+      failed++;
+    }
+  }
+  return NextResponse.json({ ok: true, synced, skipped, failed });
+}
