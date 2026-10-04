@@ -13,24 +13,27 @@ Vercel build quota is limited: batch work on a branch, and make **one** intentio
   `20261003090500_feature_flags_policy_cleanup.sql` was applied by hand. **Do not run `supabase db push`
   against production** without first reconciling history with `supabase migration repair`.
 
-## Release order
+## Release order (status verified 2026-10-04)
 
-1. **Database** — apply `supabase/migrations/20261004120000_production_hardening.sql` to production
-   (SQL editor or MCP `apply_migration`, name `production_hardening`). It is additive and idempotent:
-   no balances, ledger rows or user data are rewritten. It is safe to run before the new frontend
-   (old clients keep working: `finish_scan`'s new argument has a default and `migrate-local` stays compatible).
-2. **Edge Function** — deploy `supabase/functions/deliver-reminders/index.ts` (slug `deliver-reminders`,
-   `verify_jwt=false`; the cron secret is checked inside).
-3. **Auth settings (dashboard)** — enable *Leaked password protection*; Site URL and redirect URLs for the
-   final origin (see Domain below).
-4. **Vercel env (Production)** — confirm present, without printing values:
-   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` (or
-   `SUPABASE_SERVICE_ROLE_KEY`), `OPENAI_API_KEY`. Optional: `OPENAI_MODEL`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
-   (must equal Vault `zest_vapid_public_key`; verified equal to the built-in default on 2026-10-04),
-   `NEXT_PUBLIC_SITE_URL` (canonical/OG origin, defaults to `https://zestsnap.app`).
+1. **Database — DONE.** Every object in `20261004120000_production_hardening.sql` exists in production and all 42
+   public/private function definitions are byte-identical to the repository chain (verified by hash). It was applied
+   outside migration history, so it is *not* listed in `supabase_migrations`. **Do not re-run it.** (It is idempotent,
+   but there is no reason to.) Before ever using `supabase db push`, record it with
+   `supabase migration repair --status applied 20261004120000`.
+2. **Edge Function — live v2 works.** v2 is the original plus the `failure_count` select fix. The repository copy
+   includes that fix plus relation-shape handling, a reminder deep link and structured logs. Deploying it is optional
+   and can happen after the frontend release. Never deploy anything older than the repository file.
+3. **Auth** — Leaked password protection: **DEFERRED — requires Supabase Pro.** On the free plan, set *Minimum password
+   length = 8* (Authentication → Providers → Email) so the server matches the app, which enforces 8 on sign-up and reset.
+4. **Vercel env (Production)** — required: `OPENAI_API_KEY` (verified present via a live probe), `SUPABASE_SECRET_KEY`
+   or `SUPABASE_SERVICE_ROLE_KEY` (server-only; required for every AI reservation, guest trial, rewards and account
+   deletion). Recommended: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (the code falls back to the
+   Zest project's public values). Optional: `NEXT_PUBLIC_SITE_URL` (canonical/OG, defaults to `https://zestsnap.app`),
+   `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (default equals Vault `zest_vapid_public_key`), `OPENAI_MODEL`, cost-rate vars,
+   `UPSTASH_*` (only used if cloud is disabled), `AI_SCANNING_ENABLED=false` (kill switch).
 5. **Gates** — `npm run lint && npm run typecheck && npm test && npm run build`, then
    `npx next start -p 3100 & npx playwright test`.
-6. **One deployment** — merge the release branch to `main` once. Confirm the deployed SHA in Vercel matches.
+6. **One deployment** — fast-forward `main` to the release branch (no preview build). Confirm the deployed SHA.
 
 ## Product limits (admin-editable, `public.app_limits`)
 
@@ -79,7 +82,9 @@ Automated tests cannot cover these. Use a real Android/Samsung phone with the PW
 - [ ] Settings: export data (signed in), Clear device data (cloud data intact after signing back in), Delete account (test account).
 - [ ] Production logs: no unexpected errors in Vercel runtime logs or the `deliver-reminders` function logs.
 
-## Domain (zestsnap.app)
+## Domain (zestsnap.app) — NOT CONFIGURED
+
+On 2026-10-04 `zestsnap.app` and `www.zestsnap.app` have no DNS records. The app runs on `https://zest-snap.vercel.app`.
 
 Push subscriptions are origin-bound: after moving to the final domain every device must re-enable notifications.
 Before announcing the domain: attach `zestsnap.app` (+ `www` redirect) in Vercel; set Supabase Auth Site URL to
