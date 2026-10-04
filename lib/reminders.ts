@@ -99,6 +99,17 @@ export async function createReminder(item: PlannerItem, draft: ReminderDraft, la
     p_label: label || null,
   });
   if (error) throw new Error(friendly(error.message, "Reminder could not be scheduled. Try again."));
+  // Mirror Zest reminder timing into the linked Google event. Zest push remains authoritative.
+  try {
+    const response = await fetch("/api/calendar/google/events", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plannerItemId: item.id, event: { ...item, startDate: item.startDate || item.dueDate, startTime: item.startTime || item.dueTime, endDate: item.endDate || item.dueDate || item.startDate, allDay: item.allDay || !(item.startTime || item.dueTime), sourceText: "" }, timezone: item.timezone, reminders: offset == null ? [] : [offset] }),
+    });
+    if (!response.ok && response.status !== 409) throw new Error("google_sync_failed");
+  } catch {
+    // The Zest reminder is already safely scheduled; Google sync can retry on the next item edit.
+  }
   window.dispatchEvent(new Event("zest-reminders-changed"));
   return {
     reminder: { id: String(data), plannerItemId: item.id, scheduledAt, status: "pending" as const, offsetMinutes: offset, label },

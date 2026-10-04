@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ExtractedEvent } from "@/lib/extraction-types";
 import { createClient } from "@/lib/supabase/server";
-import { createGoogleCalendarEvent, listGoogleCalendarEvents } from "@/lib/google-calendar-server";
+import { createGoogleCalendarEvent, listGoogleCalendarEvents, upsertPlannerGoogleEvent, deletePlannerGoogleEvent } from "@/lib/google-calendar-server";
 import { validateEvent } from "@/lib/events";
 
 export async function POST(request: NextRequest) {
@@ -54,5 +54,38 @@ export async function GET(request: NextRequest) {
     if (code === "google_calendar_not_connected") return NextResponse.json({ error: code, events: [] }, { status: 409 });
     if (code === "google_calendar_reconnect_required") return NextResponse.json({ error: code }, { status: 401 });
     return NextResponse.json({ error: code }, { status: 502 });
+  }
+}
+
+
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
+  try {
+    const body = await request.json();
+    if (!body?.plannerItemId || !body?.event) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+    const saved = await upsertPlannerGoogleEvent(user.id, String(body.plannerItemId), body.event, body.timezone || "UTC", Array.isArray(body.reminders) ? body.reminders : undefined);
+    return NextResponse.json({ ok: true, eventId: saved.id, htmlLink: saved.htmlLink || null });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "google_calendar_sync_failed";
+    const status = code === "google_calendar_not_connected" ? 409 : code === "google_calendar_reconnect_required" ? 401 : 502;
+    return NextResponse.json({ error: code }, { status });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
+  const plannerItemId = request.nextUrl.searchParams.get("plannerItemId");
+  if (!plannerItemId) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+  try {
+    await deletePlannerGoogleEvent(user.id, plannerItemId);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "google_calendar_sync_failed";
+    const status = code === "google_calendar_not_connected" ? 409 : code === "google_calendar_reconnect_required" ? 401 : 502;
+    return NextResponse.json({ error: code }, { status });
   }
 }
