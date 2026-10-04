@@ -2766,3 +2766,20 @@ button.rewardBalance{gap:10px}
 .proBenefitList{display:grid;gap:10px;padding:2px 0 6px}
 .proBenefitList>div{display:flex;align-items:flex-start;gap:9px;color:#40566b;font-size:14px;line-height:1.4}
 .proBenefitList svg{width:18px;height:18px;flex:none;margin-top:1px;color:#0a9c84}
+
+
+/* Android Planner time picker: keep the native Set/Cancel actions inside the dialog.
+   Chromium sizes the picker from the input width, so a narrow grid column can clip "Set". */
+@media (max-width:600px){
+  .plannerEditorV2 .dateTimeRow{
+    grid-template-columns:minmax(0,1fr);
+  }
+  .plannerEditorV2 .timeField input[type="time"]{
+    width:100%;
+    min-width:0;
+  }
+  .plannerEditorV2 .dateTimeRow input[type="date"],
+  .plannerEditorV2 .dateTimeRow input[type="time"]{
+    font-size:16px;
+  }
+}
