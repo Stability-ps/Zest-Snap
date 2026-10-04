@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search } from "lucide-react";
+import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search, History } from "lucide-react";
 import {
   getDataProvider,
   LocalDataProvider,
@@ -28,7 +28,8 @@ export default function Settings() {
     [busy, setBusy] = useState(false),
     [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"clear"|"delete"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
-    [accountEmail, setAccountEmail] = useState("");
+    [accountEmail, setAccountEmail] = useState(""),
+    [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email?: string | null }>({ connected: false });
   useEffect(() => {
     getDataProvider()
       .then(async (p) => {
@@ -38,6 +39,10 @@ export default function Settings() {
         if (p.mode === "cloud" && isSupabaseConfigured()) {
           const { data } = await createClient().auth.getUser();
           setAccountEmail(data.user?.email || "");
+          fetch("/api/calendar/google/status", { cache: "no-store" })
+            .then(async (r) => (r.ok ? r.json() : { connected: false }))
+            .then((v) => setGoogleCalendar(v))
+            .catch(() => undefined);
         }
       })
       .catch(() => setMessage("Account unavailable. Reconnect and try again."));
@@ -115,7 +120,8 @@ export default function Settings() {
 
         <h2 className="settingsSectionTitle">Calendar & history</h2>
         <section className="settingsGroup">
-          <button type="button" className="settingsRow" onClick={()=>setSheet("calendar")}><span className="settingsIcon"><CalendarDays /></span><span className="settingsRowCopy"><b>Device calendar</b><small>Add selected Zest events to your calendar</small></span><ChevronRight /></button>
+          <a className="settingsRow" href="/app?view=history"><span className="settingsIcon"><History /></span><span className="settingsRowCopy"><b>History</b><small>View and search your previous scans</small></span><ChevronRight /></a>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("calendar")}><span className="settingsIcon"><CalendarDays /></span><span className="settingsRowCopy"><b>Calendar</b><small>{googleCalendar.connected ? `Google Calendar connected${googleCalendar.email ? ` · ${googleCalendar.email}` : ""}` : "Connect Google Calendar for one-tap adding"}</small></span><ChevronRight /></button>
           <button type="button" className="settingsRow" onClick={()=>setSheet("retention")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history</b><small>How long scan history is kept</small></span><span className="settingsValue">{retentionLabel}</span><ChevronRight /></button>
         </section>
 
@@ -138,16 +144,16 @@ export default function Settings() {
           <a className="settingsRow" href="/privacy"><span className="settingsRowCopy"><b>Privacy</b></span><ChevronRight /></a>
           <a className="settingsRow" href="/terms"><span className="settingsRowCopy"><b>Terms</b></span><ChevronRight /></a>
         </section>
-        <p className="settingsFootnote">Original uploads are not retained by Zest after processing. Calendar files you export remain under your control.</p>
+        <p className="settingsFootnote">Original uploads are not retained by Zest after processing. Calendar access stays under your control and can be disconnected here.</p>
         {sheet && <div className="settingsOverlay" onClick={()=>setSheet(null)}>
           <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
             <div className="settingsSheetTop">
               <div>
-                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Device calendar":sheet==="delete"?"Delete your account?":"Clear device data?"}</h2>
+                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="delete"?"Delete your account?":"Clear device data?"}</h2>
                 {sheet==="account"&&<p>You’re signed in. Manage this account without signing in again.</p>}
                 {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
-                {sheet==="calendar"&&<p>Zest adds events to your phone or computer calendar with a standard calendar file (.ics). On Android it opens in Google Calendar or Samsung Calendar; on iPhone in Apple Calendar; on desktop in Outlook, Apple or Google Calendar. Zest doesn’t read or change your existing calendar, and events already added are skipped.</p>}
+                {sheet==="calendar"&&<p>{googleCalendar.connected ? "Google Calendar is connected. Zest can add confirmed scan events directly — no file download or manual import." : "Connect Google Calendar once to add confirmed scan events directly. Until then, Zest opens a pre-filled Google Calendar event for you to save; it does not download a calendar file."}</p>}
                 {sheet==="clear"&&<p>{provider?.mode==="cloud"?"This removes cached scans, Planner, reminders and preferences from this device and signs you out. Your account and cloud data are not deleted.":"This permanently clears Zest scans, Planner, reminders and preferences stored on this device. It can’t be undone."}</p>}
                 {sheet==="delete"&&<p>This permanently deletes your Zest account, scans, Planner, reminders, rewards, feedback and notification subscriptions. Events you already added to another calendar app are not affected. This can’t be undone.</p>}
               </div>
@@ -182,7 +188,13 @@ export default function Settings() {
             </>}
             {sheet==="region"&&<div className="settingsChoiceList">{localeOptions.map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,locale:value});setSheet(null);}}><span>{label}</span>{profile.locale===value&&<Check/>}</button>)}</div>}
             {sheet==="retention"&&<div className="settingsChoiceList">{([[30,"30 days"],[90,"90 days"],[365,"1 year"],[0,"Until deleted"]] as const).map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,retentionDays:value});setSheet(null);}}><span>{label}</span>{profile.retentionDays===value&&<Check/>}</button>)}</div>}
-            {sheet==="calendar"&&<div className="settingsSheetActions"><a className="button" href="/app">Go to scans</a><span>After a scan, select events and tap <b>Calendar</b>, or use <b>Add to device calendar</b> on a single event.</span></div>}
+            {sheet==="calendar"&&<div className="settingsSheetActions">
+              {provider?.mode!=="cloud" ? <a className="button" href="/login?next=%2Fsettings">Sign in to connect Google Calendar</a> : googleCalendar.connected ? <>
+                <button className="button alt" disabled={busy} onClick={()=>run(async()=>{const r=await fetch("/api/calendar/google/disconnect",{method:"POST"});if(!r.ok)throw new Error("Could not disconnect Google Calendar.");setGoogleCalendar({connected:false});setMessage("Google Calendar disconnected");})}>Disconnect Google Calendar</button>
+                <a className="button" href="/app">Go to scans</a>
+              </> : <a className="button" href="/api/calendar/google/connect">Connect Google Calendar</a>}
+              <span>After a scan, confirm the detected event and tap <b>Calendar</b>. Connected accounts are added directly; otherwise Zest opens a ready-to-save Google Calendar event.</span>
+            </div>}
             {sheet==="clear"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{if(provider?.mode==="cloud")await signOut();clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Clear device data</button></div>}
             {sheet==="delete"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{await provider!.deleteData();await signOut().catch(()=>undefined);clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Delete account</button></div>}
           </section>

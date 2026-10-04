@@ -43,12 +43,12 @@ import {
   type LocalState,
 } from "@/lib/data";
 import { eventFingerprint, validateEvent } from "@/lib/events";
-import { generateIcs } from "@/lib/ics";
+import { googleCalendarUrl } from "@/lib/google-calendar";
 import PlannerView, { type PlannerRequest } from "./planner-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
-import { plannerFingerprint, plannerReferenceTime, plannerTodayItems, type PlannerItem } from "@/lib/planner";
+import { plannerFingerprint, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, type PlannerItem } from "@/lib/planner";
 import {
   STARTUP_STATE_KEY,
   activeUser,
@@ -62,7 +62,7 @@ import {
 } from "@/lib/session";
 import { syncPushSubscription } from "@/lib/reminders";
 
-type View = "home" | "review" | "history" | "calendar" | "rewards";
+type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards";
 type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
 const deviceTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const REFRESH_INTERVAL = 30_000;
@@ -73,7 +73,7 @@ function viewFromUrl(search: string): { view: View; tab?: PlannerRequest["tab"] 
   const tab = q.get("tab");
   if (v === "calendar" || v === "planner")
     return { view: "calendar", tab: tab === "reminders" || tab === "upcoming" || tab === "calendar" || tab === "today" ? tab : undefined };
-  if (v === "rewards" || v === "history") return { view: v };
+  if (v === "rewards" || v === "history" || v === "todo") return { view: v };
   return { view: "home" };
 }
 function greeting(timezone: string) {
@@ -592,46 +592,53 @@ export default function App() {
     }
   }
 
-  async function downloadIcs(events: ExtractedEvent | ExtractedEvent[]) {
-    const items = Array.isArray(events) ? events : [events];
-    if (!items.length) return;
-    const newItems = [...new Map(items.filter((e) => !store.events.some((x) => eventKey(x) === eventKey(e))).map((e) => [eventFingerprint(e), e])).values()];
-    const duplicateCount = items.length - newItems.length;
-    if (!newItems.length) {
-      setSuccess("These events were already added to your device calendar.");
+  async function addToCalendar(event: ExtractedEvent) {
+    if (!event.startDate) {
+      showError("Check the date before adding this event to your calendar.");
       return;
     }
     setError("");
     try {
-      let blob: Blob;
+      let addedDirectly = false;
       if (mode === "cloud") {
-        const res = await fetch("/api/calendar/ics", {
+        const response = await fetch("/api/calendar/google/events", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ events: newItems }),
-          signal: AbortSignal.timeout(15000),
+          body: JSON.stringify({ event, timezone }),
         });
-        if (!res.ok) throw new Error("Calendar export failed");
-        blob = await res.blob();
-      } else blob = new Blob([await generateIcs(newItems)], { type: "text/calendar;charset=utf-8" });
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = newItems.length > 1 ? "zest-snap-events.ics" : "zest-snap-event.ics";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 1000);
-      const now = new Date().toISOString();
-      const added = newItems.map((event) => ({ ...event, id: crypto.randomUUID(), addedAt: now, exportedAt: now }));
-      // Local mode keeps the calendar flag for progress only; credits are awarded by the server.
-      await persist({ ...store, events: [...store.events, ...added], firstCalendarRewarded: true });
-      const parts = [newItems.length === 1 ? "1 event prepared for your calendar." : `${newItems.length} events prepared for your calendar.`];
-      if (duplicateCount) parts.push(`${duplicateCount} already added ${duplicateCount === 1 ? "was" : "were"} skipped.`);
-      parts.push("Open the downloaded file to add it to your phone’s calendar.");
-      setSuccess(parts.join(" "));
-    } catch {
-      showError("Check dates, start/end times and timezone, then retry. Ambiguous clock-change times need correction.");
+        if (response.ok) {
+          addedDirectly = true;
+        } else {
+          const body = await response.json().catch(() => ({}));
+          if (body?.error === "google_calendar_reconnect_required") {
+            showError("Reconnect Google Calendar in Settings, then try again.");
+            return;
+          }
+          if (body?.error !== "google_calendar_not_connected" && response.status !== 409) {
+            throw new Error("Could not add this event to Google Calendar.");
+          }
+        }
+      }
+
+      if (!addedDirectly) {
+        // Guests and users who have not connected Google Calendar get a pre-filled Google
+        // Calendar screen. This is the fallback only; it never downloads an .ics file.
+        const url = googleCalendarUrl(event, timezone);
+        const opened = window.open(url, "_blank", "noopener,noreferrer");
+        if (!opened) window.location.assign(url);
+      }
+
+      if (!store.events.some((x) => eventKey(x) === eventKey(event))) {
+        const now = new Date().toISOString();
+        await persist({
+          ...store,
+          events: [...store.events, { ...event, id: crypto.randomUUID(), addedAt: now, exportedAt: now }],
+          firstCalendarRewarded: true,
+        });
+      }
+      setSuccess(addedDirectly ? "Added to Google Calendar." : "Google Calendar opened with the event ready to save.");
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not add this event to your calendar.");
     }
   }
 
@@ -884,11 +891,11 @@ export default function App() {
                         </button>
                         <button
                           className="button alt small"
-                          onClick={() => downloadIcs(event)}
+                          onClick={() => addToCalendar(event)}
                           disabled={duplicate}
                         >
-                          <Download size={16} />
-                          {duplicate ? "In your agenda" : "Add to device calendar"}
+                          <CalendarDays size={16} />
+                          {duplicate ? "In your agenda" : "Add to calendar"}
                         </button>
                       </div>
                     </div>
@@ -903,13 +910,6 @@ export default function App() {
                 <span>Duplicates are skipped automatically</span>
               </div>
               <div className="stickyActions">
-                <button
-                  className="button alt"
-                  disabled={!selected.length}
-                  onClick={() => downloadIcs(selected.map((i) => result!.events[i]).filter(Boolean))}
-                >
-                  <Download size={16} /> Calendar
-                </button>
                 <button
                   className="button"
                   disabled={!selected.length}
@@ -961,6 +961,22 @@ export default function App() {
               onNotice={(kind, message) => (kind === "success" ? (setError(""), setSuccess(message)) : showError(message))}
             />
           </div>
+        )}
+        {view === "todo" && identity && (
+          <TodoView
+            identity={identity}
+            timezone={timezone}
+            locale={locale}
+            items={plannerItems}
+            onOpenPlanner={() => openView("calendar", { tab: "today" })}
+            onNotice={(kind, message) => {
+              if (kind === "success") {
+                setError("");
+                setSuccess(message);
+                window.setTimeout(() => setSuccess(""), 1800);
+              } else showError(message);
+            }}
+          />
         )}
         {view === "rewards" && (
           <RewardsView
@@ -1160,7 +1176,7 @@ export default function App() {
       <nav className="bottomNav" aria-label="Main">
         <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
         <NavButton active={view === "calendar"} label="Planner" onClick={() => openView("calendar")} icon={<CalendarDays />} />
-        <NavButton active={view === "history"} label="History" onClick={() => openView("history")} icon={<Clock />} />
+        <NavButton active={view === "todo"} label="To-do" onClick={() => openView("todo")} icon={<span className="todoNavGlyph"><Check /></span>} />
         <NavButton active={view === "rewards"} label="Rewards" onClick={() => openView("rewards")} icon={<Gift />} />
       </nav>
     </main>
@@ -1183,6 +1199,175 @@ function NavButton({
       {icon}
       <small>{label}</small>
     </button>
+  );
+}
+
+function TodoView({
+  identity,
+  timezone,
+  locale,
+  items,
+  onOpenPlanner,
+  onNotice,
+}: {
+  identity: string;
+  timezone: string;
+  locale: string;
+  items: PlannerItem[];
+  onOpenPlanner: () => void;
+  onNotice: (kind: "success" | "error", message: string) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState(() => todayDate(timezone));
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const todos = useMemo(
+    () => plannerSort(items.filter((x) => (x.type === "task" || x.type === "deadline") && x.status !== "cancelled")),
+    [items],
+  );
+  const open = todos.filter((x) => x.status !== "completed");
+  const completed = todos.filter((x) => x.status === "completed");
+  const overdue = open.filter((x) => plannerStatus(x, undefined, timezone) === "overdue");
+  const today = open.filter((x) => plannerStatus(x, undefined, timezone) === "today");
+  const upcoming = open.filter((x) => !overdue.includes(x) && !today.includes(x));
+
+  const formatDate = (date: string) => {
+    if (!date) return "No date";
+    try {
+      return new Intl.DateTimeFormat(locale || undefined, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(date + "T12:00:00Z"));
+    } catch {
+      return date;
+    }
+  };
+
+  const addTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = title.trim();
+    if (!clean || adding) return;
+    setAdding(true);
+    try {
+      const now = new Date().toISOString();
+      const item: PlannerItem = {
+        id: crypto.randomUUID(),
+        type: "task",
+        title: clean,
+        description: "",
+        startDate: dueDate,
+        endDate: dueDate,
+        startTime: "",
+        endTime: "",
+        dueDate,
+        dueTime: "",
+        allDay: true,
+        timezone,
+        location: "",
+        status: "open",
+        source: "manual",
+        createdAt: now,
+        updatedAt: now,
+      };
+      const store = await sharedPlannerStore(identity);
+      await store.upsert(item);
+      setTitle("");
+      onNotice("success", "To-do added.");
+    } catch (e) {
+      onNotice("error", e instanceof Error ? e.message : "Could not add this to-do.");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const toggle = async (item: PlannerItem) => {
+    if (busyId) return;
+    setBusyId(item.id);
+    try {
+      const store = await sharedPlannerStore(identity);
+      await store.setCompleted(item.id, item.status !== "completed");
+    } catch (e) {
+      onNotice("error", e instanceof Error ? e.message : "Could not update this to-do.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const group = (label: string, rows: PlannerItem[], tone?: string) =>
+    rows.length ? (
+      <section id={"todo-" + label.toLowerCase()} className={"todoGroup " + (tone || "")}>
+        <div className="todoGroupHead">
+          <h2>{label}</h2>
+          <span>{rows.length}</span>
+        </div>
+        <div className="todoRows">
+          {rows.map((item) => (
+            <article className={"todoRow " + (item.status === "completed" ? "completed" : "")} key={item.id}>
+              <button
+                type="button"
+                className="todoCheck"
+                aria-label={item.status === "completed" ? "Mark as not done" : "Mark as done"}
+                aria-pressed={item.status === "completed"}
+                disabled={busyId === item.id}
+                onClick={() => toggle(item)}
+              >
+                {item.status === "completed" && <Check />}
+              </button>
+              <button type="button" className="todoMain" onClick={onOpenPlanner}>
+                <b>{item.title}</b>
+                <small>{item.type === "deadline" ? "Deadline" : "To-do"} · {formatDate(item.dueDate || item.startDate)}</small>
+              </button>
+              <ChevronRight size={18} />
+            </article>
+          ))}
+        </div>
+      </section>
+    ) : null;
+
+  return (
+    <section className="todoView">
+      <div className="todoHero">
+        <div>
+          <span className="todoHeroIcon"><Check /></span>
+          <div>
+            <h1>To-do</h1>
+            <p>{open.length ? `${open.length} still to do` : "You’re all caught up."}</p>
+          </div>
+        </div>
+        <button type="button" className="todoPlannerLink" onClick={onOpenPlanner}>
+          Planner <ChevronRight size={17} />
+        </button>
+      </div>
+
+      <div className="todoFilters" role="tablist" aria-label="To-do filters">
+        <button type="button" className="active" role="tab" aria-selected="true">All</button>
+        <button type="button" role="tab" onClick={() => document.getElementById("todo-today")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Today</button>
+        <button type="button" role="tab" onClick={() => document.getElementById("todo-upcoming")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Upcoming</button>
+        <button type="button" role="tab" onClick={() => document.getElementById("todo-completed")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Completed</button>
+      </div>
+
+      <form className="todoQuickAdd" onSubmit={addTodo}>
+        <input
+          aria-label="New to-do"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Add a to-do"
+          maxLength={500}
+        />
+        <input aria-label="Due date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        <button type="submit" disabled={!title.trim() || adding}>{adding ? "Adding…" : "Add"}</button>
+      </form>
+
+      {!open.length && !completed.length && (
+        <div className="todoEmpty">
+          <span className="todoEmptyIcon"><Check /></span>
+          <b>Nothing on your list yet</b>
+          <p>Add something above, or save a task or deadline from a scan.</p>
+        </div>
+      )}
+
+      {group("Overdue", overdue, "urgent")}
+      {group("Today", today)}
+      {group("Upcoming", upcoming)}
+      {group("Completed", completed.slice(0, 8), "done")}
+    </section>
   );
 }
 
