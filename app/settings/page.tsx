@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, Download, Trash2, X, Check, Search } from "lucide-react";
+import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search } from "lucide-react";
 import {
   getDataProvider,
   migrateLocal,
@@ -20,8 +20,9 @@ export default function Settings() {
     [flags, setFlags] = useState<Record<string, boolean>>({}),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [sheet, setSheet] = useState<"storage"|"timezone"|"region"|"retention"|"calendar"|"clear"|null>(null),
-    [sheetSearch, setSheetSearch] = useState("");
+    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"clear"|null>(null),
+    [sheetSearch, setSheetSearch] = useState(""),
+    [accountEmail, setAccountEmail] = useState("");
   useEffect(() => {
     getDataProvider()
       .then(async (p) => {
@@ -29,6 +30,10 @@ export default function Settings() {
         setProfile(await p.loadProfile());
         setUsage(await p.loadUsage());
         setFlags(await p.loadFeatureFlags());
+        if (p.mode === "cloud" && isSupabaseConfigured()) {
+          const { data } = await createClient().auth.getUser();
+          setAccountEmail(data.user?.email || "");
+        }
       })
       .catch(() => setMessage("Account unavailable. Reconnect and try again."));
   }, []);
@@ -98,7 +103,7 @@ export default function Settings() {
         <h2 className="settingsSectionTitle">Account</h2>
         <section className="settingsGroup">
           <button type="button" className="settingsRow" onClick={()=>setSheet("storage")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Storage</b><small>{provider?.mode === "cloud" ? "Synced to your account" : "On this device"}</small></span><ChevronRight /></button>
-          <a className="settingsRow" href="/login"><span className="settingsIcon"><LogIn /></span><span className="settingsRowCopy"><b>{provider?.mode === "cloud" ? "Account" : "Sign in"}</b><small>{provider?.mode === "cloud" ? profile.displayName || "Manage your account" : "Sync your planner and history"}</small></span><ChevronRight /></a>
+          {provider?.mode === "cloud" ? <button type="button" className="settingsRow" onClick={()=>setSheet("account")}><span className="settingsIcon"><UserRound /></span><span className="settingsRowCopy"><b>Account</b><small>{profile.displayName || accountEmail || "Manage your account"}</small></span><ChevronRight /></button> : <a className="settingsRow" href="/login"><span className="settingsIcon"><LogIn /></span><span className="settingsRowCopy"><b>Sign in</b><small>Sync your planner and history</small></span><ChevronRight /></a>}
         </section>
 
         <h2 className="settingsSectionTitle">Preferences</h2>
@@ -138,7 +143,8 @@ export default function Settings() {
           <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
             <div className="settingsSheetTop">
               <div>
-                <h2>{sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Device calendar":"Clear Zest data?"}</h2>
+                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Device calendar":"Clear Zest data?"}</h2>
+                {sheet==="account"&&<p>You’re signed in. Manage this account without signing in again.</p>}
                 {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
                 {sheet==="calendar"&&<p>Zest exports calendar events using standard ICS files supported by Apple Calendar, Google Calendar and Outlook.</p>}
@@ -146,6 +152,14 @@ export default function Settings() {
               </div>
               <button className="iconButton" onClick={()=>setSheet(null)} aria-label="Close"><X/></button>
             </div>
+            {sheet==="account"&&<div className="settingsStorageDetails">
+              <div className="storageFacts">
+                <div><span>Name</span><b>{profile.displayName || "Not set"}</b></div>
+                <div><span>Email</span><b>{accountEmail || "Signed-in account"}</b></div>
+                <div><span>Status</span><b>Signed in</b></div>
+              </div>
+              <button className="button alt" disabled={busy} onClick={()=>run(async()=>{const supabase=createClient();await supabase.auth.signOut();clearCloudCaches(localStorage);localStorage.removeItem("zest-last-display-name");window.location.assign(new URL("/login",window.location.origin).href);})}><LogOut size={18}/> Sign out</button>
+            </div>}
             {sheet==="storage"&&<div className="settingsStorageDetails">
               <div className="storageStatus">
                 <span className="storageStatusIcon"><Database /></span>
