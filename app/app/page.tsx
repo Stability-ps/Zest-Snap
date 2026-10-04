@@ -75,6 +75,8 @@ export default function App() {
   const [installed, setInstalled] = useState(false);
   const [plannerVisited, setPlannerVisited] = useState(false);
 
+  const STARTUP_STATE_KEY = "zest-last-app-state-v1";
+
   function deviceId() {
     const key="zest-device-id";
     let id=localStorage.getItem(key);
@@ -175,6 +177,22 @@ export default function App() {
   useEffect(() => {
     const lastName = localStorage.getItem("zest-last-display-name")?.trim();
     if (lastName) setDisplayName(lastName);
+    try {
+      const raw = localStorage.getItem(STARTUP_STATE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw) as { state?: LocalState; displayName?: string; mode?: string };
+        if (cached.state) {
+          setStore(cached.state);
+          setReady(true);
+        }
+        if (cached.displayName?.trim()) setDisplayName(cached.displayName.trim());
+        if (cached.mode) setMode(cached.mode);
+      }
+      const planner = PlannerStore.loadLastUsed();
+      if (planner.length) setHomePlannerItems(planner);
+    } catch {
+      // A damaged startup snapshot should never block the live provider.
+    }
   }, []);
 
   useEffect(() => {
@@ -233,6 +251,9 @@ export default function App() {
           setStore(data);
           setMode(p.mode);
           setReady(true);
+          try {
+            localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({ state: data, displayName: pref.displayName.trim(), mode: p.mode }));
+          } catch {}
         }
       })
       .catch(() =>
@@ -272,6 +293,9 @@ export default function App() {
     await provider.current.save(next, store);
     if (provider.current.mode === "cloud") next = await provider.current.load();
     setStore(next);
+    try {
+      localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({ state: next, displayName, mode: provider.current.mode }));
+    } catch {}
   }
 
   const highConfidence = useMemo(
