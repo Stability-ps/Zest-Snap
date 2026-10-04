@@ -50,7 +50,7 @@ export class LocalDataProvider implements DataProvider {
       scans: (await this.load()).scans.filter((s) =>
         s.scannedAt.startsWith(new Date().toISOString().slice(0, 7)),
       ).length,
-      allowance: 10,
+      allowance: 3,
     };
   }
   async loadRewardLedger() {
