@@ -43,7 +43,7 @@ import {
   type LocalState,
 } from "@/lib/data";
 import { eventFingerprint, validateEvent } from "@/lib/events";
-import { generateIcs } from "@/lib/ics";
+import { googleCalendarUrl } from "@/lib/google-calendar";
 import PlannerView, { type PlannerRequest } from "./planner-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
@@ -592,46 +592,29 @@ export default function App() {
     }
   }
 
-  async function downloadIcs(events: ExtractedEvent | ExtractedEvent[]) {
-    const items = Array.isArray(events) ? events : [events];
-    if (!items.length) return;
-    const newItems = [...new Map(items.filter((e) => !store.events.some((x) => eventKey(x) === eventKey(e))).map((e) => [eventFingerprint(e), e])).values()];
-    const duplicateCount = items.length - newItems.length;
-    if (!newItems.length) {
-      setSuccess("These events were already added to your device calendar.");
+  async function addToCalendar(event: ExtractedEvent) {
+    if (!event.startDate) {
+      showError("Check the date before adding this event to your calendar.");
       return;
     }
     setError("");
     try {
-      let blob: Blob;
-      if (mode === "cloud") {
-        const res = await fetch("/api/calendar/ics", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ events: newItems }),
-          signal: AbortSignal.timeout(15000),
+      const url = googleCalendarUrl(event, timezone);
+      // Open synchronously from the user's tap so mobile browsers do not treat it as a popup.
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) window.location.assign(url);
+
+      if (!store.events.some((x) => eventKey(x) === eventKey(event))) {
+        const now = new Date().toISOString();
+        await persist({
+          ...store,
+          events: [...store.events, { ...event, id: crypto.randomUUID(), addedAt: now, exportedAt: now }],
+          firstCalendarRewarded: true,
         });
-        if (!res.ok) throw new Error("Calendar export failed");
-        blob = await res.blob();
-      } else blob = new Blob([await generateIcs(newItems)], { type: "text/calendar;charset=utf-8" });
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = newItems.length > 1 ? "zest-snap-events.ics" : "zest-snap-event.ics";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 1000);
-      const now = new Date().toISOString();
-      const added = newItems.map((event) => ({ ...event, id: crypto.randomUUID(), addedAt: now, exportedAt: now }));
-      // Local mode keeps the calendar flag for progress only; credits are awarded by the server.
-      await persist({ ...store, events: [...store.events, ...added], firstCalendarRewarded: true });
-      const parts = [newItems.length === 1 ? "1 event prepared for your calendar." : `${newItems.length} events prepared for your calendar.`];
-      if (duplicateCount) parts.push(`${duplicateCount} already added ${duplicateCount === 1 ? "was" : "were"} skipped.`);
-      parts.push("Open the downloaded file to add it to your phone’s calendar.");
-      setSuccess(parts.join(" "));
-    } catch {
-      showError("Check dates, start/end times and timezone, then retry. Ambiguous clock-change times need correction.");
+      }
+      setSuccess("Google Calendar opened with the event ready to save. No calendar file was downloaded.");
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not open your calendar.");
     }
   }
 
@@ -884,11 +867,11 @@ export default function App() {
                         </button>
                         <button
                           className="button alt small"
-                          onClick={() => downloadIcs(event)}
+                          onClick={() => addToCalendar(event)}
                           disabled={duplicate}
                         >
-                          <Download size={16} />
-                          {duplicate ? "In your agenda" : "Add to device calendar"}
+                          <CalendarDays size={16} />
+                          {duplicate ? "In your agenda" : "Add to calendar"}
                         </button>
                       </div>
                     </div>
@@ -903,13 +886,6 @@ export default function App() {
                 <span>Duplicates are skipped automatically</span>
               </div>
               <div className="stickyActions">
-                <button
-                  className="button alt"
-                  disabled={!selected.length}
-                  onClick={() => downloadIcs(selected.map((i) => result!.events[i]).filter(Boolean))}
-                >
-                  <Download size={16} /> Calendar
-                </button>
                 <button
                   className="button"
                   disabled={!selected.length}
