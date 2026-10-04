@@ -600,7 +600,6 @@ export default function App() {
             )}
             <section className="appIntro homeHero">
               <div className="homeGreeting">Good morning{displayName ? `, ${displayName.split(" ")[0]}` : ""} <span aria-hidden="true">👋</span></div>
-              <div className="eyebrow">YOUR DAY</div>
               <h1>What do you want to remember?</h1>
               <p>Snap or upload it. Zest finds the important dates.</p>
             </section>
