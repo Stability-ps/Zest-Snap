@@ -1,14 +1,13 @@
-import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { googleCalendarAuthorizeUrl } from "@/lib/google-calendar-server";
+import { createGoogleOAuthState, googleCalendarAuthorizeUrl } from "@/lib/google-calendar-server";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(new URL("/login?next=%2Fsettings", request.url));
 
-  const state = randomBytes(24).toString("hex");
+  const state = createGoogleOAuthState(user.id);
   const response = NextResponse.redirect(googleCalendarAuthorizeUrl(request.nextUrl.origin, state));
   response.cookies.set("zest-gcal-state", state, {
     httpOnly: true,
