@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import PwaRegister from "./pwa-register";
 import ReferralCapture from "./referral-capture";
 
 export const metadata: Metadata = {
@@ -17,7 +16,6 @@ export const metadata: Metadata = {
   description:
     "AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines.",
   applicationName: "Zest Snap",
-  manifest: "/manifest.webmanifest",
   formatDetection: {
     telephone: false,
   },
@@ -66,7 +64,6 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {children}
-        <PwaRegister />
         <ReferralCapture />
       </body>
     </html>
