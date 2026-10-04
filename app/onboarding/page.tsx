@@ -40,9 +40,9 @@ export default function Onboarding() {
   return (
     <main className="onboardingPage">
       <div className="onboardingCard">
-        <div className="brand">
+        <a className="brand" href="https://zestsnap.app" aria-label="Zest Snap home">
           Zest <span>Snap</span>
-        </div>
+        </a>
         <div className="onboardingProgress">
           {steps.map((_, i) => (
             <span key={i} className={i <= step ? "done" : ""} />
