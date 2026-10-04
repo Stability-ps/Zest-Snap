@@ -128,7 +128,6 @@ export default function LoginPage() {
           return;
         }
         await registerDevice(supabase);
-        await registerDevice(supabase);
         await finishReferral(supabase);
         window.location.assign(new URL("/app", window.location.origin).href);
         return;
@@ -146,6 +145,7 @@ export default function LoginPage() {
         return;
       }
       if (data.session) {
+        await registerDevice(supabase);
         await finishReferral(supabase);
         window.location.assign(new URL("/app", window.location.origin).href);
       } else {
