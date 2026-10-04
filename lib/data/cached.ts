@@ -43,6 +43,9 @@ export class CachedCloudProvider implements DataProvider {
   loadCached() {
     return this.read()?.state || null;
   }
+  loadCachedProfile() {
+    return this.read()?.profile || null;
+  }
   async load() {
     const cache = this.read();
     if (!navigator.onLine) {
