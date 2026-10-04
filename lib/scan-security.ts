@@ -4,48 +4,98 @@ import { createHash } from "node:crypto";
 import { isSupabaseConfigured } from "./supabase/config";
 import { createClient } from "./supabase/server";
 import { serviceClient } from "./supabase/admin";
+import type { ExtractionResult } from "./extraction-types";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const attempts = new Map<
   string,
   { count: number; reset: number; last: number; hash: string }
 >();
+
+export type Reservation =
+  | { kind: "account"; userId: string; pages: number }
+  | { kind: "guest"; userId: null; pages: number; remaining: number }
+  | { kind: "local"; userId: null; pages: number }
+  | { kind: "cached"; userId: string | null; result: ExtractionResult };
+
+/** Client-supplied ids make retries idempotent; anything malformed gets a fresh server id. */
+export function requestIdFrom(req: Request) {
+  const supplied = req.headers.get("x-request-id");
+  return supplied && UUID.test(supplied) ? supplied.toLowerCase() : crypto.randomUUID();
+}
+
+// Known database exception names are passed through; anything else is treated as an outage.
+const KNOWN = [
+  "allowance_exhausted",
+  "device_free_limit",
+  "device_required",
+  "device_rate_limited",
+  "repeat_request",
+  "scanning_disabled",
+  "guest_trial_exhausted",
+  "sign_in_required",
+  "account_unavailable",
+];
+function mapRpcError(message: string) {
+  return KNOWN.find((code) => message.includes(code)) || "cloud_unavailable";
+}
+
+function networkHash(req: Request) {
+  // Vercel supplies x-vercel-forwarded-for; never trust arbitrary client X-Forwarded-For on Vercel.
+  const ip = process.env.VERCEL
+    ? req.headers.get("x-vercel-forwarded-for")
+    : req.headers.get("x-forwarded-for");
+  if (!ip) return null;
+  // Rotates daily and is never stored with an account, so it cannot track people over time.
+  const day = new Date().toISOString().slice(0, 10);
+  return createHash("sha256").update(`zest-net:${ip.split(",")[0].trim()}:${day}`).digest("hex");
+}
+
 export async function reserveScan(
   req: Request,
   requestId: string,
   dataUrl: string,
-) {
+): Promise<Reservation> {
   const hash = createHash("sha256").update(dataUrl).digest("hex");
   if (process.env.AI_SCANNING_ENABLED === "false")
     throw new Error("scanning_disabled");
   if (isSupabaseConfigured()) {
+    const deviceId = req.headers.get("x-zest-device");
+    if (!deviceId) throw new Error("device_required");
     const db = await createClient();
     const {
       data: { user },
     } = await db.auth.getUser();
-    if (!user) throw new Error("sign_in_required");
-    const deviceId=req.headers.get("x-zest-device");
-    if(!deviceId) throw new Error("device_required");
     const admin = serviceClient();
+    if (!user) {
+      const { data, error } = await admin.rpc("reserve_guest_scan", {
+        p_request: requestId,
+        p_hash: hash,
+        p_device_id: deviceId,
+        p_network_hash: networkHash(req),
+      });
+      if (error) throw new Error(mapRpcError(error.message));
+      const out = data as { cached?: ExtractionResult; pages?: number; remaining?: number };
+      if (out.cached) return { kind: "cached", userId: null, result: out.cached };
+      return { kind: "guest", userId: null, pages: Number(out.pages) || 3, remaining: Number(out.remaining) || 0 };
+    }
+    const cached = await admin.rpc("cached_scan_result", {
+      p_user: user.id,
+      p_hash: hash,
+      p_request: requestId,
+    });
+    if (!cached.error && cached.data)
+      return { kind: "cached", userId: user.id, result: cached.data as ExtractionResult };
     const { data, error } = await admin.rpc("reserve_scan", {
       p_user: user.id,
       p_request: requestId,
       p_hash: hash,
       p_device_id: deviceId,
     });
-    if (error) {
-      if (error.message.includes("allowance_exhausted"))
-        throw new Error("allowance_exhausted");
-      if (error.message.includes("repeat_request")||error.message.includes("device_rate_limited"))
-        throw new Error("rate_limited");
-      if (error.message.includes("device_free_limit"))
-        throw new Error("device_free_limit");
-      if (error.message.includes("device_required"))
-        throw new Error("device_required");
-      throw new Error("cloud_unavailable");
-    }
-    return { userId: user.id, pages: Number(data) || 3 };
+    if (error) throw new Error(mapRpcError(error.message));
+    return { kind: "account", userId: user.id, pages: Number(data) || 3 };
   }
   // Per-instance fallback only. A distributed limiter is mandatory for unrestricted public local-mode scanning.
-  // Vercel supplies x-vercel-forwarded-for; never use arbitrary client X-Forwarded-For on Vercel.
   const ip = process.env.VERCEL
     ? req.headers.get("x-vercel-forwarded-for")
     : req.headers.get("x-forwarded-for");
@@ -61,7 +111,7 @@ export async function reserveScan(
     : 10;
   const distributed = await distributedLimit(key, hash, limit);
   if (distributed === false) throw new Error("rate_limited");
-  if (distributed === true) return { userId: null, pages: 3 };
+  if (distributed === true) return { kind: "local", userId: null, pages: 3 };
   if (
     prior &&
     (prior.count >= limit ||
@@ -76,12 +126,41 @@ export async function reserveScan(
     last: now,
     hash,
   });
-  return { userId: null, pages: 3 };
+  return { kind: "local", userId: null, pages: 3 };
 }
+
+/** Records the outcome. Failed scans are refunded (allowance and any credits) by the database. */
+export async function finishReservation(
+  reservation: Reservation,
+  requestId: string,
+  outcome: { status: "completed" | "failed"; pages?: number; input?: number; output?: number; cost?: number | null; result?: unknown },
+) {
+  if (reservation.kind === "account") {
+    const { error } = await serviceClient().rpc("finish_scan", {
+      p_request: requestId,
+      p_status: outcome.status,
+      p_pages: outcome.pages || 0,
+      p_input: outcome.input || 0,
+      p_output: outcome.output || 0,
+      p_cost: outcome.cost ?? null,
+      p_result: outcome.status === "completed" ? outcome.result ?? null : null,
+    });
+    if (error) logScan("metering_write_failed", requestId, { status: outcome.status });
+  } else if (reservation.kind === "guest") {
+    const { error } = await serviceClient().rpc("finish_guest_scan", {
+      p_request: requestId,
+      p_status: outcome.status,
+      p_result: outcome.status === "completed" ? outcome.result ?? null : null,
+    });
+    if (error) logScan("guest_metering_write_failed", requestId, { status: outcome.status });
+  }
+}
+
+/** Structured, content-free server log line. Never pass document text, file names or tokens. */
 export function logScan(
   event: string,
   requestId: string,
-  details: Record<string, string | number> = {},
+  details: Record<string, string | number | boolean> = {},
 ) {
   console.info(JSON.stringify({ event, requestId, ...details }));
 }

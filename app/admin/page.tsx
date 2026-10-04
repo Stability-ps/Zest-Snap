@@ -26,8 +26,10 @@ async function authorized() {
     data: { user },
   } = await db.auth.getUser();
   if (!user) redirect("/login");
-  const { data, error } = await db.rpc("is_admin");
-  if (error || data !== true) redirect("/app");
+  // public.is_admin() was replaced by private.is_admin() (not exposed over the API). Reading the caller's
+  // own row is allowed by RLS; every admin write is still authorised again by database policies.
+  const { data, error } = await db.from("profiles").select("is_admin").eq("id", user.id).single();
+  if (error || data?.is_admin !== true) redirect("/app");
   return db;
 }
 async function toggle(form: FormData) {

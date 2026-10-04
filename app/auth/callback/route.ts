@@ -9,12 +9,14 @@ export async function GET(request: Request) {
     try {
       const supabase = await createClient();
       const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) console.info(JSON.stringify({ event: "auth_callback_failed", code: error.code || error.name }));
       if (!error)
         return NextResponse.redirect(
           new URL(safeAuthNext(url.searchParams.get("next")), url.origin),
         );
     } catch {
-      /* Show an actionable error without provider internals. */
+      // Show an actionable error without provider internals.
+      console.info(JSON.stringify({ event: "auth_callback_failed", code: "exception" }));
     }
   }
   return NextResponse.redirect(

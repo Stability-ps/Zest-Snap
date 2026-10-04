@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readBoundedJson, validateUpload } from "@/lib/upload";
-import { reserveScan, logScan } from "@/lib/scan-security";
-import { serviceClient } from "@/lib/supabase/admin";
+import {
+  finishReservation,
+  logScan,
+  requestIdFrom,
+  reserveScan,
+  type Reservation,
+} from "@/lib/scan-security";
 import { validateExtraction } from "@/lib/extraction-validation";
 import { PDFDocument } from "pdf-lib";
 
@@ -92,77 +97,84 @@ function extractOutputText(payload: any): string {
   return chunks.join("");
 }
 
-export async function POST(req: NextRequest) {
-  const requestId = crypto.randomUUID();
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "AI service is not configured yet.", requestId },
-      { status: 503 },
-    );
-  }
+const ERRORS: Record<string, [number, string]> = {
+  upload_too_large: [413, "This file is too large. Use a photo or PDF smaller than 3 MB."],
+  invalid_upload: [400, "This file could not be read. Use a JPEG, PNG, WebP or PDF."],
+  unsupported_format: [415, "Zest can read JPEG, PNG and WebP photos and PDF documents."],
+  invalid_pdf: [400, "This PDF could not be opened. It may be damaged or password-protected."],
+  invalid_context: [400, "Check your language and timezone settings."],
+  rate_limited: [429, "Please wait a moment before scanning again."],
+  repeat_request: [429, "A scan is already running. Wait for it to finish, then try again."],
+  device_rate_limited: [429, "Too many scans from this device in the last hour. Please try again later."],
+  allowance_exhausted: [402, "You’ve used this month’s scans. Use Zest Credits or wait for your allowance to reset."],
+  device_free_limit: [402, "Free scans on this device have already been used by other accounts. Upgrade or use an account that already has free scans."],
+  guest_trial_exhausted: [401, "You’ve used the free trial scans on this device. Create a free account to keep scanning."],
+  sign_in_required: [401, "Sign in to scan with Zest Snap."],
+  device_required: [400, "Reload Zest Snap and try again."],
+  account_unavailable: [503, "Your account is still being set up. Please try again in a moment."],
+  scanning_disabled: [503, "Scanning is temporarily unavailable. Please try again later."],
+  cloud_unavailable: [503, "We couldn’t check your scan allowance. Please retry shortly."],
+  rate_limit_unavailable: [503, "Scanning is temporarily unavailable. Please try again shortly."],
+  ai_unavailable: [503, "Zest’s AI is busy right now. Nothing was charged — please try again shortly."],
+  ai_timeout: [504, "Reading this file took too long. Nothing was charged — try a clearer photo or fewer pages."],
+  ai_unreadable: [502, "We couldn’t read the result for this file. Nothing was charged — please try again."],
+};
 
-  const fail = (code: string, status: number, message: string) => {
-    logScan(code, requestId);
+export async function POST(req: NextRequest) {
+  const requestId = requestIdFrom(req);
+  const started = Date.now();
+  const fail = (code: string, extra: Record<string, string | number | boolean> = {}) => {
+    const [status, message] = ERRORS[code] || ERRORS.cloud_unavailable;
+    logScan("scan_rejected", requestId, { code, status, ...extra });
     return NextResponse.json(
       { error: message, code, requestId },
-      { status, headers: { "Cache-Control": "no-store" } },
+      { status, headers: { "Cache-Control": "no-store", "X-Request-Id": requestId } },
     );
   };
-  if (
-    req.headers.get("origin") &&
-    req.headers.get("origin") !== req.nextUrl.origin
-  )
-    return fail("invalid_origin", 403, "Please scan from Zest Snap.");
-  let upload, reservation;
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return fail("scanning_disabled", { reason: "missing_ai_key" });
+  if (req.headers.get("origin") && req.headers.get("origin") !== req.nextUrl.origin)
+    return NextResponse.json({ error: "Please scan from Zest Snap.", requestId }, { status: 403 });
+
+  let upload: ReturnType<typeof validateUpload>;
   let pdfPages = 0;
   try {
     upload = validateUpload(await readBoundedJson(req));
-    reservation = await reserveScan(req, requestId, upload.dataUrl);
-    if (upload.mimeType === "application/pdf") {
-      const pdf = await PDFDocument.load(
-        Buffer.from(upload.dataUrl.split(",")[1], "base64"),
-        { ignoreEncryption: false },
-      );
-      pdfPages = pdf.getPageCount();
-      if (pdfPages > reservation.pages)
-        return fail(
-          "pdf_page_limit",
-          413,
-          `This plan supports PDFs with up to ${reservation.pages} pages.`,
-        );
-    }
   } catch (e) {
-    const code = e instanceof Error ? e.message : "invalid_upload";
-    const known: Record<string, [number, string]> = {
-      upload_too_large: [413, "Use a file smaller than 3 MB."],
-      invalid_upload: [
-        400,
-        "This file could not be read. Use a JPEG, PNG, WebP or PDF.",
-      ],
-      unsupported_format: [415, "Use a JPEG, PNG, WebP or PDF."],
-      invalid_context: [400, "Check your language and timezone settings."],
-      rate_limited: [429, "Please wait before scanning again."],
-      allowance_exhausted: [429, "Your monthly scan allowance has been used."],
-      sign_in_required: [401, "Sign in to scan with your cloud account."],
-      scanning_disabled: [503, "Scanning is temporarily unavailable."],
-      cloud_unavailable: [
-        503,
-        "Account usage could not be checked. Please retry shortly.",
-      ],
-      rate_limit_unavailable: [
-        503,
-        "Scanning is temporarily unavailable. Please try again shortly.",
-      ],
-    };
-    const [status, message] = known[code] || [
-      400,
-      "This PDF could not be read. Try an unencrypted PDF.",
-    ];
-    return fail(known[code] ? code : "invalid_pdf", status, message);
+    return fail(e instanceof Error && ERRORS[e.message] ? e.message : "invalid_upload");
+  }
+  if (upload.mimeType === "application/pdf") {
+    try {
+      const pdf = await PDFDocument.load(Buffer.from(upload.dataUrl.split(",")[1], "base64"), { ignoreEncryption: false });
+      pdfPages = pdf.getPageCount();
+    } catch {
+      return fail("invalid_pdf");
+    }
+  }
+
+  let reservation: Reservation;
+  try {
+    reservation = await reserveScan(req, requestId, upload.dataUrl);
+  } catch (e) {
+    const code = e instanceof Error ? e.message : "cloud_unavailable";
+    return fail(ERRORS[code] ? code : "cloud_unavailable");
+  }
+  const who = reservation.kind;
+  if (reservation.kind === "cached") {
+    logScan("scan_cache_hit", requestId, { who: reservation.userId ? "account" : "guest" });
+    return NextResponse.json(reservation.result, {
+      headers: { "Cache-Control": "no-store", "X-Request-Id": requestId, "X-Zest-Cached": "1" },
+    });
+  }
+  if (pdfPages > reservation.pages) {
+    await finishReservation(reservation, requestId, { status: "failed" });
+    return NextResponse.json(
+      { error: `This PDF has ${pdfPages} pages. Your plan reads up to ${reservation.pages} pages per scan — split it and try again. Nothing was charged.`, code: "pdf_page_limit", requestId },
+      { status: 413, headers: { "Cache-Control": "no-store" } },
+    );
   }
   const { dataUrl, mimeType, fileName, locale, timezone } = upload;
-  logScan("scan_requested", requestId);
+  logScan("scan_requested", requestId, { who, mime: mimeType, pages: pdfPages });
 
   const mediaPart =
     mimeType === "application/pdf"
@@ -195,73 +207,46 @@ export async function POST(req: NextRequest) {
     outputTokens = 0;
   let cost: number | null = null;
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      signal: AbortSignal.timeout(45000),
-      headers: {
-        Authorization: "Bearer " + apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        store: false,
-        max_output_tokens: 12000,
-        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-        instructions,
-        input: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: "Find all actionable dates and events in this file.",
-              },
-              mediaPart,
-            ],
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "zest_snap_events",
-            strict: true,
-            schema,
-          },
-        },
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        signal: AbortSignal.timeout(50000),
+        headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store: false,
+          max_output_tokens: 12000,
+          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          instructions,
+          input: [
+            {
+              role: "user",
+              content: [
+                { type: "input_text", text: "Find all actionable dates and events in this file." },
+                mediaPart,
+              ],
+            },
+          ],
+          text: { format: { type: "json_schema", name: "zest_snap_events", strict: true, schema } },
+        }),
+      });
+    } catch (e) {
+      const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+      return fail(timeout ? "ai_timeout" : "ai_unavailable", { who, ms: Date.now() - started });
+    }
 
     const rawPayload = await response.text();
     let payload: any = null;
     try {
       payload = rawPayload ? JSON.parse(rawPayload) : null;
     } catch {
-      logScan("upstream_non_json", requestId, { status: response.status });
-      return NextResponse.json(
-        {
-          error: "We could not analyse this file right now. Please try again.",
-          requestId,
-        },
-        { status: 502 },
-      );
+      return fail("ai_unavailable", { who, upstream: response.status, reason: "non_json" });
     }
+    if (!response.ok)
+      return fail("ai_unavailable", { who, upstream: response.status, upstreamCode: String(payload?.error?.code || payload?.error?.type || "") });
 
-    if (!response.ok) {
-      logScan("upstream_failed", requestId, { status: response.status });
-      return NextResponse.json(
-        {
-          error: "We could not analyse this file right now. Please try again.",
-          requestId,
-        },
-        { status: 502 },
-      );
-    }
-
-    inputTokens = Number.isSafeInteger(payload?.usage?.input_tokens)
-      ? payload.usage.input_tokens
-      : 0;
-    outputTokens = Number.isSafeInteger(payload?.usage?.output_tokens)
-      ? payload.usage.output_tokens
-      : 0;
+    inputTokens = Number.isSafeInteger(payload?.usage?.input_tokens) ? payload.usage.input_tokens : 0;
+    outputTokens = Number.isSafeInteger(payload?.usage?.output_tokens) ? payload.usage.output_tokens : 0;
     const inputRate = Number(process.env.OPENAI_INPUT_USD_PER_MILLION),
       outputRate = Number(process.env.OPENAI_OUTPUT_USD_PER_MILLION);
     if (
@@ -273,65 +258,36 @@ export async function POST(req: NextRequest) {
       outputRate >= 0
     )
       cost = (inputTokens * inputRate + outputTokens * outputRate) / 1e6;
-    const text = extractOutputText(payload);
+    let result;
     try {
-      const result = validateExtraction(JSON.parse(text));
-      if (reservation.userId) {
-        const admin = serviceClient();
-        const { error: meterError } = await admin.rpc("finish_scan", {
-          p_request: requestId,
-          p_status: "completed",
-          p_pages: pdfPages,
-          p_input: inputTokens,
-          p_output: outputTokens,
-          p_cost: cost,
-        });
-        if (meterError) logScan("metering_write_failed", requestId);
-        await admin.rpc("award_milestone", {
-          p_user: reservation.userId,
-          p_reason: "first_scan",
-        });
-        await admin.rpc("qualify_referral", { p_user: reservation.userId });
-      }
-      completed = true;
-      logScan("scan_succeeded", requestId, { events: result.events.length });
-      return NextResponse.json(result, {
-        headers: { "Cache-Control": "no-store", "X-Request-Id": requestId },
-      });
+      result = validateExtraction(JSON.parse(extractOutputText(payload)));
     } catch {
-      logScan("invalid_output", requestId);
-      return NextResponse.json(
-        {
-          error:
-            "The scan completed, but the result could not be read. Please try again.",
-          requestId,
-        },
-        { status: 502 },
-      );
+      return fail("ai_unreadable", { who, status: payload?.status || "" });
     }
-  } catch {
-    logScan("scan_failed", requestId);
+    await finishReservation(reservation, requestId, {
+      status: "completed",
+      pages: pdfPages,
+      input: inputTokens,
+      output: outputTokens,
+      cost,
+      result,
+    });
+    completed = true;
+    logScan("scan_succeeded", requestId, { who, events: result.events.length, ms: Date.now() - started });
     return NextResponse.json(
-      {
-        error: "We could not scan this file right now. Please try again.",
-        requestId,
-      },
-      { status: 500 },
+      reservation.kind === "guest" ? { ...result, trialRemaining: reservation.remaining } : result,
+      { headers: { "Cache-Control": "no-store", "X-Request-Id": requestId } },
     );
+  } catch {
+    return fail("ai_unavailable", { who, reason: "unexpected" });
   } finally {
-    if (reservation.userId && !completed) {
-      try {
-        await serviceClient().rpc("finish_scan", {
-          p_request: requestId,
-          p_status: "failed",
-          p_pages: pdfPages,
-          p_input: inputTokens,
-          p_output: outputTokens,
-          p_cost: cost,
-        });
-      } catch {
-        logScan("metering_write_failed", requestId);
-      }
-    }
+    if (!completed)
+      await finishReservation(reservation, requestId, {
+        status: "failed",
+        pages: pdfPages,
+        input: inputTokens,
+        output: outputTokens,
+        cost,
+      }).catch(() => logScan("metering_write_failed", requestId));
   }
 }
