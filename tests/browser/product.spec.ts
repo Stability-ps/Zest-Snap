@@ -204,3 +204,63 @@ test("offline: the installed shell opens and private responses are never cached"
   });
   expect(paths.some((p) => /^\/(api|admin|auth|login)/.test(p))).toBeFalsy();
 });
+
+test("Reminders: bell shows active state, add while inside Reminders, View day works", async ({ page }) => {
+  await page.goto("/app?view=planner");
+  const bell = page.getByRole("button", { name: /Open reminders/ });
+  await expect(bell).toHaveAttribute("aria-pressed", "false");
+  await bell.click();
+  await expect(bell).toHaveAttribute("aria-pressed", "true");
+  await expect(bell).toHaveClass(/active/);
+  await page.getByRole("button", { name: "Add reminder" }).click();
+  await page.getByLabel("Remind me to").fill("Renew passport");
+  await page.getByLabel("Date").fill("2031-03-04");
+  await page.getByLabel("Time").fill("10:15");
+  await page.getByRole("button", { name: "Save reminder" }).click();
+  await expect(page.getByText("Renew passport")).toBeVisible();
+  for (const f of ["All", "Today", "Upcoming", "Overdue"]) await expect(page.getByRole("tab", { name: f })).toBeVisible();
+  await page.getByRole("tab", { name: "Upcoming" }).click();
+  await expect(page.getByText("Renew passport")).toBeVisible();
+  await page.getByRole("tab", { name: "Overdue" }).click();
+  await expect(page.getByText("Renew passport")).toHaveCount(0);
+
+  // Calendar → date with an item → View day closes the sheet and shows that day's items.
+  await page.getByRole("button", { name: "Back to Planner" }).click();
+  await page.getByRole("tab", { name: "Calendar" }).click();
+  for (let i = 0; i < 60; i++) {
+    if ((await page.locator(".calendarTop strong").textContent())?.includes("March 2031")) break;
+    await page.getByRole("button", { name: "Next month" }).click();
+  }
+  await page.getByRole("button", { name: /March 4, 2031/ }).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toContainText("1 scheduled");
+  await expect(sheet).toContainText("On this day");
+  await sheet.getByRole("button", { name: /View day/ }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".plannerCard").getByText("Renew passport")).toBeVisible();
+  // No redundant large add card under the calendar.
+  await expect(page.getByRole("button", { name: "Add to Planner" })).toHaveCount(1);
+});
+
+test("Upcoming excludes today's events once their time has passed; greeting never flashes generic for a known name", async ({ page }) => {
+  await page.goto("/app");
+  const today = await todayIn(page);
+  await page.evaluate((t) => {
+    const base = { description: "", endDate: t, endTime: "", dueDate: "", dueTime: "", allDay: false, timezone: "America/New_York", location: "", status: "open", source: "manual", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" };
+    localStorage.setItem("zest-planner-v1", JSON.stringify({ items: [
+      { ...base, id: "p1", type: "event", title: "Already happened", startDate: t, startTime: "00:00" },
+      { ...base, id: "p2", type: "event", title: "All day thing", startDate: t, startTime: "", allDay: true },
+    ], pending: [] }));
+    localStorage.setItem("zest-preferences", JSON.stringify({ displayName: "Patric Example", timezone: "America/New_York" }));
+    localStorage.setItem("zest-last-app-state-v1", JSON.stringify({ displayName: "Patric Example", mode: "local" }));
+  }, today);
+  await page.reload();
+  const greeting = page.locator(".homeGreeting");
+  await expect(greeting).toContainText("Patric");
+  await page.getByRole("navigation").getByRole("button", { name: "Planner" }).click();
+  await page.getByRole("tab", { name: "Today" }).click();
+  await expect(page.locator(".plannerCard.past").getByText("Already happened")).toBeVisible();
+  await page.getByRole("tab", { name: "Upcoming" }).click();
+  await expect(page.getByText("Already happened")).toHaveCount(0);
+  await expect(page.getByText("All day thing")).toBeVisible();
+});

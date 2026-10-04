@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Camera,
   Upload,
@@ -114,6 +114,8 @@ export default function App() {
   const [plannerRequest, setPlannerRequest] = useState<PlannerRequest>({ nonce: 0 });
   const lastRefresh = useRef(0);
   const router = useRouter();
+  // The static HTML can't know who is signed in, so the greeting stays invisible until identity is known.
+  const [greetingReady, setGreetingReady] = useState(false);
 
   const showError = useCallback((message: string, action: "signup" | null = null) => {
     setError(message);
@@ -259,11 +261,9 @@ export default function App() {
     }
   }, [identity]);
 
-  // Startup: shell → cached state → session → authoritative cloud state.
-  useEffect(() => {
-    let mounted = true;
+  // Before the first hydrated paint: the signed-in person's own cached name, credits and Planner.
+  useLayoutEffect(() => {
     setTimezone(deviceTimezone());
-    captureReferral();
     try {
       // Identity first (from the auth cookie, no network): never show another account's snapshot.
       const uid = sessionUserIdSync();
@@ -279,6 +279,13 @@ export default function App() {
     } catch {
       localStorage.removeItem(STARTUP_STATE_KEY);
     }
+    setGreetingReady(true);
+  }, []);
+
+  // Startup: shell → cached state → session → authoritative cloud state.
+  useEffect(() => {
+    let mounted = true;
+    captureReferral();
     (async () => {
       let p = await getDataProvider();
       if (!mounted) return;
@@ -661,7 +668,7 @@ export default function App() {
               </button>
             )}
             <section className="appIntro homeHero">
-              <div className="homeGreeting">
+              <div className="homeGreeting" style={greetingReady ? undefined : { visibility: "hidden" }}>
                 {greeting(timezone)}
                 {displayName ? `, ${displayName.split(" ")[0]}` : ""} <span aria-hidden="true">👋</span>
               </div>

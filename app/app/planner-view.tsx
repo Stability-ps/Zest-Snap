@@ -165,17 +165,22 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
       tab === "today"
         ? live.filter((x) => plannerReferenceDate(x) === today)
         : tab === "upcoming"
-          ? live.filter((x) => plannerReferenceDate(x) >= today && x.status !== "completed")
+          ? live.filter((x) => ["today", "upcoming"].includes(plannerStatus(x, undefined, timezone)))
           : tab === "calendar"
             ? live.filter((x) => plannerReferenceDate(x) === selectedDate)
             : [];
     return plannerSort(filtered);
-  }, [live, tab, today, selectedDate]);
+  }, [live, tab, today, selectedDate, timezone]);
   const calendar = useMemo(() => monthGrid(month.year, month.month, locale, timezone), [month, locale, timezone]);
   const marked = useMemo(() => new Set(live.map(plannerReferenceDate)), [live]);
   const activeReminders = useMemo(() => reminders.filter((r) => r.status !== "cancelled" && r.status !== "handled"), [reminders]);
   const reminderMarked = useMemo(() => new Set(activeReminders.map((r) => dateKeyIn(r.scheduledAt, timezone))), [activeReminders, timezone]);
-  const selectedDayItems = useMemo(() => live.filter((x) => plannerReferenceDate(x) === selectedDate), [live, selectedDate]);
+  // A standalone reminder is shown once, as its reminder row, not again as its hidden Planner entry.
+  const remindedIds = useMemo(() => new Set(activeReminders.map((r) => r.plannerItemId)), [activeReminders]);
+  const selectedDayItems = useMemo(
+    () => live.filter((x) => plannerReferenceDate(x) === selectedDate && !(x.type === "reminder" && remindedIds.has(x.id))),
+    [live, selectedDate, remindedIds],
+  );
   const selectedDayReminders = useMemo(
     () => activeReminders.filter((r) => dateKeyIn(r.scheduledAt, timezone) === selectedDate),
     [activeReminders, selectedDate, timezone],
@@ -209,27 +214,26 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
 
   return (
     <section className="plannerRoot">
-      {tab !== "reminders" && (
-        <div className="plannerHero">
-          <div>
-            <h1>Your planner</h1>
-            <p>Events, tasks and deadlines — organised in Zest.</p>
-          </div>
-          <div className="plannerHeroActions">
-            <button
-              className="plannerReminderButton"
-              onClick={() => setTab("reminders")}
-              aria-label={pendingCount ? `Open reminders, ${pendingCount} active` : "Open reminders"}
-            >
-              <Bell />
-              {pendingCount > 0 && <span aria-hidden="true">{pendingCount}</span>}
-            </button>
-            <button className="plannerFab" onClick={() => setEditing(emptyItem(timezone, tab === "calendar" ? selectedDate : today))} aria-label="Add to Planner">
-              <Plus />
-            </button>
-          </div>
+      <div className="plannerHero">
+        <div>
+          <h1>Your planner</h1>
+          <p>Events, tasks and deadlines — organised in Zest.</p>
         </div>
-      )}
+        <div className="plannerHeroActions">
+          <button
+            className={`plannerReminderButton ${tab === "reminders" ? "active" : ""}`}
+            onClick={() => setTab("reminders")}
+            aria-label={pendingCount ? `Open reminders, ${pendingCount} active` : "Open reminders"}
+            aria-pressed={tab === "reminders"}
+          >
+            <Bell />
+            {pendingCount > 0 && <span aria-hidden="true">{pendingCount}</span>}
+          </button>
+          <button className="plannerFab" onClick={() => setEditing(emptyItem(timezone, tab === "calendar" ? selectedDate : today))} aria-label="Add to Planner">
+            <Plus />
+          </button>
+        </div>
+      </div>
       {tab !== "reminders" && (
         <div className="plannerTabs" role="tablist" aria-label="Planner views">
           {(["today", "upcoming", "calendar"] as Tab[]).map((v) => (
@@ -307,7 +311,7 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
             </div>
           )}
           {visible.map((item) => {
-            const status = plannerStatus(item);
+            const status = plannerStatus(item, undefined, timezone);
             const time = plannerReferenceTime(item);
             const itemReminders = activeReminders.filter((r) => r.plannerItemId === item.id).length;
             return (

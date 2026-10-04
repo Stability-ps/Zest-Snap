@@ -138,3 +138,23 @@ test("manifest icons exist and the maskable icon is a distinct full-bleed asset"
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.start_url, "/app");
 });
+
+test("Today/Past/Upcoming use the user's timezone, around midnight and as timed events pass", async () => {
+  const { plannerStatus } = await import("../lib/planner");
+  const tz = "Asia/Tokyo"; // user setting; the test machine's own zone must not matter
+  const at = (iso: string) => Temporal.Instant.from(iso);
+  const timed = item({ title: "Call", startDate: "2026-10-05", startTime: "09:00", allDay: false, timezone: tz }) as never;
+  const allDay = item({ title: "Holiday", startDate: "2026-10-05", allDay: true, timezone: tz }) as never;
+  const task = item({ title: "Pay", type: "task", dueDate: "2026-10-04", allDay: true, timezone: tz }) as never;
+  // 14:59 UTC on 4 Oct = 23:59 in Tokyo: tomorrow's items are still Upcoming.
+  assert.equal(plannerStatus(timed, at("2026-10-04T14:59:00Z"), tz), "upcoming");
+  // 15:01 UTC = 00:01 on 5 Oct in Tokyo: both are Today, even though it is still 4 Oct in UTC.
+  assert.equal(plannerStatus(timed, at("2026-10-04T15:01:00Z"), tz), "today");
+  assert.equal(plannerStatus(allDay, at("2026-10-04T15:01:00Z"), tz), "today");
+  assert.equal(plannerStatus(task, at("2026-10-04T15:01:00Z"), tz), "overdue");
+  // 09:00 Tokyo = 00:00 UTC on 5 Oct: one minute later the timed event is Past; the all-day one stays Today.
+  assert.equal(plannerStatus(timed, at("2026-10-04T23:59:00Z"), tz), "today");
+  assert.equal(plannerStatus(timed, at("2026-10-05T00:01:00Z"), tz), "past");
+  assert.equal(plannerStatus(allDay, at("2026-10-05T14:00:00Z"), tz), "today");
+  assert.equal(plannerStatus(allDay, at("2026-10-05T15:01:00Z"), tz), "past");
+});

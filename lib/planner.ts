@@ -31,18 +31,23 @@ export function validatePlannerItem(item:PlannerItem){
 }
 export function reminderMinutes(d:ReminderDraft){const map:Record<string,number>={at_time:0,"5m":5,"15m":15,"30m":30,"1h":60,"1d":1440,"1w":10080};if(d.preset!=="custom")return map[d.preset];const n=Number(d.customMinutes);if(!Number.isFinite(n)||n<0||n>525600)throw new Error("Custom reminder must be between 0 minutes and 1 year.");return Math.round(n);}
 export function calculateReminderAt(item:PlannerItem,draft:ReminderDraft){let instant=plannerInstant(item);if(!instant&&item.allDay){const date=plannerReferenceDate(item),time=draft.allDayTime||"09:00";if(!DATE.test(date)||!TIME.test(time))throw new Error("Choose a valid reminder time.");instant=Temporal.PlainDateTime.from(`${date}T${time}`).toZonedDateTime(item.timezone||"UTC",{disambiguation:"reject"}).toInstant();}if(!instant)throw new Error("Timed reminders need a time. Choose a time first.");return instant.subtract({minutes:reminderMinutes(draft)}).toString();}
-export function plannerStatus(item:PlannerItem,now=Temporal.Now.instant()):"completed"|"overdue"|"today"|"upcoming"|"past"|"open"{
+/**
+ * Calendar-day comparisons use the user's configured timezone (the same "today" as Home and the
+ * Today tab); whether a timed item has passed uses the item's own wall-clock time in its timezone.
+ * The browser/device timezone is never used.
+ */
+export function plannerStatus(item:PlannerItem,now=Temporal.Now.instant(),userTimezone?:string):"completed"|"overdue"|"today"|"upcoming"|"past"|"open"{
  if(item.status==="completed")return "completed";
- let today;try{today=now.toZonedDateTimeISO(item.timezone||"UTC").toPlainDate();}catch{return "open";}
- const target=Temporal.PlainDate.from(plannerReferenceDate(item)),cmp=Temporal.PlainDate.compare(target,today);
- if((item.type==="task"||item.type==="deadline")&&cmp<0)return "overdue";
+ const due=item.type==="task"||item.type==="deadline";
+ let today,target;
+ try{today=now.toZonedDateTimeISO(userTimezone||item.timezone||"UTC").toPlainDate();target=Temporal.PlainDate.from(plannerReferenceDate(item));}catch{return "open";}
+ const cmp=Temporal.PlainDate.compare(target,today);
  if(cmp>0)return "upcoming";
- if(cmp<0)return item.type==="task"||item.type==="deadline"?"overdue":"past";
+ if(cmp<0)return due?"overdue":"past";
  if(item.allDay)return "today";
  try{
    const instant=plannerInstant(item);
-   if(instant&&Temporal.Instant.compare(instant,now)<0)
-     return item.type==="task"||item.type==="deadline"?"overdue":"past";
+   if(instant&&Temporal.Instant.compare(instant,now)<0)return due?"overdue":"past";
  }catch{return "open";}
  return "today";
 }
