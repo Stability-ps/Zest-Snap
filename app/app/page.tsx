@@ -981,16 +981,16 @@ export default function App() {
           icon={<HomeIcon />}
         />
         <NavButton
-          active={view === "history"}
-          label="History"
-          onClick={() => openView("history")}
-          icon={<Clock />}
-        />
-        <NavButton
           active={view === "calendar"}
           label="Planner"
           onClick={() => openView("calendar")}
           icon={<CalendarDays />}
+        />
+        <NavButton
+          active={view === "history"}
+          label="History"
+          onClick={() => openView("history")}
+          icon={<Clock />}
         />
         <NavButton
           active={view === "rewards"}
