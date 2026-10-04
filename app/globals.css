@@ -2563,3 +2563,15 @@ dialog::backdrop {
 .calendarDayRow>svg:first-child{width:20px;color:var(--teal)}.calendarDayRow>svg:last-child{width:16px;color:#8a9aaa}.calendarDayRow>span{display:grid;gap:2px;min-width:0}.calendarDayRow b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.calendarDayRow small{font-size:11px;color:var(--muted)}.calendarDayRow.reminder>svg:first-child{color:#00a98f}
 .calendarActionLabel{font-size:12px;font-weight:800;color:#607386;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
 @media(max-width:480px){.calendarActionChoices{grid-template-columns:1fr}.calendarActionChoices button{min-height:88px}.calendarDayPreview{padding:10px}}
+
+/* Compact, livelier Planner cards */
+.plannerHero{padding-top:8px}.plannerHero h1{margin-top:0}
+.plannerList{gap:8px}
+.plannerCard{position:relative;padding:11px 12px;border-radius:16px;box-shadow:0 5px 18px rgba(11,31,59,.035);overflow:hidden}
+.plannerCard:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#1d8fe8}
+.plannerCard.overdue:before{background:#ef8c75}.plannerCard.completed:before{background:#17b89e}
+.plannerCardBody{padding-left:2px}.plannerCardTop{font-size:10px}.plannerCard h3{margin:4px 0;font-size:16px;line-height:1.2}.plannerCard p{font-size:12px}.plannerCard p svg{width:17px;height:17px}
+.plannerCardActions{margin-top:8px;gap:5px;flex-wrap:nowrap}.plannerCardActions button{min-height:34px;padding:0 9px;font-size:11px;border-radius:10px;flex:0 1 auto}
+.plannerCardActions svg{width:13px}
+.rewardsView>h1,.historyHeading h1{margin-top:6px}
+@media(max-width:390px){.plannerCardActions button{padding:0 7px}.plannerCard{padding:10px}.plannerCard h3{font-size:15px}}
