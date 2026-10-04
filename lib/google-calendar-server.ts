@@ -19,8 +19,15 @@ function googleConfig() {
   return { clientId, clientSecret };
 }
 
+const PRODUCTION_APP_ORIGIN = "https://app.zestsnap.app";
+
 export function googleCalendarRedirectUri(origin: string) {
-  return new URL("/api/calendar/google/callback", origin).toString();
+  // Vercel may expose its internal *.vercel.app origin to server routes even when
+  // the user entered through the production custom domain. OAuth redirect URIs
+  // must be stable and exactly match the URI registered with Google.
+  const redirectOrigin =
+    process.env.VERCEL_ENV === "production" ? PRODUCTION_APP_ORIGIN : origin;
+  return new URL("/api/calendar/google/callback", redirectOrigin).toString();
 }
 
 export function googleCalendarAuthorizeUrl(origin: string, state: string) {
