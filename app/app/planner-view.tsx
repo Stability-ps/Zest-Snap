@@ -22,6 +22,7 @@ import {
   plannerStatus,
   isPastLocal,
   todayDate,
+  mergePlannerWithExternal,
   type PlannerItem,
   type PlannerItemType,
   type ReminderDraft,
@@ -86,6 +87,7 @@ const dateKeyIn = (iso: string, timezone: string) =>
 export default function PlannerView({ identity, timezone, locale, signedIn, request, onNotice, onSignIn }: Props) {
   const [store, setStore] = useState<PlannerStore | null>(null);
   const [items, setItems] = useState<PlannerItem[]>([]);
+  const [googleItems, setGoogleItems] = useState<PlannerItem[]>([]);
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
   const [tab, setTab] = useState<Tab>(request?.tab || "today");
   const [selectedDate, setSelectedDate] = useState(() => todayDate(timezone));
@@ -158,8 +160,44 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
     }
   }, [request, notice, refreshReminders]);
 
+  const refreshGoogle = useCallback(async () => {
+    if (!signedIn || !navigator.onLine) return setGoogleItems([]);
+    const now = new Date();
+    const min = new Date(now.getTime() - 62 * 86400000).toISOString();
+    const max = new Date(now.getTime() + 305 * 86400000).toISOString();
+    try {
+      const response = await fetch(`/api/calendar/google/events?timeMin=${encodeURIComponent(min)}&timeMax=${encodeURIComponent(max)}&timezone=${encodeURIComponent(timezone)}`, { cache: "no-store" });
+      if (response.status === 409) return setGoogleItems([]);
+      if (response.status === 401) {
+        setGoogleItems([]);
+        notice("error", "Google Calendar needs to be reconnected in Settings.");
+        return;
+      }
+      if (!response.ok) throw new Error("calendar_sync_failed");
+      const body = await response.json();
+      setGoogleItems(Array.isArray(body.events) ? body.events : []);
+    } catch {
+      // Keep the last successful overlay on transient failures; Planner's own data remains available.
+    }
+  }, [signedIn, timezone, notice]);
+
+  useEffect(() => {
+    refreshGoogle();
+    const onVisible = () => document.visibilityState === "visible" && refreshGoogle();
+    const onOnline = () => refreshGoogle();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onOnline);
+    const timer = window.setInterval(refreshGoogle, 5 * 60 * 1000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+      window.clearInterval(timer);
+    };
+  }, [refreshGoogle]);
+
   const today = todayDate(timezone);
-  const live = useMemo(() => items.filter((x) => x.status !== "cancelled"), [items]);
+  const mergedItems = useMemo(() => mergePlannerWithExternal(items, googleItems), [items, googleItems]);
+  const live = useMemo(() => mergedItems.filter((x) => x.status !== "cancelled"), [mergedItems]);
   const visible = useMemo(() => {
     const filtered =
       tab === "today"
@@ -321,11 +359,13 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
                 role="button"
                 tabIndex={0}
                 aria-label={`Open ${item.title}`}
-                onClick={() => setEditing(item)}
+                onClick={() => item.externalProvider === "google" ? (item.externalUrl ? window.open(item.externalUrl, "_blank", "noopener,noreferrer") : undefined) : setEditing(item)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    setEditing(item);
+                    if (item.externalProvider === "google") {
+                      if (item.externalUrl) window.open(item.externalUrl, "_blank", "noopener,noreferrer");
+                    } else setEditing(item);
                   }
                 }}
               >
@@ -350,7 +390,9 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
                     {time ? ` · ${formatTime(time)}` : " · All day"}
                     {item.location ? ` · ${item.location}` : ""}
                   </p>
-                  <div className="plannerCardActions">
+                  {item.externalProvider === "google" ? (
+                    <div className="plannerCardActions"><span>Google Calendar</span></div>
+                  ) : <div className="plannerCardActions">
                     {item.type !== "reminder" && (
                       <button onClick={(e) => { e.stopPropagation(); setReminderItem(item); }} aria-label={`Add reminder for ${item.title}`}>
                         <Bell /> {itemReminders ? `Reminder · ${itemReminders}` : "Reminder"}
@@ -362,7 +404,7 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
                     <button onClick={(e) => { e.stopPropagation(); act(() => store!.remove(item.id)); }} aria-label={`Delete ${item.title}`}>
                       <Trash2 /> Delete
                     </button>
-                  </div>
+                  </div>}
                 </div>
               </article>
             );
