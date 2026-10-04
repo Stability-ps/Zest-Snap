@@ -35,6 +35,7 @@ export default function Home() {
             <a href="#how">How it works</a>
             <a href="#pricing">Pricing</a>
             <a href="#security">Security</a>
+            <a href="https://app.zestsnap.app/login">Log in</a>
             <a className="button" href="https://app.zestsnap.app/app">
               Open Zest Snap
             </a>
