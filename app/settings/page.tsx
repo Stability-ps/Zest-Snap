@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search, History } from "lucide-react";
 import {
   getDataProvider,
@@ -25,11 +25,13 @@ export default function Settings() {
     [profile, setProfile] = useState<Profile>(defaultProfile),
     [usage, setUsage] = useState<Usage | null>(null),
     [message, setMessage] = useState(""),
+    [editingDisplayName, setEditingDisplayName] = useState(false),
     [busy, setBusy] = useState(false),
     [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
     [accountEmail, setAccountEmail] = useState(""),
     [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email?: string | null }>({ connected: false });
+  const displayNameInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     getDataProvider()
       .then(async (p) => {
@@ -238,7 +240,7 @@ export default function Settings() {
 
         <h2 className="settingsSectionTitle">Preferences</h2>
         <section className="settingsGroup">
-          <label className="settingsRow editable"><span className="settingsIcon"><UserRound /></span><span className="settingsRowCopy"><b>Display name</b><small>How Zest addresses you</small></span><input aria-label="Display name" maxLength={100} value={profile.displayName} placeholder="Add name" onChange={e=>setProfile({...profile,displayName:e.target.value})} onBlur={()=>saveProfile(profile)} /></label>
+          <label className={"settingsRow editable "+(editingDisplayName?"isEditing":"")} onClick={()=>{if(!editingDisplayName){setEditingDisplayName(true);requestAnimationFrame(()=>displayNameInputRef.current?.focus());}}}><span className="settingsIcon"><UserRound /></span><span className="settingsRowCopy"><b>{editingDisplayName?"Editing display name":"Display name"}</b><small>{editingDisplayName?"Type your name, then tap Done":"How Zest addresses you"}</small></span><input ref={displayNameInputRef} aria-label="Display name" maxLength={100} value={profile.displayName} placeholder="Add name" onFocus={()=>setEditingDisplayName(true)} onChange={e=>setProfile({...profile,displayName:e.target.value})} onBlur={()=>{setEditingDisplayName(false);saveProfile(profile);}} /></label>
           <button type="button" className="settingsRow" onClick={()=>{setSheetSearch("");setSheet("timezone");}}><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Timezone</b></span><span className="settingsValue">{timezoneLabel}</span><ChevronRight /></button>
           <button type="button" className="settingsRow" onClick={()=>setSheet("region")}><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Language & region</b><small>Interface is currently English</small></span><span className="settingsValue">{localeLabel}</span><ChevronRight /></button>
           <label className="settingsRow"><span className="settingsIcon"><Bell /></span><span className="settingsRowCopy"><b>Upcoming insights</b><small>Helpful reminders inside Zest</small></span><input className="settingsToggle" type="checkbox" checked={profile.reminders} onChange={e=>saveProfile({...profile,reminders:e.target.checked})} /></label>
