@@ -1,82 +1,1063 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
-import {Bell,CalendarDays,Check,CheckCircle2,ChevronLeft,ChevronRight,Clock3,Pencil,Plus,Trash2,X} from "lucide-react";
-import {getDataProvider} from "@/lib/data";
-import {monthGrid,plannerReferenceDate,plannerStatus,todayDate,type PlannerItem,type PlannerItemType,type ReminderDraft,type ReminderPreset} from "@/lib/planner";
-import {PlannerStore} from "@/lib/planner-store";
-import {cancelReminder,createReminder,enablePushNotifications,getNotificationState,listReminders,markReminderHandled,snoozeReminder,type NotificationState,type ReminderRecord} from "@/lib/reminders";
-type Tab="today"|"upcoming"|"calendar"|"reminders"; type CalendarAction="plan"|"remind"|null; type Props={initialTab?:"today"|"upcoming";onNotice?:(kind:"success"|"error",message:string)=>void};
-function emptyItem(timezone:string):PlannerItem{const today=todayDate(timezone),now=new Date().toISOString();return{id:crypto.randomUUID(),type:"event",title:"",description:"",startDate:today,endDate:today,startTime:"",endTime:"",dueDate:today,dueTime:"",allDay:true,timezone,location:"",status:"open",source:"manual",createdAt:now,updatedAt:now};}
-export default function PlannerView({initialTab="today",onNotice}:Props){
- const[store,setStore]=useState<PlannerStore|null>(null),[items,setItems]=useState<PlannerItem[]>([]),[reminders,setReminders]=useState<ReminderRecord[]>([]),[tab,setTab]=useState<Tab>(initialTab),[locale,setLocale]=useState("en"),[timezone,setTimezone]=useState("UTC"),[selectedDate,setSelectedDate]=useState(""),[month,setMonth]=useState(()=>{const d=new Date();return{year:d.getFullYear(),month:d.getMonth()+1}}),[editing,setEditing]=useState<PlannerItem|null>(null),[reminderItem,setReminderItem]=useState<PlannerItem|null>(null),[busy,setBusy]=useState(false),[calendarAction,setCalendarAction]=useState<CalendarAction>(null),[standaloneReminder,setStandaloneReminder]=useState<PlannerItem|null>(null),[notificationState,setNotificationState]=useState<NotificationState>("available"),[reminderFilter,setReminderFilter]=useState<"all"|"today"|"upcoming"|"overdue">("all");
- const notice=(k:"success"|"error",m:string)=>onNotice?.(k,m); async function refresh(s=store){if(!s)return;const[i,r,n]=await Promise.all([s.load(),listReminders(),getNotificationState()]);setItems(i);setReminders(r);setNotificationState(n);}
- useEffect(()=>{let alive=true;Promise.all([PlannerStore.create(),getDataProvider().then(p=>p.loadProfile())]).then(async([s,p])=>{if(!alive)return;setStore(s);setLocale(p.locale||navigator.language);setTimezone(p.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC");setSelectedDate(todayDate(p.timezone||"UTC"));const cached=s.loadCached();if(cached.length)setItems(cached);await refresh(s);}).catch(()=>notice("error","Planner could not be loaded."));return()=>{alive=false};},[]); // eslint-disable-line react-hooks/exhaustive-deps
- useEffect(()=>{const q=new URLSearchParams(window.location.search),action=q.get("reminderAction"),id=q.get("reminderId");if(action!=="snooze"||!id)return;snoozeReminder(id,15).then(()=>{notice("success","Reminder snoozed for 15 minutes.");setTab("reminders");return refresh();}).catch(e=>notice("error",e instanceof Error?e.message:"Reminder could not be snoozed.")).finally(()=>{q.delete("reminderAction");q.delete("reminderId");const next=window.location.pathname+(q.size?"?"+q.toString():"");window.history.replaceState({}, "", next);});},[]); // eslint-disable-line react-hooks/exhaustive-deps
- const today=useMemo(()=>todayDate(timezone),[timezone]),visible=useMemo(()=>{const filtered=tab==="today"?items.filter(x=>plannerReferenceDate(x)===today&&x.status!=="cancelled"):tab==="upcoming"?items.filter(x=>["today","upcoming"].includes(plannerStatus(x))&&x.status!=="cancelled"):tab==="calendar"?items.filter(x=>plannerReferenceDate(x)===selectedDate&&x.status!=="cancelled"):[];return filtered.sort((a,b)=>(plannerReferenceDate(a)+(a.startTime||a.dueTime||"")).localeCompare(plannerReferenceDate(b)+(b.startTime||b.dueTime||"")));},[items,tab,today,selectedDate]),calendar=useMemo(()=>monthGrid(month.year,month.month,locale,timezone),[month,locale,timezone]),marked=useMemo(()=>new Set(items.filter(x=>x.status!=="cancelled").map(plannerReferenceDate)),[items]),reminderDate=(r:ReminderRecord)=>new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:timezone}).format(new Date(r.scheduledAt)),reminderMarked=useMemo(()=>new Set(reminders.filter(r=>r.status!=="cancelled"&&r.status!=="handled").map(reminderDate)),[reminders,timezone]),selectedDayItems=useMemo(()=>items.filter(x=>x.status!=="cancelled"&&plannerReferenceDate(x)===selectedDate),[items,selectedDate]),selectedDayReminders=useMemo(()=>reminders.filter(r=>r.status!=="cancelled"&&r.status!=="handled"&&reminderDate(r)===selectedDate),[reminders,selectedDate,timezone]);
- const act=async(fn:()=>Promise<void>)=>{if(busy)return;setBusy(true);try{await fn();await refresh();}catch(e){notice("error",e instanceof Error?e.message:"Planner action failed.");}finally{setBusy(false);}};
- return <section className="plannerRoot"><div className="plannerHero"><div><h1>Your planner</h1><p>Events, tasks, deadlines and reminders — organised in Zest.</p></div><div className="plannerHeroActions"><button className={`plannerReminderButton ${tab==="reminders"?"active":""}`} onClick={()=>setTab("reminders")} aria-label="Open reminders" aria-pressed={tab==="reminders"}><Bell/>{reminders.filter(r=>["pending","sent"].includes(r.status)).length>0&&<span>{reminders.filter(r=>["pending","sent"].includes(r.status)).length}</span>}</button><button className="plannerFab" onClick={()=>setEditing(emptyItem(timezone))} aria-label="Create Planner item"><Plus/></button></div></div>
- {tab!=="reminders"&&<div className="plannerTabs" role="tablist">{(["today","upcoming","calendar"] as Tab[]).map(v=><button role="tab" aria-selected={tab===v} key={v} className={tab===v?"active":""} onClick={()=>setTab(v)}>{v[0].toUpperCase()+v.slice(1)}</button>)}</div>}
- {tab==="calendar"&&<div className="plannerCalendar"><div className="calendarTop"><button onClick={()=>setMonth(m=>m.month===1?{year:m.year-1,month:12}:{year:m.year,month:m.month-1})} aria-label="Previous month"><ChevronLeft/></button><strong>{new Intl.DateTimeFormat(locale,{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(month.year,month.month-1,15)))}</strong><button onClick={()=>setMonth(m=>m.month===12?{year:m.year+1,month:1}:{year:m.year,month:m.month+1})} aria-label="Next month"><ChevronRight/></button></div><button className="todayShortcut" onClick={()=>{const d=new Date();setMonth({year:d.getFullYear(),month:d.getMonth()+1});setSelectedDate(today)}}>Today</button><div className="weekdayRow">{calendar.weekdayLabels.map((x,i)=><span key={i}>{x}</span>)}</div><div className="monthGrid">{calendar.cells.map(c=><button key={c.date} className={`${c.inMonth?"":"outside"} ${selectedDate===c.date?"selected":""}`} onClick={()=>{setSelectedDate(c.date);setCalendarAction("plan")}}><span>{Number(c.date.slice(-2))}</span>{marked.has(c.date)&&<i className="plannerDot"/>}{reminderMarked.has(c.date)&&<i className="reminderDot"><Bell/></i>}</button>)}</div></div>}
- {tab!=="reminders"&&<div className="plannerList">{!visible.length&&<div className="plannerEmpty plannerEmptyCompact"><CalendarDays/><b>{tab==="today"?"Nothing planned for today":tab==="calendar"?"Nothing on this day":"No upcoming items"}</b><span>Use the + button above to add something.</span></div>}{visible.map(item=><article className={`plannerCard ${plannerStatus(item)}`} key={item.id}>{(item.type==="task"||item.type==="deadline")&&<button className="completeButton" onClick={()=>act(()=>store!.setCompleted(item.id,item.status!=="completed").then(()=>undefined))}>{item.status==="completed"?<CheckCircle2/>:<Check/>}</button>}<div className="plannerCardBody"><div className="plannerCardTop"><span>{item.type}</span><em>{plannerStatus(item)}</em></div><h3>{item.title}</h3><p><Clock3/> {new Intl.DateTimeFormat(locale,{dateStyle:"medium",timeZone:"UTC"}).format(new Date(plannerReferenceDate(item)+"T12:00:00Z"))}</p><div className="plannerCardActions"><button onClick={()=>setReminderItem(item)}><Bell/> Reminder</button><button onClick={()=>setEditing(item)}><Pencil/> Edit</button><button onClick={()=>act(()=>store!.remove(item.id))}><Trash2/> Delete</button></div></div></article>)}</div>}
- {tab==="reminders"&&<RemindersPage reminders={reminders} items={items} locale={locale} timezone={timezone} filter={reminderFilter} setFilter={setReminderFilter} notificationState={notificationState} busy={busy} onBack={()=>setTab("today")} onAdd={()=>{const i=emptyItem(timezone);i.type="reminder";i.title="Reminder";i.allDay=false;setStandaloneReminder(i)}} onEnable={()=>act(async()=>{await enablePushNotifications();setNotificationState(await getNotificationState());notice("success","Notifications are on for this device.")})} onHandled={id=>act(()=>markReminderHandled(id))} onSnooze={id=>act(()=>snoozeReminder(id,15))} onCancel={id=>act(()=>cancelReminder(id))}/>} 
- {calendarAction&&<div className="plannerOverlay"><section className="plannerSheet compact calendarActionSheet"><div className="sheetTop"><div><h2>{new Intl.DateTimeFormat(locale,{dateStyle:"long",timeZone:"UTC"}).format(new Date(selectedDate+"T12:00:00Z"))}</h2><span className="sheetHint">{selectedDayItems.length+selectedDayReminders.length?selectedDayItems.length+selectedDayReminders.length+" scheduled":"Nothing planned yet"}</span></div><button className="iconButton" onClick={()=>setCalendarAction(null)}><X/></button></div>{selectedDayItems.length+selectedDayReminders.length>0&&<div className="calendarDayPreview"><div className="calendarDayPreviewHead"><b>On this day</b><button onClick={()=>setCalendarAction(null)}>View day <ChevronRight/></button></div>{selectedDayItems.slice(0,3).map(item=><button className="calendarDayRow" key={item.id} onClick={()=>{setCalendarAction(null);setEditing(item)}}><CalendarDays/><span><b>{item.title}</b><small>{item.allDay?"All day":item.startTime||item.dueTime||"Planned"}</small></span><ChevronRight/></button>)}{selectedDayReminders.slice(0,3).map(r=><button className="calendarDayRow reminder" key={r.id} onClick={()=>{setCalendarAction(null);setTab("reminders")}}><Bell/><span><b>{items.find(i=>i.id===r.plannerItemId)?.title||r.label||"Reminder"}</b><small>{new Intl.DateTimeFormat(locale,{timeStyle:"short",timeZone:timezone}).format(new Date(r.scheduledAt))}</small></span><ChevronRight/></button>)}</div>}<div className="calendarActionLabel">Add something</div><div className="calendarActionChoices"><button onClick={()=>{const i=emptyItem(timezone);i.startDate=selectedDate;i.endDate=selectedDate;i.dueDate=selectedDate;setCalendarAction(null);setEditing(i)}}><CalendarDays/><b>Plan something</b><span>Add an event, task or deadline.</span></button><button onClick={()=>{const i=emptyItem(timezone);i.type="reminder";i.startDate=selectedDate;i.endDate=selectedDate;i.dueDate=selectedDate;i.title="Reminder";setCalendarAction(null);setStandaloneReminder(i)}}><Bell/><b>Set a reminder</b><span>Choose a time and get notified.</span></button></div></section></div>}
- {editing&&<Editor item={editing} busy={busy} onClose={()=>setEditing(null)} onSave={(i,d)=>act(async()=>{await store!.upsert(i);if(d)await createReminder(i,d,i.title);setEditing(null);notice("success",d?"Saved to Planner with reminder.":"Saved to Planner.")})}/>}
- {standaloneReminder&&<Reminder item={standaloneReminder} busy={busy} onClose={()=>setStandaloneReminder(null)} onSave={d=>act(async()=>{await store!.upsert(standaloneReminder);const r=await createReminder(standaloneReminder,d);setStandaloneReminder(null);notice("success",r.backgroundDelivery?"Reminder scheduled.":"Reminder saved on this device.")})}/>}
- {reminderItem&&<Reminder item={reminderItem} busy={busy} onClose={()=>setReminderItem(null)} onSave={d=>act(async()=>{const r=await createReminder(reminderItem,d);setReminderItem(null);notice("success",r.backgroundDelivery?"Reminder scheduled.":"Reminder saved on this device.")})}/>}</section>;
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Bell,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  ListChecks,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
+import {
+  monthGrid,
+  plannerReferenceDate,
+  plannerReferenceTime,
+  plannerSort,
+  plannerStatus,
+  isPastLocal,
+  todayDate,
+  type PlannerItem,
+  type PlannerItemType,
+  type ReminderDraft,
+  type ReminderPreset,
+} from "@/lib/planner";
+import { sharedPlannerStore, subscribePlanner, type PlannerStore } from "@/lib/planner-store";
+import {
+  cancelReminder,
+  createReminder,
+  enablePushNotifications,
+  getNotificationState,
+  listReminders,
+  markReminderHandled,
+  snoozeReminder,
+  type NotificationState,
+  type ReminderRecord,
+} from "@/lib/reminders";
+
+type Tab = "today" | "upcoming" | "calendar" | "reminders";
+type ReminderFilter = "all" | "today" | "upcoming" | "overdue";
+export type PlannerRequest = {
+  tab?: Tab;
+  nonce: number;
+  reminderAction?: "snooze" | "done";
+  reminderId?: string;
+};
+type Props = {
+  identity: string;
+  timezone: string;
+  locale: string;
+  signedIn: boolean;
+  request?: PlannerRequest;
+  onNotice?: (kind: "success" | "error", message: string) => void;
+  onSignIn?: () => void;
+};
+
+function emptyItem(timezone: string, date = todayDate(timezone)): PlannerItem {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    type: "event",
+    title: "",
+    description: "",
+    startDate: date,
+    endDate: date,
+    startTime: "",
+    endTime: "",
+    dueDate: date,
+    dueTime: "",
+    allDay: true,
+    timezone,
+    location: "",
+    status: "open",
+    source: "manual",
+    createdAt: now,
+    updatedAt: now,
+  };
 }
-function RemindersPage({reminders,items,locale,timezone,filter,setFilter,notificationState,busy,onBack,onAdd,onEnable,onHandled,onSnooze,onCancel}:{reminders:ReminderRecord[];items:PlannerItem[];locale:string;timezone:string;filter:"all"|"today"|"upcoming"|"overdue";setFilter:(v:"all"|"today"|"upcoming"|"overdue")=>void;notificationState:NotificationState;busy:boolean;onBack:()=>void;onAdd:()=>void;onEnable:()=>void;onHandled:(id:string)=>void;onSnooze:(id:string)=>void;onCancel:(id:string)=>void;}){
- const[menu,setMenu]=useState<string|null>(null); const now=new Date(),today=todayDate(timezone),active=reminders.filter(r=>r.status!=="cancelled"&&r.status!=="handled"),itemFor=(r:ReminderRecord)=>items.find(i=>i.id===r.plannerItemId);
- const dateKey=(r:ReminderRecord)=>new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:timezone}).format(new Date(r.scheduledAt));
- const filtered=active.filter(r=>filter==="all"||(filter==="today"&&dateKey(r)===today)||(filter==="upcoming"&&new Date(r.scheduledAt)>=now&&dateKey(r)!==today)||(filter==="overdue"&&new Date(r.scheduledAt)<now));
- const todayRows=filtered.filter(r=>dateKey(r)===today);
- const overdueRows=filtered.filter(r=>new Date(r.scheduledAt)<now&&dateKey(r)!==today);
- const upcomingRows=filtered.filter(r=>new Date(r.scheduledAt)>=now&&dateKey(r)!==today);
- const row=(r:ReminderRecord)=>{const item=itemFor(r),when=new Intl.DateTimeFormat(locale,{dateStyle:dateKey(r)===today?undefined:"medium",timeStyle:"short",timeZone:timezone}).format(new Date(r.scheduledAt));return <article className="reminderCard" key={r.id}><div className="reminderCardIcon"><Bell/></div><div className="reminderCardCopy"><b>{item?.title||r.label||"Reminder"}</b><span><CalendarDays/> {dateKey(r)===today?"Today, ": ""}{when}</span><span><Clock3/> {r.offsetMinutes===0?"At time":r.offsetMinutes?formatOffset(r.offsetMinutes)+" before":"Scheduled reminder"}</span></div><div className="reminderCardMenu"><button onClick={()=>setMenu(menu===r.id?null:r.id)} disabled={busy} aria-label="Reminder options">•••</button><button className="reminderCheck" onClick={()=>onHandled(r.id)} disabled={busy} aria-label="Mark reminder done"><Check/></button>{menu===r.id&&<div className="reminderMenuPopover"><button onClick={()=>{setMenu(null);onSnooze(r.id)}}>Snooze 15 min</button><button onClick={()=>{setMenu(null);onHandled(r.id)}}>Mark as done</button><button className="danger" onClick={()=>{setMenu(null);onCancel(r.id)}}>Cancel reminder</button></div>}</div></article>};
- return <div className="remindersStandalone"><div className="remindersTitle"><button className="reminderBack" onClick={onBack} aria-label="Back to Planner"><ChevronLeft/></button><div className="remindersTitleCopy"><h2>Reminders</h2><p>All your upcoming reminders and notifications in one place.</p></div><button className="reminderAddButton" onClick={onAdd} disabled={busy} aria-label="Add reminder"><Plus/><span>Add</span></button></div>
- <div className="reminderFilters">{(["all","today","upcoming","overdue"] as const).map(v=><button key={v} className={filter===v?"active":""} onClick={()=>setFilter(v)}>{v[0].toUpperCase()+v.slice(1)}</button>)}</div>
- <div className={"notificationStatus "+notificationState}><Bell/><div><b>{notificationState==="enabled"?"Notifications on":notificationState==="blocked"?"Notifications blocked":notificationState==="unsupported"?"Notifications unavailable":"Background notifications"}</b><span>{notificationState==="enabled"?"Zest can notify you on this device.":notificationState==="blocked"?"Allow notifications in your browser or phone settings.":notificationState==="unsupported"?"This browser does not support background reminders.":"Get reminders even when Zest isn't open."}</span></div>{notificationState==="available"&&<button className="button alt" onClick={onEnable} disabled={busy}>Enable</button>}{notificationState==="enabled"&&<CheckCircle2/>}</div>
- {!filtered.length?<div className="plannerEmpty reminderEmpty"><Bell/><b>{filter==="all"?"No reminders yet":`No ${filter} reminders`}</b><span>Your scheduled reminders will appear here.</span></div>:<>{todayRows.length>0&&<section className="reminderGroup"><h3>Today <span>{todayRows.length}</span></h3>{todayRows.map(row)}</section>}{overdueRows.length>0&&<section className="reminderGroup"><h3>Overdue <span>{overdueRows.length}</span></h3>{overdueRows.map(row)}</section>}{upcomingRows.length>0&&<section className="reminderGroup"><h3>Upcoming <span>{upcomingRows.length}</span></h3>{upcomingRows.map(row)}</section>}</>}
- </div>;
+const dateKeyIn = (iso: string, timezone: string) =>
+  new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: timezone }).format(new Date(iso));
+
+export default function PlannerView({ identity, timezone, locale, signedIn, request, onNotice, onSignIn }: Props) {
+  const [store, setStore] = useState<PlannerStore | null>(null);
+  const [items, setItems] = useState<PlannerItem[]>([]);
+  const [reminders, setReminders] = useState<ReminderRecord[]>([]);
+  const [tab, setTab] = useState<Tab>(request?.tab || "today");
+  const [selectedDate, setSelectedDate] = useState(() => todayDate(timezone));
+  const [month, setMonth] = useState(() => {
+    const [y, m] = todayDate(timezone).split("-").map(Number);
+    return { year: y, month: m };
+  });
+  const [editing, setEditing] = useState<PlannerItem | null>(null);
+  const [reminderItem, setReminderItem] = useState<PlannerItem | null>(null);
+  const [newReminderDate, setNewReminderDate] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [daySheet, setDaySheet] = useState(false);
+  const [notificationState, setNotificationState] = useState<NotificationState>("available");
+  const [reminderFilter, setReminderFilter] = useState<ReminderFilter>("all");
+  const noticeRef = useRef(onNotice);
+  useEffect(() => {
+    noticeRef.current = onNotice;
+  }, [onNotice]);
+  const notice = useCallback((k: "success" | "error", m: string) => noticeRef.current?.(k, m), []);
+
+  const refreshReminders = useCallback(async () => {
+    const [r, n] = await Promise.all([listReminders().catch(() => null), getNotificationState()]);
+    if (r) setReminders(r);
+    setNotificationState(n);
+  }, []);
+
+  // Shared store: Home and Planner render the same items and update together.
+  useEffect(() => {
+    let alive = true;
+    const unsubscribe = subscribePlanner((next) => alive && setItems(next));
+    sharedPlannerStore(identity)
+      .then(async (s) => {
+        if (!alive) return;
+        setStore(s);
+        setItems(s.loadCached());
+        await s.load().catch((e) => notice("error", e instanceof Error ? e.message : "Planner could not sync."));
+      })
+      .catch(() => notice("error", "Planner could not be loaded."));
+    refreshReminders();
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
+  }, [identity, notice, refreshReminders]);
+
+  // Returning from Android notification settings or the background must show the real state.
+  useEffect(() => {
+    const onChange = () => refreshReminders();
+    const onVisible = () => document.visibilityState === "visible" && refreshReminders();
+    window.addEventListener("zest-reminders-changed", onChange);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("zest-reminders-changed", onChange);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refreshReminders]);
+
+  // Navigation requests from Home, Review, notifications and deep links.
+  const handled = useRef(0);
+  useEffect(() => {
+    if (!request || handled.current === request.nonce) return;
+    handled.current = request.nonce;
+    if (request.tab) setTab(request.tab);
+    if (request.reminderAction && request.reminderId) {
+      const run = request.reminderAction === "snooze" ? snoozeReminder(request.reminderId, 15) : markReminderHandled(request.reminderId);
+      run
+        .then(() => notice("success", request.reminderAction === "snooze" ? "Reminder snoozed for 15 minutes." : "Reminder marked as done."))
+        .catch((e) => notice("error", e instanceof Error ? e.message : "Reminder could not be updated."))
+        .finally(refreshReminders);
+    }
+  }, [request, notice, refreshReminders]);
+
+  const today = todayDate(timezone);
+  const live = useMemo(() => items.filter((x) => x.status !== "cancelled"), [items]);
+  const visible = useMemo(() => {
+    const filtered =
+      tab === "today"
+        ? live.filter((x) => plannerReferenceDate(x) === today)
+        : tab === "upcoming"
+          ? live.filter((x) => plannerReferenceDate(x) >= today && x.status !== "completed")
+          : tab === "calendar"
+            ? live.filter((x) => plannerReferenceDate(x) === selectedDate)
+            : [];
+    return plannerSort(filtered);
+  }, [live, tab, today, selectedDate]);
+  const calendar = useMemo(() => monthGrid(month.year, month.month, locale, timezone), [month, locale, timezone]);
+  const marked = useMemo(() => new Set(live.map(plannerReferenceDate)), [live]);
+  const activeReminders = useMemo(() => reminders.filter((r) => r.status !== "cancelled" && r.status !== "handled"), [reminders]);
+  const reminderMarked = useMemo(() => new Set(activeReminders.map((r) => dateKeyIn(r.scheduledAt, timezone))), [activeReminders, timezone]);
+  const selectedDayItems = useMemo(() => live.filter((x) => plannerReferenceDate(x) === selectedDate), [live, selectedDate]);
+  const selectedDayReminders = useMemo(
+    () => activeReminders.filter((r) => dateKeyIn(r.scheduledAt, timezone) === selectedDate),
+    [activeReminders, selectedDate, timezone],
+  );
+  const pendingCount = activeReminders.filter((r) => r.status === "pending" || r.status === "sent" || r.status === "processing").length;
+
+  const act = async (fn: () => Promise<void>) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      notice("error", e instanceof Error ? e.message : "Planner action failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const reminderSaved = (background: boolean) =>
+    notice(
+      "success",
+      background
+        ? notificationState === "enabled"
+          ? "Reminder scheduled."
+          : "Reminder scheduled. Turn on notifications in Reminders to be alerted on this device."
+        : "Reminder saved in Zest. Sign in to get phone notifications.",
+    );
+  const formatDate = (date: string, style: "medium" | "long" = "medium") =>
+    new Intl.DateTimeFormat(locale, { dateStyle: style, timeZone: "UTC" }).format(new Date(date + "T12:00:00Z"));
+  const formatTime = (time: string) =>
+    new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" }).format(new Date(`1970-01-01T${time}:00Z`));
+
+  return (
+    <section className="plannerRoot">
+      {tab !== "reminders" && (
+        <div className="plannerHero">
+          <div>
+            <h1>Your planner</h1>
+            <p>Events, tasks and deadlines — organised in Zest.</p>
+          </div>
+          <div className="plannerHeroActions">
+            <button
+              className="plannerReminderButton"
+              onClick={() => setTab("reminders")}
+              aria-label={pendingCount ? `Open reminders, ${pendingCount} active` : "Open reminders"}
+            >
+              <Bell />
+              {pendingCount > 0 && <span aria-hidden="true">{pendingCount}</span>}
+            </button>
+            <button className="plannerFab" onClick={() => setEditing(emptyItem(timezone, tab === "calendar" ? selectedDate : today))} aria-label="Add to Planner">
+              <Plus />
+            </button>
+          </div>
+        </div>
+      )}
+      {tab !== "reminders" && (
+        <div className="plannerTabs" role="tablist" aria-label="Planner views">
+          {(["today", "upcoming", "calendar"] as Tab[]).map((v) => (
+            <button role="tab" aria-selected={tab === v} key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
+              {v[0].toUpperCase() + v.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === "calendar" && (
+        <div className="plannerCalendar">
+          <div className="calendarTop">
+            <button
+              onClick={() => setMonth((m) => (m.month === 1 ? { year: m.year - 1, month: 12 } : { year: m.year, month: m.month - 1 }))}
+              aria-label="Previous month"
+            >
+              <ChevronLeft />
+            </button>
+            <strong aria-live="polite">
+              {new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(month.year, month.month - 1, 15)))}
+            </strong>
+            <button
+              onClick={() => setMonth((m) => (m.month === 12 ? { year: m.year + 1, month: 1 } : { year: m.year, month: m.month + 1 }))}
+              aria-label="Next month"
+            >
+              <ChevronRight />
+            </button>
+          </div>
+          <button
+            className="todayShortcut"
+            onClick={() => {
+              const [y, m] = today.split("-").map(Number);
+              setMonth({ year: y, month: m });
+              setSelectedDate(today);
+            }}
+          >
+            Today
+          </button>
+          <div className="weekdayRow" aria-hidden="true">
+            {calendar.weekdayLabels.map((x, i) => (
+              <span key={i}>{x}</span>
+            ))}
+          </div>
+          <div className="monthGrid">
+            {calendar.cells.map((c) => (
+              <button
+                key={c.date}
+                className={`${c.inMonth ? "" : "outside"} ${selectedDate === c.date ? "selected" : ""}`}
+                aria-label={formatDate(c.date, "long") + (marked.has(c.date) ? ", has plans" : "") + (reminderMarked.has(c.date) ? ", has reminders" : "")}
+                aria-pressed={selectedDate === c.date}
+                onClick={() => {
+                  setSelectedDate(c.date);
+                  setDaySheet(true);
+                }}
+              >
+                <span>{Number(c.date.slice(-2))}</span>
+                {marked.has(c.date) && <i className="plannerDot" />}
+                {reminderMarked.has(c.date) && (
+                  <i className="reminderDot">
+                    <Bell />
+                  </i>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {tab !== "reminders" && (
+        <div className="plannerList">
+          {!visible.length && (
+            <div className="plannerEmpty plannerEmptyCompact">
+              <CalendarDays />
+              <b>{tab === "today" ? "Nothing planned for today" : tab === "calendar" ? "Nothing on this day" : "No upcoming items"}</b>
+              <span>Use the + button above to add something.</span>
+            </div>
+          )}
+          {visible.map((item) => {
+            const status = plannerStatus(item);
+            const time = plannerReferenceTime(item);
+            const itemReminders = activeReminders.filter((r) => r.plannerItemId === item.id).length;
+            return (
+              <article className={`plannerCard ${status}`} key={item.id}>
+                {(item.type === "task" || item.type === "deadline") && (
+                  <button
+                    className="completeButton"
+                    aria-pressed={item.status === "completed"}
+                    aria-label={item.status === "completed" ? `Mark ${item.title} as not done` : `Mark ${item.title} as done`}
+                    onClick={() => act(() => store!.setCompleted(item.id, item.status !== "completed").then(() => undefined))}
+                  >
+                    {item.status === "completed" ? <CheckCircle2 /> : <Check />}
+                  </button>
+                )}
+                <div className="plannerCardBody">
+                  <div className="plannerCardTop">
+                    <span>{item.type}</span>
+                    <em>{status === "open" ? "" : status}</em>
+                  </div>
+                  <h3>{item.title}</h3>
+                  <p>
+                    <Clock3 aria-hidden="true" /> {formatDate(plannerReferenceDate(item))}
+                    {time ? ` · ${formatTime(time)}` : " · All day"}
+                    {item.location ? ` · ${item.location}` : ""}
+                  </p>
+                  <div className="plannerCardActions">
+                    {item.type !== "reminder" && (
+                      <button onClick={() => setReminderItem(item)} aria-label={`Add reminder for ${item.title}`}>
+                        <Bell /> {itemReminders ? `Reminder · ${itemReminders}` : "Reminder"}
+                      </button>
+                    )}
+                    <button onClick={() => setEditing(item)} aria-label={`Edit ${item.title}`}>
+                      <Pencil /> Edit
+                    </button>
+                    <button onClick={() => act(() => store!.remove(item.id))} aria-label={`Delete ${item.title}`}>
+                      <Trash2 /> Delete
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+      {tab === "reminders" && (
+        <RemindersPage
+          reminders={activeReminders}
+          items={items}
+          locale={locale}
+          timezone={timezone}
+          filter={reminderFilter}
+          setFilter={setReminderFilter}
+          notificationState={notificationState}
+          signedIn={signedIn}
+          busy={busy}
+          onBack={() => setTab("today")}
+          onAdd={() => setNewReminderDate(today)}
+          onSignIn={onSignIn}
+          onEnable={() =>
+            act(async () => {
+              try {
+                await enablePushNotifications();
+                notice("success", "Notifications are on for this device.");
+              } finally {
+                setNotificationState(await getNotificationState());
+              }
+            })
+          }
+          onEdit={(item) => setEditing(item)}
+          onHandled={(id) => act(() => markReminderHandled(id))}
+          onSnooze={(id, minutes) => act(() => snoozeReminder(id, minutes).then(() => notice("success", "Reminder snoozed.")))}
+          onCancel={(id) => act(() => cancelReminder(id))}
+        />
+      )}
+      {daySheet && (
+        <Sheet label={formatDate(selectedDate, "long")} onClose={() => setDaySheet(false)} className="compact calendarActionSheet">
+          <div className="sheetTop">
+            <div>
+              <h2>{formatDate(selectedDate, "long")}</h2>
+              <span className="sheetHint">
+                {selectedDayItems.length + selectedDayReminders.length ? `${selectedDayItems.length + selectedDayReminders.length} scheduled` : "Nothing planned yet"}
+              </span>
+            </div>
+            <button className="iconButton" onClick={() => setDaySheet(false)} aria-label="Close">
+              <X />
+            </button>
+          </div>
+          {selectedDayItems.length + selectedDayReminders.length > 0 && (
+            <div className="calendarDayPreview">
+              <div className="calendarDayPreviewHead">
+                <b>On this day</b>
+              </div>
+              {selectedDayItems.slice(0, 3).map((item) => (
+                <button
+                  className="calendarDayRow"
+                  key={item.id}
+                  onClick={() => {
+                    setDaySheet(false);
+                    setEditing(item);
+                  }}
+                >
+                  <CalendarDays />
+                  <span>
+                    <b>{item.title}</b>
+                    <small>{plannerReferenceTime(item) ? formatTime(plannerReferenceTime(item)) : "All day"}</small>
+                  </span>
+                  <ChevronRight />
+                </button>
+              ))}
+              {selectedDayReminders.slice(0, 3).map((r) => (
+                <button
+                  className="calendarDayRow reminder"
+                  key={r.id}
+                  onClick={() => {
+                    setDaySheet(false);
+                    setTab("reminders");
+                  }}
+                >
+                  <Bell />
+                  <span>
+                    <b>{items.find((i) => i.id === r.plannerItemId)?.title || r.label || "Reminder"}</b>
+                    <small>{new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: timezone }).format(new Date(r.scheduledAt))}</small>
+                  </span>
+                  <ChevronRight />
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="calendarActionChoices">
+            <button
+              onClick={() => {
+                setDaySheet(false);
+                setEditing(emptyItem(timezone, selectedDate));
+              }}
+            >
+              <CalendarDays />
+              <b>Plan something</b>
+              <span>Add an event, task or deadline.</span>
+            </button>
+            <button
+              onClick={() => {
+                setDaySheet(false);
+                setNewReminderDate(selectedDate);
+              }}
+            >
+              <Bell />
+              <b>Set a reminder</b>
+              <span>Choose a time and get notified.</span>
+            </button>
+            <button className="calendarViewDay" onClick={() => setDaySheet(false)}>
+              <ListChecks />
+              <b>View day</b>
+              <span>See everything on this date.</span>
+            </button>
+          </div>
+        </Sheet>
+      )}
+      {editing && (
+        <Editor
+          item={editing}
+          busy={busy}
+          onClose={() => setEditing(null)}
+          onSave={(i, d) =>
+            act(async () => {
+              await store!.upsert(i);
+              setEditing(null);
+              if (d) {
+                const r = await createReminder(i, d, i.title);
+                reminderSaved(r.backgroundDelivery);
+              } else notice("success", "Saved to Planner.");
+            })
+          }
+        />
+      )}
+      {newReminderDate && (
+        <NewReminder
+          date={newReminderDate}
+          timezone={timezone}
+          busy={busy}
+          onClose={() => setNewReminderDate(null)}
+          onSave={(title, date, time) =>
+            act(async () => {
+              // A standalone reminder is stored as a hidden Planner entry so it syncs, appears on the
+              // calendar and is delivered by the same push pipeline.
+              const item: PlannerItem = { ...emptyItem(timezone, date), type: "reminder", title, allDay: false, startTime: time };
+              await store!.upsert(item);
+              const r = await createReminder(item, { preset: "at_time" }, title);
+              setNewReminderDate(null);
+              reminderSaved(r.backgroundDelivery);
+            })
+          }
+        />
+      )}
+      {reminderItem && (
+        <Reminder
+          item={reminderItem}
+          busy={busy}
+          onClose={() => setReminderItem(null)}
+          onSave={(d) =>
+            act(async () => {
+              const r = await createReminder(reminderItem, d, reminderItem.title);
+              setReminderItem(null);
+              reminderSaved(r.backgroundDelivery);
+            })
+          }
+        />
+      )}
+    </section>
+  );
 }
-function formatOffset(minutes:number){if(minutes%10080===0)return `${minutes/10080} week${minutes===10080?"":"s"}`;if(minutes%1440===0)return `${minutes/1440} day${minutes===1440?"":"s"}`;if(minutes%60===0)return `${minutes/60} hour${minutes===60?"":"s"}`;return `${minutes} min`;}
-function Editor({item,busy,onClose,onSave}:{item:PlannerItem;busy:boolean;onClose:()=>void;onSave:(i:PlannerItem,d?:ReminderDraft)=>void}){
- const[d,setD]=useState(item),[reminder,setReminder]=useState<"none"|ReminderPreset>("none"),[reminderOpen,setReminderOpen]=useState(false),[notesOpen,setNotesOpen]=useState(Boolean(item.description)),task=d.type==="task"||d.type==="deadline",patch=(p:Partial<PlannerItem>)=>setD({...d,...p,updatedAt:new Date().toISOString()});
- const time=task?d.dueTime:d.startTime,setTime=(v:string)=>patch(task?{dueTime:v}:{startTime:v});
- const tz=(d.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC").replace(/_/g," ");
- const reminderLabels:Record<string,string>={none:"None",at_time:"At time","5m":"5 min before","15m":"15 min before","30m":"30 min before","1h":"1 hour before","1d":"1 day before"};
- return <div className="plannerOverlay"><section className="plannerSheet plannerEditorV2" role="dialog" aria-modal="true">
-  <div className="sheetTop"><h2>{item.title?"Edit item":"Add to Planner"}</h2><button className="iconButton compactClose" onClick={onClose} aria-label="Close"><X/></button></div>
-  <div className="plannerKinds compactKinds">{(["event","task","deadline"] as PlannerItemType[]).map(t=><button key={t} className={d.type===t?"active":""} onClick={()=>patch({type:t,startDate:t==="task"||t==="deadline"?"":d.startDate||d.dueDate,dueDate:t==="task"||t==="deadline"?d.dueDate||d.startDate:""})}>{t}</button>)}</div>
-  <label className="compactLabel"><span>Title</span><input value={d.title} onChange={e=>patch({title:e.target.value})} placeholder={task?"What needs to be done?":"What are you planning?"}/></label>
-  <div className="dateTimeRow"><label><span>{task?"Due date":"Date"}</span><input type="date" value={task?d.dueDate:d.startDate} onChange={e=>patch(task?{dueDate:e.target.value}:{startDate:e.target.value,endDate:d.endDate||e.target.value})}/></label>{!d.allDay&&<label className="timeField"><span>Time</span><input type="time" value={time} onChange={e=>setTime(e.target.value)}/></label>}</div>
-  <div className="plannerInlineMeta"><label className="switchRow"><input type="checkbox" checked={d.allDay} onChange={e=>patch({allDay:e.target.checked})}/><span>All day</span></label><span className="localTime">Local time · {tz}</span></div>
-  <label className="compactLabel"><span>Location <small>optional</small></span><input value={d.location} onChange={e=>patch({location:e.target.value})} placeholder="Add a place"/></label>
-  <button type="button" className="plannerChoiceRow" onClick={()=>setReminderOpen(true)}><span><Bell size={20}/><span><b>Reminder</b><small>Phone notification</small></span></span><strong>{reminderLabels[reminder]} <ChevronRight size={18}/></strong></button>
-  {!notesOpen?<button type="button" className="addNotes" onClick={()=>setNotesOpen(true)}>+ Add notes</button>:<label className="compactLabel"><span>Notes <small>optional</small></span><textarea rows={3} autoFocus={!item.description} value={d.description} onChange={e=>patch({description:e.target.value})}/></label>}
-  <button className="button sheetSave stickySave" disabled={busy||!d.title.trim()||(!d.allDay&&!time)} onClick={()=>onSave(d,reminder==="none"?undefined:{preset:reminder})}>{busy?"Saving…":reminder==="none"?"Save to Planner":"Save with reminder"}</button>
-  {reminderOpen&&<div className="nestedSheetBackdrop" onClick={()=>setReminderOpen(false)}><div className="nestedSheet" onClick={e=>e.stopPropagation()}><div className="nestedSheetHandle"/><h3>Remind me</h3>{(["none","at_time","5m","15m","30m","1h","1d"] as const).map(v=><button key={v} className={reminder===v?"selected":""} onClick={()=>{setReminder(v);setReminderOpen(false)}}><span>{reminderLabels[v]}</span>{reminder===v&&<Check size={20}/>}</button>)}</div></div>}
- </section></div>;
+
+/** Bottom sheet with dialog semantics, Escape to close and focus kept inside. */
+function Sheet({ label, onClose, className = "", children }: { label: string; onClose: () => void; className?: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const first = ref.current?.querySelector<HTMLElement>("input,select,textarea,button:not([aria-label='Close'])");
+    first?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key !== "Tab" || !ref.current) return;
+      const focusable = [...ref.current.querySelectorAll<HTMLElement>("button,input,select,textarea,[href]")].filter((el) => !el.hasAttribute("disabled"));
+      if (!focusable.length) return;
+      const [a, z] = [focusable[0], focusable[focusable.length - 1]];
+      if (e.shiftKey && document.activeElement === a) {
+        e.preventDefault();
+        z.focus();
+      } else if (!e.shiftKey && document.activeElement === z) {
+        e.preventDefault();
+        a.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previous?.focus?.();
+    };
+  }, [onClose]);
+  return (
+    <div className="plannerOverlay" onClick={onClose}>
+      <section ref={ref} className={`plannerSheet ${className}`} role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
+        {children}
+      </section>
+    </div>
+  );
 }
-function Reminder({item,busy,onClose,onSave}:{item:PlannerItem;busy:boolean;onClose:()=>void;onSave:(d:ReminderDraft)=>void}){
- const[p,setP]=useState<ReminderDraft["preset"]>(item.type==="task"||item.type==="deadline"?"1d":"1h");
- const[custom,setCustom]=useState("");
- const[unit,setUnit]=useState<"minutes"|"hours"|"days">("hours");
- const[time,setTime]=useState("09:00");
- const number=custom.trim()===""?NaN:Number(custom);
- const multiplier=unit==="days"?1440:unit==="hours"?60:1;
- const customMinutes=Number.isFinite(number)?Math.round(number*multiplier):NaN;
- const customValid=p!=="custom"||(Number.isFinite(customMinutes)&&customMinutes>=0&&customMinutes<=525600);
- return <div className="plannerOverlay">
-  <section className="plannerSheet compact reminderSheet" role="dialog" aria-modal="true" aria-labelledby="reminder-title">
-   <div className="sheetTop"><div><h2 id="reminder-title">Reminder</h2><span className="sheetHint">Choose when Zest should remind you.</span></div><button className="iconButton" onClick={onClose} aria-label="Close reminder"><X/></button></div>
-   <div className="reminderChoices">{([["at_time","At time"],["5m","5 min before"],["15m","15 min before"],["30m","30 min before"],["1h","1 hour before"],["1d","1 day before"],["1w","1 week before"],["custom","Custom"]] as [ReminderDraft["preset"],string][]).map(([v,l])=><button type="button" key={v} className={p===v?"active":""} onClick={()=>setP(v)}>{l}</button>)}</div>
-   {item.allDay&&<label className="reminderField"><span>Reminder time</span><input type="time" value={time} onChange={e=>setTime(e.target.value)}/></label>}
-   {p==="custom"&&<div className="customReminder">
-    <label className="reminderField"><span>How long before?</span><input type="number" inputMode="decimal" min="0" step="1" value={custom} placeholder="Enter a number" onChange={e=>setCustom(e.target.value)}/></label>
-    <label className="reminderField"><span>Unit</span><select value={unit} onChange={e=>setUnit(e.target.value as "minutes"|"hours"|"days")}><option value="minutes">Minutes</option><option value="hours">Hours</option><option value="days">Days</option></select></label>
-   </div>}
-   {p==="custom"&&!customValid&&custom.trim()!==""&&<p className="reminderError">Choose a reminder between 0 minutes and 365 days.</p>}
-   <button className="button sheetSave" disabled={busy||!customValid} onClick={()=>onSave({preset:p,customMinutes:p==="custom"?customMinutes:undefined,allDayTime:item.allDay?time:undefined})}>Schedule reminder</button>
-  </section>
- </div>;
+
+function RemindersPage({
+  reminders,
+  items,
+  locale,
+  timezone,
+  filter,
+  setFilter,
+  notificationState,
+  signedIn,
+  busy,
+  onBack,
+  onAdd,
+  onSignIn,
+  onEnable,
+  onEdit,
+  onHandled,
+  onSnooze,
+  onCancel,
+}: {
+  reminders: ReminderRecord[];
+  items: PlannerItem[];
+  locale: string;
+  timezone: string;
+  filter: ReminderFilter;
+  setFilter: (v: ReminderFilter) => void;
+  notificationState: NotificationState;
+  signedIn: boolean;
+  busy: boolean;
+  onBack: () => void;
+  onAdd: () => void;
+  onSignIn?: () => void;
+  onEnable: () => void;
+  onEdit: (item: PlannerItem) => void;
+  onHandled: (id: string) => void;
+  onSnooze: (id: string, minutes: number) => void;
+  onCancel: (id: string) => void;
+}) {
+  const [menu, setMenu] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(t);
+  }, []);
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== "Escape") return;
+      if (e.type === "pointerdown" && (e.target as HTMLElement).closest(".reminderCardMenu")) return;
+      setMenu(null);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [menu]);
+  const today = todayDate(timezone),
+    itemFor = (r: ReminderRecord) => items.find((i) => i.id === r.plannerItemId);
+  const dateKey = (r: ReminderRecord) => dateKeyIn(r.scheduledAt, timezone);
+  const overdue = (r: ReminderRecord) => Date.parse(r.scheduledAt) < now;
+  const filtered = reminders.filter(
+    (r) =>
+      filter === "all" ||
+      (filter === "today" && dateKey(r) === today) ||
+      (filter === "upcoming" && !overdue(r) && dateKey(r) !== today) ||
+      (filter === "overdue" && overdue(r)),
+  );
+  const groups: [string, ReminderRecord[]][] = [
+    ["Overdue", filtered.filter((r) => overdue(r))],
+    ["Today", filtered.filter((r) => !overdue(r) && dateKey(r) === today)],
+    ["Upcoming", filtered.filter((r) => !overdue(r) && dateKey(r) !== today)],
+  ];
+  const row = (r: ReminderRecord) => {
+    const item = itemFor(r),
+      title = item?.title || r.label || "Reminder",
+      when = new Intl.DateTimeFormat(locale, {
+        dateStyle: dateKey(r) === today ? undefined : "medium",
+        timeStyle: "short",
+        timeZone: timezone,
+      }).format(new Date(r.scheduledAt));
+    return (
+      <article className="reminderCard" key={r.id}>
+        <div className="reminderCardIcon" aria-hidden="true">
+          <Bell />
+        </div>
+        <div className="reminderCardCopy">
+          <b>{title}</b>
+          <span>
+            <CalendarDays aria-hidden="true" /> {dateKey(r) === today ? "Today, " : ""}
+            {when}
+          </span>
+          <span>
+            <Clock3 aria-hidden="true" />{" "}
+            {r.status === "sent" ? "Delivered" : r.status === "failed" ? "Couldn’t be delivered" : r.offsetMinutes === 0 ? "At time" : r.offsetMinutes ? formatOffset(r.offsetMinutes) + " before" : "Scheduled"}
+          </span>
+        </div>
+        <div className="reminderCardMenu">
+          <button onClick={() => setMenu(menu === r.id ? null : r.id)} disabled={busy} aria-label={`Options for ${title}`} aria-haspopup="menu" aria-expanded={menu === r.id}>
+            •••
+          </button>
+          <button className="reminderCheck" onClick={() => onHandled(r.id)} disabled={busy} aria-label={`Mark ${title} as done`}>
+            <Check />
+          </button>
+          {menu === r.id && (
+            <div className="reminderMenuPopover" role="menu">
+              {(
+                [
+                  ["Snooze 15 min", () => onSnooze(r.id, 15)],
+                  ["Snooze 1 hour", () => onSnooze(r.id, 60)],
+                  ["Mark as done", () => onHandled(r.id)],
+                  ...(item && item.type !== "reminder" ? ([["Edit item", () => onEdit(item)]] as const) : []),
+                ] as const
+              ).map(([label, fn]) => (
+                <button
+                  key={label}
+                  role="menuitem"
+                  onClick={() => {
+                    setMenu(null);
+                    fn();
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                role="menuitem"
+                className="danger"
+                onClick={() => {
+                  setMenu(null);
+                  onCancel(r.id);
+                }}
+              >
+                Cancel reminder
+              </button>
+            </div>
+          )}
+        </div>
+      </article>
+    );
+  };
+  return (
+    <div className="remindersStandalone">
+      <div className="remindersTitle">
+        <button className="reminderBack" onClick={onBack} aria-label="Back to Planner">
+          <ChevronLeft />
+        </button>
+        <div className="remindersTitleCopy">
+          <h2>Reminders</h2>
+          <p>Stay ahead of what matters</p>
+        </div>
+        <button className="reminderAddButton" onClick={onAdd} disabled={busy} aria-label="Add reminder">
+          <Plus />
+          <span>Add</span>
+        </button>
+      </div>
+      <div className={"notificationStatus " + (signedIn ? notificationState : "available")} role="status">
+        <Bell aria-hidden="true" />
+        <div>
+          <b>
+            {!signedIn
+              ? "Notifications need an account"
+              : notificationState === "enabled"
+                ? "Notifications on"
+                : notificationState === "blocked"
+                  ? "Notifications blocked"
+                  : notificationState === "unsupported"
+                    ? "Notifications unavailable"
+                    : "Turn on notifications"}
+          </b>
+          <span>
+            {!signedIn
+              ? "Sign in so Zest can alert you even when the app is closed."
+              : notificationState === "enabled"
+                ? "Zest can alert you on this device. Sound and vibration follow your phone settings."
+                : notificationState === "blocked"
+                  ? "Allow notifications for Zest Snap in your phone or browser settings, then come back."
+                  : notificationState === "unsupported"
+                    ? "This browser can’t show background reminders. Install Zest Snap or use Chrome."
+                    : "Get reminders even when Zest isn’t open."}
+          </span>
+        </div>
+        {!signedIn && onSignIn && (
+          <button className="button alt" onClick={onSignIn}>
+            Sign in
+          </button>
+        )}
+        {signedIn && notificationState === "available" && (
+          <button className="button alt" onClick={onEnable} disabled={busy}>
+            Enable
+          </button>
+        )}
+        {signedIn && notificationState === "enabled" && <CheckCircle2 aria-hidden="true" />}
+      </div>
+      <div className="reminderFilters" role="tablist" aria-label="Filter reminders">
+        {(["all", "today", "upcoming", "overdue"] as const).map((v) => (
+          <button key={v} role="tab" aria-selected={filter === v} className={filter === v ? "active" : ""} onClick={() => setFilter(v)}>
+            {v[0].toUpperCase() + v.slice(1)}
+          </button>
+        ))}
+      </div>
+      {!filtered.length ? (
+        <div className="plannerEmpty reminderEmpty">
+          <Bell aria-hidden="true" />
+          <b>{filter === "all" ? "No reminders yet" : `No ${filter} reminders`}</b>
+          <span>{filter === "all" ? "Add one here, or tap a day in Calendar to set a reminder." : "You’re all caught up."}</span>
+          {filter === "all" && (
+            <button className="button alt" onClick={onAdd}>
+              Add a reminder
+            </button>
+          )}
+        </div>
+      ) : (
+        groups
+          .filter(([, rows]) => rows.length)
+          .map(([name, rows]) => (
+            <section className="reminderGroup" key={name}>
+              <h3>
+                {name} <span>{rows.length}</span>
+              </h3>
+              {rows.map(row)}
+            </section>
+          ))
+      )}
+    </div>
+  );
+}
+
+function formatOffset(minutes: number) {
+  if (minutes % 10080 === 0) return `${minutes / 10080} week${minutes === 10080 ? "" : "s"}`;
+  if (minutes % 1440 === 0) return `${minutes / 1440} day${minutes === 1440 ? "" : "s"}`;
+  if (minutes % 60 === 0) return `${minutes / 60} hour${minutes === 60 ? "" : "s"}`;
+  return `${minutes} min`;
+}
+
+function Editor({ item, busy, onClose, onSave }: { item: PlannerItem; busy: boolean; onClose: () => void; onSave: (i: PlannerItem, d?: ReminderDraft) => void }) {
+  const [d, setD] = useState(item),
+    [reminder, setReminder] = useState<"none" | ReminderPreset>("none"),
+    [reminderOpen, setReminderOpen] = useState(false),
+    [notesOpen, setNotesOpen] = useState(Boolean(item.description)),
+    task = d.type === "task" || d.type === "deadline",
+    patch = (p: Partial<PlannerItem>) => setD({ ...d, ...p, updatedAt: new Date().toISOString() });
+  const time = task ? d.dueTime : d.startTime,
+    setTime = (v: string) => patch(task ? { dueTime: v } : { startTime: v });
+  const tz = (d.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC").replace(/_/g, " ");
+  const reminderLabels: Record<string, string> = {
+    none: "None",
+    at_time: "At time",
+    "5m": "5 min before",
+    "15m": "15 min before",
+    "30m": "30 min before",
+    "1h": "1 hour before",
+    "1d": "1 day before",
+  };
+  const isNew = !item.title;
+  return (
+    <Sheet label={isNew ? "Add to Planner" : "Edit item"} onClose={onClose} className="plannerEditorV2">
+      <div className="sheetTop">
+        <h2>{isNew ? "Add to Planner" : "Edit item"}</h2>
+        <button className="iconButton compactClose" onClick={onClose} aria-label="Close">
+          <X />
+        </button>
+      </div>
+      {d.type !== "reminder" && (
+        <div className="plannerKinds compactKinds" role="radiogroup" aria-label="Item type">
+          {(["event", "task", "deadline"] as PlannerItemType[]).map((t) => (
+            <button
+              key={t}
+              role="radio"
+              aria-checked={d.type === t}
+              className={d.type === t ? "active" : ""}
+              onClick={() => {
+                const toTask = t === "task" || t === "deadline";
+                const date = (task ? d.dueDate : d.startDate) || d.dueDate || d.startDate;
+                patch({
+                  type: t,
+                  startDate: toTask ? "" : date,
+                  endDate: toTask ? "" : date,
+                  dueDate: toTask ? date : "",
+                  startTime: toTask ? "" : time,
+                  dueTime: toTask ? time : "",
+                });
+              }}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+      <label className="compactLabel">
+        <span>Title</span>
+        <input value={d.title} maxLength={500} onChange={(e) => patch({ title: e.target.value })} placeholder={task ? "What needs to be done?" : "What are you planning?"} />
+      </label>
+      <div className="dateTimeRow">
+        <label>
+          <span>{task ? "Due date" : "Date"}</span>
+          <input
+            type="date"
+            value={task ? d.dueDate : d.startDate}
+            onChange={(e) =>
+              patch(task ? { dueDate: e.target.value } : { startDate: e.target.value, endDate: !d.endDate || d.endDate < e.target.value ? e.target.value : d.endDate })
+            }
+          />
+        </label>
+        {!d.allDay && (
+          <label className="timeField">
+            <span>Time</span>
+            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          </label>
+        )}
+      </div>
+      <div className="plannerInlineMeta">
+        <label className="switchRow">
+          <input type="checkbox" checked={d.allDay} onChange={(e) => patch({ allDay: e.target.checked, ...(e.target.checked ? { startTime: "", dueTime: "", endTime: "" } : {}) })} />
+          <span>All day</span>
+        </label>
+        <span className="localTime">Local time · {tz}</span>
+      </div>
+      <label className="compactLabel">
+        <span>
+          Location <small>optional</small>
+        </span>
+        <input value={d.location} maxLength={2000} onChange={(e) => patch({ location: e.target.value })} placeholder="Add a place" />
+      </label>
+      <button type="button" className="plannerChoiceRow" onClick={() => setReminderOpen(true)} aria-haspopup="dialog">
+        <span>
+          <Bell size={20} aria-hidden="true" />
+          <span>
+            <b>Reminder</b>
+            <small>Phone notification</small>
+          </span>
+        </span>
+        <strong>
+          {reminderLabels[reminder]} <ChevronRight size={18} aria-hidden="true" />
+        </strong>
+      </button>
+      {!notesOpen ? (
+        <button type="button" className="addNotes" onClick={() => setNotesOpen(true)}>
+          + Add notes
+        </button>
+      ) : (
+        <label className="compactLabel">
+          <span>
+            Notes <small>optional</small>
+          </span>
+          <textarea rows={3} maxLength={10000} value={d.description} onChange={(e) => patch({ description: e.target.value })} />
+        </label>
+      )}
+      <button className="button sheetSave stickySave" disabled={busy || !d.title.trim() || (!d.allDay && !time)} onClick={() => onSave(d, reminder === "none" ? undefined : { preset: reminder })}>
+        {busy ? "Saving…" : reminder === "none" ? "Save to Planner" : "Save with reminder"}
+      </button>
+      {!d.allDay && !time && <p className="sheetHint">Add a time, or switch on All day.</p>}
+      {reminderOpen && (
+        <div className="nestedSheetBackdrop" onClick={() => setReminderOpen(false)}>
+          <div className="nestedSheet" role="dialog" aria-modal="true" aria-label="Remind me" onClick={(e) => e.stopPropagation()}>
+            <div className="nestedSheetHandle" />
+            <h3>Remind me</h3>
+            {(["none", "at_time", "5m", "15m", "30m", "1h", "1d"] as const).map((v) => (
+              <button
+                key={v}
+                className={reminder === v ? "selected" : ""}
+                aria-pressed={reminder === v}
+                onClick={() => {
+                  setReminder(v);
+                  setReminderOpen(false);
+                }}
+              >
+                <span>{reminderLabels[v]}</span>
+                {reminder === v && <Check size={20} />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+/** Dedicated reminder flow: what, which day (prefilled from Calendar) and what time. */
+function NewReminder({
+  date,
+  timezone,
+  busy,
+  onClose,
+  onSave,
+}: {
+  date: string;
+  timezone: string;
+  busy: boolean;
+  onClose: () => void;
+  onSave: (title: string, date: string, time: string) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [day, setDay] = useState(date);
+  const [time, setTime] = useState(() => {
+    const now = new Date(Date.now() + 60 * 60000);
+    const parts = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: timezone }).format(now);
+    return date === todayDate(timezone) ? parts.slice(0, 2) + ":00" : "09:00";
+  });
+  const past = isPastLocal(day, time, timezone);
+  return (
+    <Sheet label="New reminder" onClose={onClose} className="compact reminderSheet">
+      <div className="sheetTop">
+        <div>
+          <h2>New reminder</h2>
+          <span className="sheetHint">Zest will notify you at this time ({timezone.replace(/_/g, " ")}).</span>
+        </div>
+        <button className="iconButton" onClick={onClose} aria-label="Close">
+          <X />
+        </button>
+      </div>
+      <label className="reminderField">
+        <span>Remind me to</span>
+        <input value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Call the school" />
+      </label>
+      <div className="customReminder">
+        <label className="reminderField">
+          <span>Date</span>
+          <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+        </label>
+        <label className="reminderField">
+          <span>Time</span>
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        </label>
+      </div>
+      {past && <p className="reminderError">That time has already passed — choose a later time.</p>}
+      <button className="button sheetSave" disabled={busy || !title.trim() || !day || !time || past} onClick={() => onSave(title.trim(), day, time)}>
+        {busy ? "Saving…" : "Save reminder"}
+      </button>
+    </Sheet>
+  );
+}
+
+function Reminder({ item, busy, onClose, onSave }: { item: PlannerItem; busy: boolean; onClose: () => void; onSave: (d: ReminderDraft) => void }) {
+  const [p, setP] = useState<ReminderDraft["preset"]>(item.type === "task" || item.type === "deadline" ? "1d" : "1h");
+  const [custom, setCustom] = useState("");
+  const [unit, setUnit] = useState<"minutes" | "hours" | "days">("hours");
+  const [time, setTime] = useState("09:00");
+  const number = custom.trim() === "" ? NaN : Number(custom);
+  const multiplier = unit === "days" ? 1440 : unit === "hours" ? 60 : 1;
+  const customMinutes = Number.isFinite(number) ? Math.round(number * multiplier) : NaN;
+  const customValid = p !== "custom" || (Number.isFinite(customMinutes) && customMinutes >= 0 && customMinutes <= 525600);
+  const needsTime = !item.allDay && !plannerReferenceTime(item);
+  return (
+    <Sheet label="Reminder" onClose={onClose} className="compact reminderSheet">
+      <div className="sheetTop">
+        <div>
+          <h2>Reminder</h2>
+          <span className="sheetHint">Choose when Zest should remind you about “{item.title}”.</span>
+        </div>
+        <button className="iconButton" onClick={onClose} aria-label="Close">
+          <X />
+        </button>
+      </div>
+      <div className="reminderChoices" role="radiogroup" aria-label="When">
+        {(
+          [
+            ["at_time", "At time"],
+            ["5m", "5 min before"],
+            ["15m", "15 min before"],
+            ["30m", "30 min before"],
+            ["1h", "1 hour before"],
+            ["1d", "1 day before"],
+            ["1w", "1 week before"],
+            ["custom", "Custom"],
+          ] as [ReminderDraft["preset"], string][]
+        ).map(([v, l]) => (
+          <button type="button" key={v} role="radio" aria-checked={p === v} className={p === v ? "active" : ""} onClick={() => setP(v)}>
+            {l}
+          </button>
+        ))}
+      </div>
+      {item.allDay && (
+        <label className="reminderField">
+          <span>Reminder time</span>
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        </label>
+      )}
+      {p === "custom" && (
+        <div className="customReminder">
+          <label className="reminderField">
+            <span>How long before?</span>
+            <input type="number" inputMode="decimal" min="0" step="1" value={custom} placeholder="Enter a number" onChange={(e) => setCustom(e.target.value)} />
+          </label>
+          <label className="reminderField">
+            <span>Unit</span>
+            <select value={unit} onChange={(e) => setUnit(e.target.value as "minutes" | "hours" | "days")}>
+              <option value="minutes">Minutes</option>
+              <option value="hours">Hours</option>
+              <option value="days">Days</option>
+            </select>
+          </label>
+        </div>
+      )}
+      {p === "custom" && !customValid && custom.trim() !== "" && <p className="reminderError">Choose a reminder between 0 minutes and 365 days.</p>}
+      {needsTime && <p className="reminderError">Give this item a time (or make it all day) before adding a reminder.</p>}
+      <button
+        className="button sheetSave"
+        disabled={busy || !customValid || needsTime}
+        onClick={() => onSave({ preset: p, customMinutes: p === "custom" ? customMinutes : undefined, allDayTime: item.allDay ? time : undefined })}
+      >
+        Schedule reminder
+      </button>
+    </Sheet>
+  );
 }

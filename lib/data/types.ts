@@ -53,6 +53,8 @@ export type LocalState = {
   credits: number;
   firstScanRewarded: boolean;
   firstCalendarRewarded: boolean;
+  /** Reward reasons already in the server ledger (cloud accounts only). */
+  earned?: string[];
 };
 export const emptyState: LocalState = {
   scans: [],
@@ -72,6 +74,8 @@ export const defaultProfile: Profile = {
 };
 export interface DataProvider {
   mode: "local" | "cloud";
+  /** Set for signed-in (cloud) providers. */
+  readonly userId?: string;
   loadCached?(): LocalState | null;
   loadCachedProfile?(): Profile | null;
   load(): Promise<LocalState>;
@@ -84,6 +88,7 @@ export interface DataProvider {
   loadSubscription(): Promise<Subscription>;
   createReferral(): Promise<string>;
   loadReferralStatus(): Promise<Referral[]>;
+  loadRewardRules?(): Promise<Record<string, number>>;
   loadCalendarConnections(): Promise<CalendarConnection[]>;
   exportData(): Promise<unknown>;
   deleteData(): Promise<void>;

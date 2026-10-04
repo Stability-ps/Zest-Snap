@@ -1,9 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search } from "lucide-react";
 import {
   getDataProvider,
-  migrateLocal,
   LocalDataProvider,
   defaultProfile,
   type DataProvider,
@@ -11,16 +10,23 @@ import {
   type Usage,
 } from "@/lib/data";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { clearCloudCaches } from "@/lib/data/cached";
+import { clearAccountCaches, signOut } from "@/lib/session";
+import { PlannerStore } from "@/lib/planner-store";
+import { timezoneOptions as allTimezones, timezoneLabel as zoneLabel } from "@/lib/timezones";
 import { productConfig } from "@/lib/product-config";
+/** Removes Zest data from this browser only. Keeps the anonymous device id so free-trial limits still apply. */
+function clearDeviceData() {
+  clearAccountCaches();
+  new LocalDataProvider(localStorage).deleteData();
+  for (const key of ["zest-planner-v1", "zest-reminders-v1", "zest-referral-v1"]) localStorage.removeItem(key);
+}
 export default function Settings() {
   const [provider, setProvider] = useState<DataProvider | null>(null),
     [profile, setProfile] = useState<Profile>(defaultProfile),
     [usage, setUsage] = useState<Usage | null>(null),
-    [flags, setFlags] = useState<Record<string, boolean>>({}),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"clear"|null>(null),
+    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"clear"|"delete"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
     [accountEmail, setAccountEmail] = useState("");
   useEffect(() => {
@@ -29,7 +35,6 @@ export default function Settings() {
         setProvider(p);
         setProfile(await p.loadProfile());
         setUsage(await p.loadUsage());
-        setFlags(await p.loadFeatureFlags());
         if (p.mode === "cloud" && isSupabaseConfigured()) {
           const { data } = await createClient().auth.getUser();
           setAccountEmail(data.user?.email || "");
@@ -60,27 +65,6 @@ export default function Settings() {
       setMessage(e instanceof Error ? e.message : "Could not save preference.");
     }
   }
-  const timezoneOptions = [
-    ["Africa/Johannesburg", "Johannesburg (GMT+2)"],
-    ["Africa/Lagos", "Lagos"],
-    ["Africa/Nairobi", "Nairobi"],
-    ["Europe/London", "London"],
-    ["Europe/Paris", "Paris"],
-    ["Europe/Berlin", "Berlin"],
-    ["America/New_York", "New York"],
-    ["America/Chicago", "Chicago"],
-    ["America/Denver", "Denver"],
-    ["America/Los_Angeles", "Los Angeles"],
-    ["America/Toronto", "Toronto"],
-    ["America/Sao_Paulo", "São Paulo"],
-    ["Asia/Dubai", "Dubai"],
-    ["Asia/Kolkata", "India"],
-    ["Asia/Singapore", "Singapore"],
-    ["Asia/Tokyo", "Tokyo"],
-    ["Asia/Shanghai", "Shanghai"],
-    ["Australia/Sydney", "Sydney"],
-    ["Pacific/Auckland", "Auckland"],
-  ] as const;
   const localeOptions = [
     ["en", "Automatic"],
     ["en-ZA", "South Africa"],
@@ -89,11 +73,26 @@ export default function Settings() {
     ["en-CA", "Canada"],
     ["en-AU", "Australia"],
     ["en-IN", "India"],
+    ["en-IE", "Ireland"],
+    ["en-NZ", "New Zealand"],
+    ["en-NG", "Nigeria"],
+    ["en-KE", "Kenya"],
+    ["en-SG", "Singapore"],
+    ["en-AE", "United Arab Emirates"],
+    ["de-DE", "Germany (regional formats)"],
+    ["fr-FR", "France (regional formats)"],
+    ["es-ES", "Spain (regional formats)"],
+    ["pt-BR", "Brazil (regional formats)"],
+    ["nl-NL", "Netherlands (regional formats)"],
+    ["ja-JP", "Japan (regional formats)"],
   ] as const;
-  const timezoneLabel = timezoneOptions.find(([value])=>value===profile.timezone)?.[1] || profile.timezone.replaceAll("_"," ");
+  const wantsZones = sheet === "timezone";
+  const timezones = useMemo(() => (wantsZones ? allTimezones() : []), [wantsZones]);
+  const timezoneLabel = zoneLabel(profile.timezone);
   const localeLabel = localeOptions.find(([value])=>value===profile.locale)?.[1] || "Automatic";
   const retentionLabel = profile.retentionDays===0 ? "Until deleted" : profile.retentionDays===365 ? "1 year" : profile.retentionDays+" days";
-  const filteredTimezones = timezoneOptions.filter(([,label])=>label.toLowerCase().includes(sheetSearch.toLowerCase()));
+  const q = sheetSearch.trim().toLowerCase();
+  const filteredTimezones = (q ? timezones.filter(([value, label]) => label.toLowerCase().includes(q) || value.toLowerCase().includes(q.replaceAll(" ", "_"))) : timezones).slice(0, 200);
   return (
     <main className="settingsPage">
       <div className="settingsWrap settingsNative">
@@ -128,8 +127,9 @@ export default function Settings() {
 
         <h2 className="settingsSectionTitle">Privacy & data</h2>
         <section className="settingsGroup">
-          <button className="settingsRow" disabled={busy||!provider} onClick={()=>run(async()=>{const blob=new Blob([JSON.stringify(await provider!.exportData(),null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zest-snap-data.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage("Data export prepared");})}><span className="settingsIcon"><Download /></span><span className="settingsRowCopy"><b>Export my data</b><small>Download a copy of your Zest data</small></span><ChevronRight /></button>
-          <button className="settingsRow dangerRow" disabled={busy||!provider} onClick={()=>setSheet("clear")}><span className="settingsIcon"><Trash2 /></span><span className="settingsRowCopy"><b>{provider?.mode==="cloud"?"Delete my account":"Clear device data"}</b><small>This cannot be undone</small></span><ChevronRight /></button>
+          <button className="settingsRow" disabled={busy||!provider} onClick={()=>run(async()=>{const data=provider!.mode==="cloud"?await provider!.exportData():{...(await provider!.exportData() as object),planner:PlannerStore.guestItems(),reminders:JSON.parse(localStorage.getItem("zest-reminders-v1")||"[]")};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zest-snap-data.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage("Data export prepared");})}><span className="settingsIcon"><Download /></span><span className="settingsRowCopy"><b>Export my data</b><small>Download a copy of your Zest data</small></span><ChevronRight /></button>
+          <button className="settingsRow dangerRow" disabled={busy||!provider} onClick={()=>setSheet("clear")}><span className="settingsIcon"><Trash2 /></span><span className="settingsRowCopy"><b>Clear device data</b><small>{provider?.mode==="cloud"?"Removes Zest data saved on this device only":"Removes everything Zest stored on this device"}</small></span><ChevronRight /></button>
+          {provider?.mode==="cloud"&&<button className="settingsRow dangerRow" disabled={busy||!provider} onClick={()=>setSheet("delete")}><span className="settingsIcon"><Trash2 /></span><span className="settingsRowCopy"><b>Delete my account</b><small>Permanently deletes your account and cloud data</small></span><ChevronRight /></button>}
         </section>
 
         <h2 className="settingsSectionTitle">Support</h2>
@@ -143,12 +143,13 @@ export default function Settings() {
           <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
             <div className="settingsSheetTop">
               <div>
-                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Device calendar":"Clear Zest data?"}</h2>
+                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Device calendar":sheet==="delete"?"Delete your account?":"Clear device data?"}</h2>
                 {sheet==="account"&&<p>You’re signed in. Manage this account without signing in again.</p>}
                 {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
-                {sheet==="calendar"&&<p>Zest exports calendar events using standard ICS files supported by Apple Calendar, Google Calendar and Outlook.</p>}
-                {sheet==="clear"&&<p>{provider?.mode==="cloud"?"This permanently deletes your Zest account and cloud data.":"This permanently clears Zest scans, planner data and preferences stored on this device."}</p>}
+                {sheet==="calendar"&&<p>Zest adds events to your phone or computer calendar with a standard calendar file (.ics). On Android it opens in Google Calendar or Samsung Calendar; on iPhone in Apple Calendar; on desktop in Outlook, Apple or Google Calendar. Zest doesn’t read or change your existing calendar, and events already added are skipped.</p>}
+                {sheet==="clear"&&<p>{provider?.mode==="cloud"?"This removes cached scans, Planner, reminders and preferences from this device and signs you out. Your account and cloud data are not deleted.":"This permanently clears Zest scans, Planner, reminders and preferences stored on this device. It can’t be undone."}</p>}
+                {sheet==="delete"&&<p>This permanently deletes your Zest account, scans, Planner, reminders, rewards, feedback and notification subscriptions. Events you already added to another calendar app are not affected. This can’t be undone.</p>}
               </div>
               <button className="iconButton" onClick={()=>setSheet(null)} aria-label="Close"><X/></button>
             </div>
@@ -158,7 +159,7 @@ export default function Settings() {
                 <div><span>Email</span><b>{accountEmail || "Signed-in account"}</b></div>
                 <div><span>Status</span><b>Signed in</b></div>
               </div>
-              <button className="button alt" disabled={busy} onClick={()=>run(async()=>{const supabase=createClient();await supabase.auth.signOut();clearCloudCaches(localStorage);localStorage.removeItem("zest-last-display-name");window.location.assign(new URL("/login",window.location.origin).href);})}><LogOut size={18}/> Sign out</button>
+              <button className="button alt" disabled={busy} onClick={()=>run(async()=>{await signOut();window.location.assign(new URL("/login",window.location.origin).href);})}><LogOut size={18}/> Sign out</button>
             </div>}
             {sheet==="storage"&&<div className="settingsStorageDetails">
               <div className="storageStatus">
@@ -181,8 +182,9 @@ export default function Settings() {
             </>}
             {sheet==="region"&&<div className="settingsChoiceList">{localeOptions.map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,locale:value});setSheet(null);}}><span>{label}</span>{profile.locale===value&&<Check/>}</button>)}</div>}
             {sheet==="retention"&&<div className="settingsChoiceList">{([[30,"30 days"],[90,"90 days"],[365,"1 year"],[0,"Until deleted"]] as const).map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,retentionDays:value});setSheet(null);}}><span>{label}</span>{profile.retentionDays===value&&<Check/>}</button>)}</div>}
-            {sheet==="calendar"&&<div className="settingsSheetActions"><a className="button" href="/app">Go to scans</a><span>Select events after a scan, then choose <b>Add selected to calendar</b>.</span></div>}
-            {sheet==="clear"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{await provider!.deleteData();await new LocalDataProvider(localStorage).deleteData();window.location.assign(new URL("/app",window.location.origin).href);})}>{provider?.mode==="cloud"?"Delete account":"Clear device data"}</button></div>}
+            {sheet==="calendar"&&<div className="settingsSheetActions"><a className="button" href="/app">Go to scans</a><span>After a scan, select events and tap <b>Calendar</b>, or use <b>Add to device calendar</b> on a single event.</span></div>}
+            {sheet==="clear"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{if(provider?.mode==="cloud")await signOut();clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Clear device data</button></div>}
+            {sheet==="delete"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{await provider!.deleteData();await signOut().catch(()=>undefined);clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Delete account</button></div>}
           </section>
         </div>}
 

@@ -1,27 +1,219 @@
 "use client";
-import { createClient,isSupabaseConfigured } from "./supabase/client";
-import type { PlannerItem,ReminderDraft } from "./planner";
-import { calculateReminderAt,reminderMinutes } from "./planner";
-// Web Push delivery is handled by the Supabase reminder worker.
-export type ReminderRecord={id:string;plannerItemId:string;scheduledAt:string;status:"pending"|"processing"|"sent"|"cancelled"|"failed"|"handled";offsetMinutes?:number;label?:string;deliveredAt?:string;snoozedUntil?:string;handledAt?:string};
-const KEY="zest-reminders-v1";function read(s:Storage):ReminderRecord[]{try{const v=JSON.parse(s.getItem(KEY)||"[]");return Array.isArray(v)?v:[];}catch{return[];}}function write(s:Storage,r:ReminderRecord[]){s.setItem(KEY,JSON.stringify(r));}
-export async function listReminders(storage=localStorage){if(!isSupabaseConfigured())return read(storage);const db=createClient(),a=await db.auth.getSession();if(!a.data.session?.user||!navigator.onLine)return read(storage);const{data,error}=await db.from("reminders").select("id,planner_item_id,scheduled_at,status,offset_minutes,label,delivered_at,snoozed_until,handled_at").order("scheduled_at",{ascending:true});if(error)throw new Error("Reminders could not be loaded.");return(data||[]).map(r=>({id:r.id,plannerItemId:r.planner_item_id,scheduledAt:r.scheduled_at,status:r.status,offsetMinutes:r.offset_minutes??undefined,label:r.label??undefined,deliveredAt:r.delivered_at??undefined,snoozedUntil:r.snoozed_until??undefined,handledAt:r.handled_at??undefined} as ReminderRecord));}
-export async function createReminder(item:PlannerItem,draft:ReminderDraft,label?:string,storage=localStorage){const scheduledAt=calculateReminderAt(item,draft),offset=reminderMinutes(draft);if(!isSupabaseConfigured()){const r:ReminderRecord={id:crypto.randomUUID(),plannerItemId:item.id,scheduledAt,status:"pending",offsetMinutes:offset,label};write(storage,[...read(storage),r]);return{reminder:r,backgroundDelivery:false};}const db=createClient(),a=await db.auth.getSession();if(!a.data.session?.user){const r:ReminderRecord={id:crypto.randomUUID(),plannerItemId:item.id,scheduledAt,status:"pending",offsetMinutes:offset,label};write(storage,[...read(storage),r]);return{reminder:r,backgroundDelivery:false};}if(!navigator.onLine)throw new Error("Connect to the internet to schedule a cloud reminder.");const{data,error}=await db.rpc("create_planner_reminder",{p_item:item.id,p_scheduled_at:scheduledAt,p_offset_minutes:offset,p_label:label||null});if(error)throw new Error("Reminder could not be scheduled.");return{reminder:{id:String(data),plannerItemId:item.id,scheduledAt,status:"pending" as const,offsetMinutes:offset,label},backgroundDelivery:true};}
-async function rpc(name:string,args:Record<string,unknown>){if(!isSupabaseConfigured())throw new Error("Cloud reminder action is unavailable.");const{error}=await createClient().rpc(name,args);if(error)throw new Error("Reminder could not be updated.");}
-export async function cancelReminder(id:string,storage=localStorage){const l=read(storage);if(l.some(x=>x.id===id)){write(storage,l.map(x=>x.id===id?{...x,status:"cancelled"}:x));return;}await rpc("cancel_planner_reminder",{p_id:id});}
-export async function snoozeReminder(id:string,minutes:number,storage=localStorage){const l=read(storage);if(l.some(x=>x.id===id)){if(!Number.isFinite(minutes)||minutes<1||minutes>10080)throw new Error("Choose a snooze between 1 minute and 1 week.");const t=new Date(Date.now()+minutes*60000).toISOString();write(storage,l.map(x=>x.id===id?{...x,status:"pending",scheduledAt:t,snoozedUntil:t}:x));return;}await rpc("snooze_planner_reminder",{p_id:id,p_minutes:minutes});}
-export async function markReminderHandled(id:string,storage=localStorage){const l=read(storage);if(l.some(x=>x.id===id)){write(storage,l.map(x=>x.id===id?{...x,status:"handled",handledAt:new Date().toISOString()}:x));return;}await rpc("mark_planner_reminder_handled",{p_id:id});}
-export type NotificationState="unsupported"|"blocked"|"available"|"enabled";
-export function notificationSupport(){return typeof window!=="undefined"&&"Notification" in window&&"serviceWorker" in navigator&&"PushManager" in window;}
-export async function getNotificationState():Promise<NotificationState>{
- if(!notificationSupport())return "unsupported";
- if(Notification.permission==="denied")return "blocked";
- if(Notification.permission!=="granted")return "available";
- try{
-  const reg=await navigator.serviceWorker.ready;
-  const sub=await reg.pushManager.getSubscription();
-  return sub?"enabled":"available";
- }catch{return "available";}
+import { createClient, isSupabaseConfigured } from "./supabase/client";
+import type { PlannerItem, ReminderDraft } from "./planner";
+import { calculateReminderAt, reminderMinutes } from "./planner";
+
+// Web Push delivery is handled by the Supabase deliver-reminders Edge Function (pg_cron, every minute).
+export type ReminderRecord = {
+  id: string;
+  plannerItemId: string;
+  scheduledAt: string;
+  status: "pending" | "processing" | "sent" | "cancelled" | "failed" | "handled";
+  offsetMinutes?: number;
+  label?: string;
+  deliveredAt?: string;
+  snoozedUntil?: string;
+  handledAt?: string;
+};
+const KEY = "zest-reminders-v1";
+function read(s: Storage): ReminderRecord[] {
+  try {
+    const v = JSON.parse(s.getItem(KEY) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
 }
-function key(v:string){const p="=".repeat((4-v.length%4)%4),b=(v+p).replace(/-/g,"+").replace(/_/g,"/"),raw=atob(b);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));}
-export async function enablePushNotifications(){if(!notificationSupport())throw new Error("Push notifications are not supported on this device/browser.");if(!isSupabaseConfigured())throw new Error("Sign in to enable background reminders.");const pub=process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY||"BLfn6Z34FtBgi3t9IqHP9gtUjk9RXxoh7Msm7r8YDdj-_8v8V8Tv1KZJyqVAPrhRygU3MRWaKE-Zvv84JFI-Ekw";if(await Notification.requestPermission()!=="granted")throw new Error("Notification permission was not granted.");const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key(pub)}),json=sub.toJSON(),db=createClient(),a=await db.auth.getUser();if(!a.data.user)throw new Error("Sign in to enable background reminders.");const{error}=await db.rpc("register_push_subscription",{p_endpoint:sub.endpoint,p_keys:json.keys||{}});if(error)throw new Error("Notification subscription could not be saved.");return true;}
+function write(s: Storage, r: ReminderRecord[]) {
+  s.setItem(KEY, JSON.stringify(r));
+  window.dispatchEvent(new Event("zest-reminders-changed"));
+}
+async function signedIn() {
+  if (!isSupabaseConfigured()) return null;
+  const db = createClient(),
+    a = await db.auth.getSession();
+  return a.data.session?.user ? db : null;
+}
+// Per-account offline copy; the zest-cloud- prefix is wiped on sign-out and account switches.
+const cloudCacheKey = async () => {
+  const s = await createClient().auth.getSession();
+  return s.data.session?.user ? `zest-cloud-reminders-${s.data.session.user.id}` : null;
+};
+
+export async function listReminders(storage = localStorage) {
+  const db = await signedIn();
+  if (!db) return read(storage);
+  const cacheKey = await cloudCacheKey();
+  if (!navigator.onLine) {
+    try {
+      return JSON.parse((cacheKey && storage.getItem(cacheKey)) || "[]") as ReminderRecord[];
+    } catch {
+      return [];
+    }
+  }
+  const { data, error } = await db
+    .from("reminders")
+    .select("id,planner_item_id,scheduled_at,status,offset_minutes,label,delivered_at,snoozed_until,handled_at")
+    .not("planner_item_id", "is", null)
+    .order("scheduled_at", { ascending: true });
+  if (error) throw new Error("Reminders could not be loaded.");
+  const records = (data || []).map(
+    (r) =>
+      ({
+        id: r.id,
+        plannerItemId: r.planner_item_id,
+        scheduledAt: r.scheduled_at,
+        status: r.status,
+        offsetMinutes: r.offset_minutes ?? undefined,
+        label: r.label || undefined,
+        deliveredAt: r.delivered_at ?? undefined,
+        snoozedUntil: r.snoozed_until ?? undefined,
+        handledAt: r.handled_at ?? undefined,
+      }) as ReminderRecord,
+  );
+  if (cacheKey) storage.setItem(cacheKey, JSON.stringify(records));
+  return records;
+}
+
+function friendly(message: string, fallback: string) {
+  if (message.includes("planner_item_not_found")) return "Save the Planner item first, then add a reminder.";
+  if (message.includes("reminder_limit_reached")) return "This item already has the maximum number of reminders.";
+  if (message.includes("duplicate key")) return "That reminder is already scheduled.";
+  return fallback;
+}
+
+export async function createReminder(item: PlannerItem, draft: ReminderDraft, label?: string, storage = localStorage) {
+  const scheduledAt = calculateReminderAt(item, draft),
+    offset = reminderMinutes(draft);
+  const db = await signedIn();
+  if (!db) {
+    const r: ReminderRecord = { id: crypto.randomUUID(), plannerItemId: item.id, scheduledAt, status: "pending", offsetMinutes: offset, label };
+    write(storage, [...read(storage), r]);
+    return { reminder: r, backgroundDelivery: false };
+  }
+  if (!navigator.onLine) throw new Error("Connect to the internet to schedule a reminder notification.");
+  const { data, error } = await db.rpc("create_planner_reminder", {
+    p_item: item.id,
+    p_scheduled_at: scheduledAt,
+    p_offset_minutes: offset,
+    p_label: label || null,
+  });
+  if (error) throw new Error(friendly(error.message, "Reminder could not be scheduled. Try again."));
+  window.dispatchEvent(new Event("zest-reminders-changed"));
+  return {
+    reminder: { id: String(data), plannerItemId: item.id, scheduledAt, status: "pending" as const, offsetMinutes: offset, label },
+    backgroundDelivery: true,
+  };
+}
+
+async function rpc(name: string, args: Record<string, unknown>) {
+  const db = await signedIn();
+  if (!db) throw new Error("Sign in to manage this reminder.");
+  const { error } = await db.rpc(name, args);
+  if (error) throw new Error("Reminder could not be updated. Check your connection and try again.");
+  window.dispatchEvent(new Event("zest-reminders-changed"));
+}
+export async function cancelReminder(id: string, storage = localStorage) {
+  const l = read(storage);
+  if (l.some((x) => x.id === id)) return write(storage, l.map((x) => (x.id === id ? { ...x, status: "cancelled" } : x)));
+  await rpc("cancel_planner_reminder", { p_id: id });
+}
+export async function snoozeReminder(id: string, minutes: number, storage = localStorage) {
+  if (!Number.isFinite(minutes) || minutes < 1 || minutes > 10080) throw new Error("Choose a snooze between 1 minute and 1 week.");
+  const l = read(storage);
+  if (l.some((x) => x.id === id)) {
+    const t = new Date(Date.now() + minutes * 60000).toISOString();
+    return write(storage, l.map((x) => (x.id === id ? { ...x, status: "pending", scheduledAt: t, snoozedUntil: t } : x)));
+  }
+  await rpc("snooze_planner_reminder", { p_id: id, p_minutes: Math.round(minutes) });
+}
+export async function markReminderHandled(id: string, storage = localStorage) {
+  const l = read(storage);
+  if (l.some((x) => x.id === id))
+    return write(storage, l.map((x) => (x.id === id ? { ...x, status: "handled", handledAt: new Date().toISOString() } : x)));
+  await rpc("mark_planner_reminder_handled", { p_id: id });
+}
+
+/** After sign-in: schedules this device's future guest reminders on the account, then clears them. */
+export async function migrateGuestReminders(itemIds: Map<string, string>, storage = localStorage) {
+  const guest = read(storage);
+  if (!guest.length) return 0;
+  const db = await signedIn();
+  if (!db) return 0;
+  let moved = 0;
+  for (const r of guest) {
+    const target = itemIds.get(r.plannerItemId);
+    if (!target || r.status !== "pending" || Date.parse(r.scheduledAt) <= Date.now()) continue;
+    const { error } = await db.rpc("create_planner_reminder", {
+      p_item: target,
+      p_scheduled_at: r.scheduledAt,
+      p_offset_minutes: r.offsetMinutes ?? null,
+      p_label: r.label || null,
+    });
+    if (!error) moved++;
+  }
+  storage.removeItem(KEY);
+  return moved;
+}
+
+export type NotificationState = "unsupported" | "blocked" | "available" | "enabled";
+export function notificationSupport() {
+  return typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+}
+async function registration() {
+  // navigator.serviceWorker.ready never settles when no worker is registered, so bound the wait.
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 4000)),
+  ]);
+}
+/** Reflects both the browser permission and whether this device actually holds a push subscription. */
+export async function getNotificationState(): Promise<NotificationState> {
+  if (!notificationSupport()) return "unsupported";
+  if (Notification.permission === "denied") return "blocked";
+  if (Notification.permission !== "granted") return "available";
+  try {
+    const reg = await registration();
+    const sub = await reg?.pushManager.getSubscription();
+    return sub ? "enabled" : "available";
+  } catch {
+    return "available";
+  }
+}
+function key(v: string) {
+  const p = "=".repeat((4 - (v.length % 4)) % 4),
+    b = (v + p).replace(/-/g, "+").replace(/_/g, "/"),
+    raw = atob(b);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+const VAPID_PUBLIC_KEY =
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+  "BLfn6Z34FtBgi3t9IqHP9gtUjk9RXxoh7Msm7r8YDdj-_8v8V8Tv1KZJyqVAPrhRygU3MRWaKE-Zvv84JFI-Ekw";
+
+export async function enablePushNotifications() {
+  if (!notificationSupport()) throw new Error("This browser can’t show background notifications. Try Chrome on Android or install Zest Snap.");
+  const db = await signedIn();
+  if (!db) throw new Error("Sign in to get reminder notifications on this device.");
+  const permission = await Notification.requestPermission();
+  if (permission === "denied") throw new Error("Notifications are blocked. Allow them for Zest Snap in your phone or browser settings.");
+  if (permission !== "granted") throw new Error("Notification permission was not granted.");
+  const reg = await registration();
+  if (!reg) throw new Error("Zest Snap is still installing. Reload and try again.");
+  const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key(VAPID_PUBLIC_KEY) }));
+  const { error } = await db.rpc("register_push_subscription", { p_endpoint: sub.endpoint, p_keys: sub.toJSON().keys || {} });
+  if (error) throw new Error("Notifications couldn’t be connected to your account. Try again.");
+  return true;
+}
+
+/**
+ * Keeps the server mapping current: if this device already has permission and a subscription,
+ * (re)attach it to whoever is signed in now. Fixes devices shared between accounts and rotated endpoints.
+ */
+export async function syncPushSubscription() {
+  if (!notificationSupport() || Notification.permission !== "granted") return;
+  const db = await signedIn();
+  if (!db) return;
+  const reg = await registration();
+  const sub = await reg?.pushManager.getSubscription();
+  if (sub) await db.rpc("register_push_subscription", { p_endpoint: sub.endpoint, p_keys: sub.toJSON().keys || {} });
+}

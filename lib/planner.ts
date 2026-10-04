@@ -48,3 +48,16 @@ export function plannerStatus(item:PlannerItem,now=Temporal.Now.instant()):"comp
 }
 export function plannerFingerprint(item:Pick<PlannerItem,"type"|"title"|"startDate"|"startTime"|"dueDate"|"dueTime"|"timezone"|"location">){const norm=(v:string)=>v.normalize("NFKC").trim().toLowerCase().replace(/\s+/g," ");return JSON.stringify([item.type,norm(item.title),plannerReferenceDate(item as PlannerItem),plannerReferenceTime({...item as PlannerItem,allDay:false}),item.timezone||"UTC",norm(item.location||"")]);}
 export function monthGrid(year:number,month:number,locale:string,timezone:string){const first=Temporal.PlainDate.from({year,month,day:1}),loc=new Intl.Locale(locale||"en");const firstDay=(loc as Intl.Locale&{weekInfo?:{firstDay:number}}).weekInfo?.firstDay??7;const offset=(first.dayOfWeek-firstDay+7)%7;const fmt=new Intl.DateTimeFormat(locale||undefined,{weekday:"short",timeZone:timezone||"UTC"}),monday=new Date(Date.UTC(2023,0,2));const weekdayLabels=Array.from({length:7},(_,i)=>fmt.format(new Date(monday.getTime()+((firstDay-1+i)%7)*86400000)));const cells=[] as Array<{date:string;inMonth:boolean}>;const start=first.subtract({days:offset});for(let i=0;i<42;i++){const d=start.add({days:i});cells.push({date:d.toString(),inMonth:d.month===month});}return{weekdayLabels,cells,daysInMonth:first.daysInMonth};}
+export function plannerSort<T extends PlannerItem>(items: T[]) {
+ const key=(x:PlannerItem)=>plannerReferenceDate(x)+"T"+(plannerReferenceTime(x)||"00:00");
+ return [...items].sort((a,b)=>key(a).localeCompare(key(b))||a.title.localeCompare(b.title));
+}
+/** Items on the user's "today" in their chosen timezone — shared by Home and Planner so they always agree. */
+export function plannerTodayItems(items:PlannerItem[],timezone:string,now=Temporal.Now.instant()){
+ const today=todayDate(timezone,now);
+ return plannerSort(items.filter(x=>x.status!=="cancelled"&&plannerReferenceDate(x)===today));
+}
+export function isPastLocal(date:string,time:string,timezone:string){
+ if(!DATE.test(date)||!TIME.test(time))return false;
+ try{return Temporal.PlainDateTime.from(`${date}T${time}`).toZonedDateTime(timezone||"UTC").epochMilliseconds<Date.now()-60000;}catch{return false;}
+}

@@ -1,50 +1,81 @@
 import { createClient, isSupabaseConfigured } from "../supabase/client";
-import { LocalDataProvider } from "./local";
+import { LocalDataProvider, STORAGE_KEY } from "./local";
+import { PlannerStore } from "../planner-store";
+import { migrateGuestReminders } from "../reminders";
+import { activeUser } from "../session";
 import { CachedCloudProvider } from "./cached";
 import { SupabaseDataProvider } from "./cloud";
 import { emptyState, type DataProvider, type LocalState } from "./types";
 import { eventFingerprint } from "../events";
 export * from "./types";
 export { LocalDataProvider } from "./local";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const cloudProvider = (db: ReturnType<typeof createClient>, userId: string) =>
+  new CachedCloudProvider(new SupabaseDataProvider(db, userId), "zest-cloud-" + userId, localStorage);
+
+/**
+ * Opens storage from the locally stored session (no network round trip) so cached data can render
+ * immediately. Call verifyAccount() afterwards: the server remains the authority for every write.
+ */
 export async function getDataProvider(): Promise<DataProvider> {
   if (!isSupabaseConfigured()) return new LocalDataProvider(localStorage);
   const db = createClient();
-  // Browser-only cached identity is used exclusively to read that device's offline cache.
-  if (!navigator.onLine) {
-    const { data } = await db.auth.getSession();
-    if (data.session?.user)
-      return new CachedCloudProvider(
-        new SupabaseDataProvider(db, data.session.user.id),
-        "zest-cloud-" + data.session.user.id,
-        localStorage,
-      );
-    return new LocalDataProvider(localStorage);
-  }
-  const { data, error } = await db.auth.getUser();
-  if (error && error.name !== "AuthSessionMissingError")
-    throw new Error(
-      "Account connection unavailable. Reconnect to access your cloud data.",
-    );
-  if (!data.user) return new LocalDataProvider(localStorage);
-  const referral = sessionStorage.getItem("zest-referral");
-  if (referral) {
-    const { error: claimError } = await db.rpc("claim_referral", {
-      p_code: referral,
-    });
-    if (!claimError) sessionStorage.removeItem("zest-referral");
-  }
-  const cloud = new SupabaseDataProvider(db, data.user.id);
-  const flags = await cloud.loadFeatureFlags();
-  if (!flags.cloud_persistence)
-    throw new Error(
-      "Cloud persistence is temporarily paused. Your data is safe.",
-    );
-  return new CachedCloudProvider(
-    cloud,
-    "zest-cloud-" + data.user.id,
-    localStorage,
-  );
+  const { data } = await db.auth.getSession().catch(() => ({ data: { session: null } }));
+  if (data.session?.user) return cloudProvider(db, data.session.user.id);
+  // Offline with an expired access token: keep showing that account's own cached copy (read-only).
+  const last = activeUser();
+  if (!navigator.onLine && last && UUID.test(last) && localStorage.getItem("zest-cloud-" + last))
+    return cloudProvider(db, last);
+  return new LocalDataProvider(localStorage);
 }
+
+export type AccountCheck = "guest" | "ok" | "offline" | "signed-out" | "paused";
+/** Confirms the session with the auth server and that cloud storage is enabled. */
+export async function verifyAccount(provider: DataProvider): Promise<AccountCheck> {
+  if (provider.mode !== "cloud") return "guest";
+  if (!navigator.onLine) return "offline";
+  const db = createClient();
+  const { data, error } = await db.auth.getUser();
+  if (!data.user) return error && !/session|jwt|auth/i.test(error.name + error.message) ? "offline" : "signed-out";
+  try {
+    const flags = await provider.loadFeatureFlags();
+    if (!flags.cloud_persistence) return "paused";
+  } catch {
+    return "offline";
+  }
+  return "ok";
+}
+
+export function hasGuestData() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    if (raw?.scans?.length || raw?.events?.length) return true;
+    if (PlannerStore.guestItems().length) return true;
+    return JSON.parse(localStorage.getItem("zest-reminders-v1") || "[]").length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Moves this device's guest scans, agenda, Planner and reminders into the signed-in account exactly
+ * once, then clears the guest copies so they can never be merged into a different account later.
+ * Local credits are never transferred: cloud balances come only from the server ledger.
+ */
+export async function migrateGuestData(provider: DataProvider) {
+  if (provider.mode !== "cloud") throw new Error("Sign in to merge local data.");
+  const local = await new LocalDataProvider(localStorage).load();
+  if (local.scans.length || local.events.length) {
+    const remote = await provider.load();
+    await provider.save(mergeLocal(local, remote), remote);
+  }
+  const planner = await PlannerStore.create();
+  const moved = planner.mode === "cloud" ? await planner.migrateGuest() : new Map<string, string>();
+  await migrateGuestReminders(moved);
+  localStorage.removeItem(STORAGE_KEY);
+  return provider.load();
+}
+
 export function mergeLocal(local: LocalState, remote: LocalState): LocalState {
   const scans = new Map(remote.scans.map((s) => [s.id, s]));
   for (const s of local.scans) if (!scans.has(s.id)) scans.set(s.id, s);
@@ -58,28 +89,8 @@ export function mergeLocal(local: LocalState, remote: LocalState): LocalState {
     events: [...events.values()],
   };
 }
-export async function migrateLocal(provider: DataProvider) {
-  if (provider.mode !== "cloud")
-    throw new Error("Sign in to merge local data.");
-  const local = await new LocalDataProvider(localStorage).load();
-  const remote = await provider.load();
-  await provider.save(mergeLocal(local, remote), remote);
-  const profile = await provider.loadProfile();
-  await provider.updateProfile({
-    ...profile,
-    importedMilestones: {
-      firstScan: Boolean(
-        profile.importedMilestones?.firstScan || local.firstScanRewarded,
-      ),
-      firstCalendar: Boolean(
-        profile.importedMilestones?.firstCalendar ||
-        local.firstCalendarRewarded,
-      ),
-    },
-  });
-  // Keep original data for rollback; repeated merges use stable IDs and fingerprints.
-  return provider.load();
-}
+/** @deprecated kept for older callers; use migrateGuestData. */
+export const migrateLocal = migrateGuestData;
 export class Repository {
   constructor(public provider: DataProvider) {}
   async change(fn: (s: LocalState) => LocalState) {

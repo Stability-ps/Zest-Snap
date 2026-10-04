@@ -13,7 +13,7 @@ export class SupabaseDataProvider implements DataProvider {
   mode = "cloud" as const;
   constructor(
     private db: SupabaseClient,
-    private userId: string,
+    readonly userId: string,
   ) {}
   private check(error: unknown) {
     if (error)
@@ -45,6 +45,7 @@ export class SupabaseDataProvider implements DataProvider {
       credits: r.reduce((n, x) => n + x.amount, 0),
       firstScanRewarded: r.some((x) => x.reason === "first_scan"),
       firstCalendarRewarded: r.some((x) => x.reason === "first_calendar"),
+      earned: [...new Set(r.map((x) => x.reason))],
     };
   }
   async save(next: LocalState, previous: LocalState) {
@@ -201,6 +202,11 @@ export class SupabaseDataProvider implements DataProvider {
       createdAt: r.created_at,
     }));
   }
+  async loadRewardRules() {
+    const { data, error } = await this.db.from("reward_rules").select("key,amount,enabled");
+    this.check(error);
+    return Object.fromEntries((data || []).filter((r) => r.enabled).map((r) => [r.key, r.amount])) as Record<string, number>;
+  }
   async loadFeatureFlags() {
     const { data, error } = await this.db
       .from("feature_flags")
@@ -246,13 +252,25 @@ export class SupabaseDataProvider implements DataProvider {
     }));
   }
   async exportData() {
+    const rows = async (table: string, columns: string, owner = "user_id") => {
+      const { data, error } = await this.db.from(table).select(columns).eq(owner, this.userId);
+      this.check(error);
+      return data || [];
+    };
+    const { data: auth } = await this.db.auth.getUser();
     return {
-      data: await this.load(),
+      exportedAt: new Date().toISOString(),
+      account: { id: this.userId, email: auth.user?.email || null, createdAt: auth.user?.created_at || null },
       profile: await this.loadProfile(),
-      ledger: await this.loadRewardLedger(),
+      scans: (await this.load()).scans,
+      calendarExports: (await this.load()).events,
+      planner: await rows("planner_items", "id,type,title,description,start_date,end_date,start_time,end_time,due_date,due_time,all_day,timezone,location,status,source,completed_at,created_at,updated_at"),
+      reminders: await rows("reminders", "id,planner_item_id,scheduled_at,status,offset_minutes,label,delivered_at,snoozed_until,handled_at,created_at"),
+      rewardLedger: await this.loadRewardLedger(),
       usage: await this.loadUsage(),
-      referrals: await this.loadReferralStatus(),
-      connections: await this.loadCalendarConnections(),
+      referralsSent: await this.loadReferralStatus(),
+      feedback: await rows("product_feedback", "rating,feedback,created_at"),
+      calendarConnections: await this.loadCalendarConnections(),
     };
   }
   async deleteData() {

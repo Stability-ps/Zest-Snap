@@ -2,6 +2,9 @@ import type { DataProvider, LocalState, Profile } from "./types";
 export class CachedCloudProvider implements DataProvider {
   private flushing: Promise<void> | null = null;
   mode = "cloud" as const;
+  get userId() {
+    return this.cloud.userId;
+  }
   constructor(
     private cloud: DataProvider,
     private key: string,
@@ -91,6 +94,7 @@ export class CachedCloudProvider implements DataProvider {
   loadSubscription = () => this.cloud.loadSubscription();
   createReferral = () => this.cloud.createReferral();
   loadReferralStatus = () => this.cloud.loadReferralStatus();
+  loadRewardRules = () => this.cloud.loadRewardRules?.() ?? Promise.resolve({});
   loadCalendarConnections = () => this.cloud.loadCalendarConnections();
   exportData = () => this.cloud.exportData();
   async deleteData() {

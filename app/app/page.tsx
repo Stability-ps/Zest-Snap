@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Camera,
   Upload,
@@ -17,7 +17,6 @@ import {
   ChevronRight,
   FileText,
   Pencil,
-  Trash2,
   Check,
   History as HistoryIcon,
   Settings as SettingsIcon,
@@ -26,35 +25,72 @@ import {
   MessageSquare,
   Star,
   X,
+  Bell,
+  ListChecks,
+  Layers,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { ExtractionResult, ExtractedEvent } from "@/lib/extraction-types";
-
-type View = "home" | "review" | "history" | "calendar" | "rewards";
-
 import {
   getDataProvider,
-  migrateLocal,
+  verifyAccount,
+  hasGuestData,
+  migrateGuestData,
+  LocalDataProvider,
   emptyState,
   type DataProvider,
   type StoredScan,
-  type StoredEvent,
   type LocalState,
 } from "@/lib/data";
-import { eventFingerprint, validateEvent, agendaGroup } from "@/lib/events";
+import { eventFingerprint, validateEvent } from "@/lib/events";
 import { generateIcs } from "@/lib/ics";
-import PlannerView from "./planner-view";
-import { PlannerStore } from "@/lib/planner-store";
+import PlannerView, { type PlannerRequest } from "./planner-view";
+import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
-import { plannerReferenceDate, todayDate, type PlannerItem } from "@/lib/planner";
+import { plannerFingerprint, plannerReferenceTime, plannerTodayItems, type PlannerItem } from "@/lib/planner";
+import {
+  STARTUP_STATE_KEY,
+  activeUser,
+  captureReferral,
+  claimPendingReferral,
+  clearAccountCaches,
+  deviceId,
+  registerDevice,
+  sessionUserIdSync,
+  setActiveUser,
+} from "@/lib/session";
+import { syncPushSubscription } from "@/lib/reminders";
+
+type View = "home" | "review" | "history" | "calendar" | "rewards";
+type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
+const deviceTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+const REFRESH_INTERVAL = 30_000;
+
+function viewFromUrl(search: string): { view: View; tab?: PlannerRequest["tab"] } {
+  const q = new URLSearchParams(search);
+  const v = q.get("view");
+  const tab = q.get("tab");
+  if (v === "calendar" || v === "planner")
+    return { view: "calendar", tab: tab === "reminders" || tab === "upcoming" || tab === "calendar" || tab === "today" ? tab : undefined };
+  if (v === "rewards" || v === "history") return { view: v };
+  return { view: "home" };
+}
+function greeting(timezone: string) {
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: timezone }).format(new Date()));
+  return hour < 5 ? "Good evening" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+}
 
 export default function App() {
   const provider = useRef<DataProvider | null>(null);
   const [ready, setReady] = useState(false);
-  const [insights, setInsights] = useState(true);
   const [displayName, setDisplayName] = useState("");
   const [startupCredits, setStartupCredits] = useState<number | null>(null);
-  const [mode, setMode] = useState("local");
+  const [mode, setMode] = useState<"local" | "cloud">("local");
+  const [identity, setIdentity] = useState<string | null>(null);
+  // Starts as UTC on both server and client (static prerender); the real zone is applied after mount.
+  const [timezone, setTimezone] = useState("UTC");
+  const [locale, setLocale] = useState("en");
   const [activeScan, setActiveScan] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [view, setView] = useState<View>("home");
@@ -63,41 +99,104 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [scanStage, setScanStage] = useState("");
   const [error, setError] = useState("");
+  const [errorAction, setErrorAction] = useState<"signup" | null>(null);
   const [success, setSuccess] = useState("");
   const [store, setStore] = useState<LocalState>(emptyState);
-  const [homePlannerItems, setHomePlannerItems] = useState<PlannerItem[]>([]);
+  const [plannerItems, setPlannerItems] = useState<PlannerItem[]>([]);
+  const [rules, setRules] = useState<Record<string, number>>({});
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [draft, setDraft] = useState<ExtractedEvent | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [plannerOpen, setPlannerOpen] = useState(false);
-  const [plannerInitialTab, setPlannerInitialTab] = useState<"today" | "upcoming">("today");
   const [installed, setInstalled] = useState(false);
   const [plannerVisited, setPlannerVisited] = useState(false);
+  const [plannerRequest, setPlannerRequest] = useState<PlannerRequest>({ nonce: 0 });
+  const lastRefresh = useRef(0);
+  const router = useRouter();
 
-  const STARTUP_STATE_KEY = "zest-last-app-state-v1";
+  const showError = useCallback((message: string, action: "signup" | null = null) => {
+    setError(message);
+    setErrorAction(action);
+  }, []);
 
-  function deviceId() {
-    const key="zest-device-id";
-    let id=localStorage.getItem(key);
-    if(!id){id=crypto.randomUUID()+"-"+crypto.randomUUID();localStorage.setItem(key,id);}
-    return id;
+  function saveSnapshot(next: Snapshot) {
+    try {
+      localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify(next));
+    } catch {}
   }
 
-  function openView(next: View) {
-    if (next === "calendar") setPlannerVisited(true);
-    setView(next);
-    const url = new URL(window.location.href);
-    if (next === "home" || next === "review") url.searchParams.delete("view");
-    else url.searchParams.set("view", next === "calendar" ? "planner" : next);
-    window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
-  }
+  /** Single navigation path for every view change, including all ways into Planner. */
+  const openView = useCallback(
+    (next: View, opts: { tab?: PlannerRequest["tab"]; replace?: boolean; reminderAction?: "snooze" | "done"; reminderId?: string } = {}) => {
+      if (next === "calendar") {
+        setPlannerVisited(true);
+        if (opts.tab || opts.reminderAction) setPlannerRequest((r) => ({ nonce: r.nonce + 1, tab: opts.tab, reminderAction: opts.reminderAction, reminderId: opts.reminderId }));
+      }
+      setView(next);
+      const url = new URL(window.location.href);
+      ["view", "tab", "reminderAction", "reminderId", "capture"].forEach((k) => url.searchParams.delete(k));
+      if (next !== "home" && next !== "review") url.searchParams.set("view", next === "calendar" ? "planner" : next);
+      if (next === "calendar" && opts.tab === "reminders") url.searchParams.set("tab", "reminders");
+      const target = url.pathname + url.search;
+      // History entries make the Android back button return to the previous view instead of closing the app.
+      if (opts.replace || target === window.location.pathname + window.location.search) window.history.replaceState({ view: next }, "", target);
+      else window.history.pushState({ view: next }, "", target);
+      window.scrollTo({ top: 0 });
+    },
+    [],
+  );
+
+  // Back/forward buttons.
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      if (e.state?.view === "review") return setView("review");
+      const { view: next, tab } = viewFromUrl(window.location.search);
+      if (next === "calendar") {
+        setPlannerVisited(true);
+        if (tab) setPlannerRequest((r) => ({ nonce: r.nonce + 1, tab }));
+      }
+      setView(next);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // Deep links (notifications, manifest shortcuts) and messages from the service worker.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const { view: initial, tab } = viewFromUrl(window.location.search);
+    const action = q.get("reminderAction");
+    const reminderId = q.get("reminderId") || undefined;
+    if (initial !== "home" || action)
+      openView(initial === "home" ? "calendar" : initial, {
+        tab: action ? "reminders" : tab,
+        replace: true,
+        reminderAction: action === "snooze" || action === "done" ? action : undefined,
+        reminderId,
+      });
+    else window.history.replaceState({ view: "home" }, "", window.location.pathname + window.location.search);
+    if (!("serviceWorker" in navigator)) return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "zest-reminders-changed") window.dispatchEvent(new Event("zest-reminders-changed"));
+      if (e.data?.type === "zest-open" && typeof e.data.url === "string") {
+        const url = new URL(e.data.url, window.location.origin);
+        const target = viewFromUrl(url.search);
+        const act = url.searchParams.get("reminderAction");
+        openView(target.view, {
+          tab: target.tab,
+          reminderAction: act === "snooze" || act === "done" ? act : undefined,
+          reminderId: url.searchParams.get("reminderId") || undefined,
+        });
+        window.dispatchEvent(new Event("zest-reminders-changed"));
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [openView]);
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true;
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
     setInstalled(standalone);
     const beforeInstall = (event: Event) => {
       event.preventDefault();
@@ -115,59 +214,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (view !== "home") return;
-    PlannerStore.create()
-      .then(async (planner) => {
-        const cached = planner.loadCached();
-        if (!cancelled && cached.length) setHomePlannerItems(cached);
-        const items = await planner.load();
-        if (!cancelled) setHomePlannerItems(items);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [view]);
-
-  const homeTodayPlanner = useMemo(
-    () =>
-      homePlannerItems.filter(
-        (item) =>
-          item.status !== "cancelled" &&
-          plannerReferenceDate(item) === todayDate(item.timezone || "UTC"),
-      ),
-    [homePlannerItems],
-  );
-  const homeTodayEvents = useMemo(() => {
-    const seen = new Set(
-      homeTodayPlanner.map(
-        (item) =>
-          `${item.title.trim().toLowerCase()}|${plannerReferenceDate(item)}|${item.startTime || item.dueTime || ""}`,
-      ),
-    );
-    const legacy = store.events.filter((event) => {
-      if (agendaGroup(event) !== "Today") return false;
-      const key = `${event.title.trim().toLowerCase()}|${event.startDate}|${event.startTime || ""}`;
-      return !seen.has(key);
-    });
-    return [
-      ...homeTodayPlanner.map((item) => ({
-        id: item.id,
-        title: item.title,
-        startTime: item.startTime || item.dueTime || "",
-        location: item.location,
-        allDay: item.allDay,
-      })),
-      ...legacy.map((event) => ({
-        id: event.id,
-        title: event.title,
-        startTime: event.startTime || "",
-        location: event.location,
-        allDay: event.allDay,
-      })),
-    ].sort((a, b) => (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
-  }, [homeTodayPlanner, store.events]);
-
   async function installApp() {
     if (!installPrompt) return;
     await installPrompt.prompt();
@@ -175,179 +221,213 @@ export default function App() {
     if (choice?.outcome === "accepted") setInstallPrompt(null);
   }
 
+  // Planner is one shared, live store: Home → Today is always the same data as Planner.
+  useEffect(() => subscribePlanner(setPlannerItems), []);
   useEffect(() => {
-    const lastName = localStorage.getItem("zest-last-display-name")?.trim();
-    if (lastName) setDisplayName(lastName);
+    if (!identity) return;
+    let alive = true;
+    sharedPlannerStore(identity)
+      .then((s) => {
+        if (!alive) return;
+        setPlannerItems(s.loadCached());
+        return s.load();
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [identity]);
+  const homeToday = useMemo(() => plannerTodayItems(plannerItems, timezone), [plannerItems, timezone]);
+
+  /** Fresh authoritative data; never lets cached values override server balances. */
+  const refresh = useCallback(async () => {
+    const p = provider.current;
+    if (!p || !navigator.onLine) return;
+    lastRefresh.current = Date.now();
     try {
-      const raw = localStorage.getItem(STARTUP_STATE_KEY);
-      if (raw) {
-        const cached = JSON.parse(raw) as { credits?: number; displayName?: string; mode?: string; state?: LocalState };
-        const credits = typeof cached.credits === "number" ? cached.credits : cached.state?.credits;
-        if (typeof credits === "number") setStartupCredits(credits);
-        if (cached.displayName?.trim()) setDisplayName(cached.displayName.trim());
-        if (cached.mode) setMode(cached.mode);
-        if (cached.state) {
-          localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({
-            credits: cached.state.credits,
-            displayName: cached.displayName || lastName || "",
-            mode: cached.mode || "local",
-          }));
-        }
+      const [data, profile] = await Promise.all([p.load(), p.loadProfile()]);
+      setStore(data);
+      if (profile.displayName.trim()) setDisplayName(profile.displayName.trim());
+      setTimezone(profile.timezone || deviceTimezone());
+      setLocale(profile.locale || navigator.language || "en");
+      setStartupCredits(data.credits);
+      saveSnapshot({ userId: p.userId, credits: data.credits, displayName: profile.displayName.trim(), mode: p.mode });
+      if (identity) (await sharedPlannerStore(identity)).load().catch(() => undefined);
+      window.dispatchEvent(new Event("zest-reminders-changed"));
+    } catch {
+      // Keep showing the last good data; the next focus/online event retries.
+    }
+  }, [identity]);
+
+  // Startup: shell → cached state → session → authoritative cloud state.
+  useEffect(() => {
+    let mounted = true;
+    setTimezone(deviceTimezone());
+    captureReferral();
+    try {
+      // Identity first (from the auth cookie, no network): never show another account's snapshot.
+      const uid = sessionUserIdSync();
+      if (activeUser() !== (uid || "guest")) setActiveUser(uid);
+      const snap = JSON.parse(localStorage.getItem(STARTUP_STATE_KEY) || "null") as Snapshot | null;
+      if (snap && (snap.userId || null) === uid) {
+        if (typeof snap.credits === "number" && snap.mode === "cloud") setStartupCredits(snap.credits);
+        if (snap.displayName?.trim()) setDisplayName(snap.displayName.trim());
+        if (snap.mode === "cloud" || snap.mode === "local") setMode(snap.mode);
+        const cachedPlanner = PlannerStore.loadLastUsed();
+        if (cachedPlanner.length) setPlannerItems(cachedPlanner);
       }
-      const planner = PlannerStore.loadLastUsed();
-      if (planner.length) setHomePlannerItems(planner);
     } catch {
       localStorage.removeItem(STARTUP_STATE_KEY);
     }
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    getDataProvider()
-      .then(async (p) => {
-        const cached = p.loadCached?.();
-        const cachedProfile = p.loadCachedProfile?.();
-        if (mounted && cachedProfile?.displayName) {
-          setDisplayName(cachedProfile.displayName.trim());
-        }
-        if (mounted && cached) {
-          provider.current = p;
-          setStore(cached);
-          setMode(p.mode);
-          setReady(true);
-        }
-        let data;
-        if (p.mode === "cloud") {
-          data = await migrateLocal(p);
+    (async () => {
+      let p = await getDataProvider();
+      if (!mounted) return;
+      const adopt = (next: DataProvider) => {
+        provider.current = next;
+        setMode(next.mode);
+        setActiveUser(next.userId || null);
+        setIdentity(next.userId || "guest");
+      };
+      adopt(p);
+      const cached = p.loadCached?.();
+      const cachedProfile = p.loadCachedProfile?.();
+      if (cachedProfile) {
+        if (cachedProfile.displayName?.trim()) setDisplayName(cachedProfile.displayName.trim());
+        setTimezone(cachedProfile.timezone || deviceTimezone());
+        setLocale(cachedProfile.locale || "en");
+      }
+      if (cached) {
+        setStore(cached);
+        setReady(true);
+      } else if (p.mode === "local") {
+        const [data, profile] = await Promise.all([p.load(), p.loadProfile()]);
+        if (!mounted) return;
+        setStore(data);
+        setDisplayName(profile.displayName.trim());
+        setTimezone(profile.timezone || deviceTimezone());
+        setLocale(profile.locale || navigator.language || "en");
+        setReady(true);
+      }
+      const check = await verifyAccount(p);
+      if (!mounted) return;
+      if (check === "signed-out") {
+        // Session revoked or expired: never keep showing that account's private data.
+        clearAccountCaches();
+        p = new LocalDataProvider(localStorage);
+        adopt(p);
+        setStartupCredits(null);
+        setDisplayName("");
+        setStore(await p.load());
+        setReady(true);
+        return;
+      }
+      if (check === "paused") showError("Cloud sync is paused for maintenance. Your data is safe — changes may not save until it resumes.");
+      if (check === "ok") {
+        Promise.allSettled([registerDevice(), claimPendingReferral(), syncPushSubscription()]);
+        if (hasGuestData()) {
           try {
-            const response = await fetch("/api/account/migrate-local", {
-              method: "POST",
-              headers: { "X-Zest-Action": "migrate-local" },
-            });
-            if (response.ok) data = await p.load();
+            await migrateGuestData(p);
+            setSuccess("Your guest scans and plans were saved to your account.");
           } catch {
-            // Scans and planner data are already migrated; reward sync can retry later.
-          }
-        } else {
-          data = await p.load();
-        }
-        const pref = await p.loadProfile();
-        if (mounted) {
-          const nextName = pref.displayName.trim();
-          setDisplayName(nextName);
-          if (nextName) localStorage.setItem("zest-last-display-name", nextName);
-        }
-        if (pref.retentionDays > 0) {
-          const next = {
-            ...data,
-            scans: data.scans.filter(
-              (s) =>
-                Date.parse(s.scannedAt) >
-                Date.now() - pref.retentionDays * 86400000,
-            ),
-          };
-          if (next.scans.length !== data.scans.length) {
-            await p.save(next, data);
-            data = next;
+            showError("Some guest data couldn’t be moved to your account yet. It’s still on this device and will retry.");
           }
         }
-        if (mounted) {
-          setInsights(pref.reminders);
-          provider.current = p;
+      }
+      if (check === "ok" || check === "guest" || (check === "offline" && !cached)) {
+        try {
+          const [data, profile, rewardRules] = await Promise.all([p.load(), p.loadProfile(), p.loadRewardRules?.().catch(() => ({})) ?? {}]);
+          if (!mounted) return;
           setStore(data);
-          setMode(p.mode);
-          setReady(true);
-          try {
-            localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({ credits: data.credits, displayName: pref.displayName.trim(), mode: p.mode }));
-            setStartupCredits(data.credits);
-          } catch {}
+          setRules(rewardRules);
+          setDisplayName(profile.displayName.trim());
+          setTimezone(profile.timezone || deviceTimezone());
+          setLocale(profile.locale || navigator.language || "en");
+          setStartupCredits(p.mode === "cloud" ? data.credits : null);
+          saveSnapshot({ userId: p.userId, credits: data.credits, displayName: profile.displayName.trim(), mode: p.mode });
+          lastRefresh.current = Date.now();
+          if (p.mode === "local" && profile.retentionDays > 0) {
+            const keep = data.scans.filter((s) => Date.parse(s.scannedAt) > Date.now() - profile.retentionDays * 86400000);
+            if (keep.length !== data.scans.length) {
+              const next = { ...data, scans: keep };
+              await p.save(next, data);
+              setStore(next);
+            }
+          }
+        } catch {
+          if (!cached) showError("Couldn’t load your Zest data. Check your connection — we’ll retry automatically.");
         }
-      })
-      .catch(() =>
-        setError(
-          "Could not load saved data. Check your connection and reload.",
-        ),
-      );
-    const params = new URLSearchParams(window.location.search);
-    const requestedView = params.get("view");
-    if (requestedView === "calendar" || requestedView === "planner") { setView("calendar"); setPlannerVisited(true); }
-    if (requestedView === "rewards") setView("rewards");
-    if (requestedView === "history") setView("history");
+      }
+      if (mounted) setReady(true);
+    })().catch(() => mounted && showError("Couldn’t open Zest data on this device. Reload to try again."));
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [showError]);
+
+  // Returning from background, regaining focus or connectivity: refresh quietly (throttled).
+  useEffect(() => {
+    const maybe = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastRefresh.current < REFRESH_INTERVAL) return;
+      refresh();
+    };
+    const online = () => {
+      lastRefresh.current = 0;
+      maybe();
+    };
+    document.addEventListener("visibilitychange", maybe);
+    window.addEventListener("focus", maybe);
+    window.addEventListener("online", online);
+    return () => {
+      document.removeEventListener("visibilitychange", maybe);
+      window.removeEventListener("focus", maybe);
+      window.removeEventListener("online", online);
+    };
+  }, [refresh]);
+
   useEffect(() => {
     if (editingIndex !== null) dialogRef.current?.showModal();
   }, [editingIndex]);
-  useEffect(() => {
-    const sync = () => {
-      if (provider.current?.mode === "cloud")
-        provider.current
-          .load()
-          .then(setStore)
-          .catch(() =>
-            setError(
-              "Cloud changes are saved on this device and waiting to sync. Reconnect and reload to retry.",
-            ),
-          );
-    };
-    window.addEventListener("online", sync);
-    return () => window.removeEventListener("online", sync);
-  }, []);
+
   async function persist(next: LocalState) {
     if (!provider.current) throw new Error("Storage is not ready.");
     await provider.current.save(next, store);
     if (provider.current.mode === "cloud") next = await provider.current.load();
     setStore(next);
-    try {
-      localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify({ credits: next.credits, displayName, mode: provider.current.mode }));
+    if (provider.current.mode === "cloud") {
       setStartupCredits(next.credits);
-    } catch {}
+      saveSnapshot({ userId: provider.current.userId, credits: next.credits, displayName, mode: "cloud" });
+    }
   }
 
-  const highConfidence = useMemo(
-    () => result?.events.filter((e) => e.confidence >= 0.8).length ?? 0,
-    [result],
-  );
-
-  const sortedAgenda = useMemo(
-    () =>
-      [...store.events].sort((a, b) => {
-        const ak = a.startDate + "T" + (a.startTime || "00:00");
-        const bk = b.startDate + "T" + (b.startTime || "00:00");
-        return ak.localeCompare(bk);
-      }),
-    [store.events],
-  );
+  const highConfidence = useMemo(() => result?.events.filter((e) => e.confidence >= 0.8).length ?? 0, [result]);
 
   async function scanFile(file?: File) {
     if (!file || !ready || busy) return;
     if (!navigator.onLine) {
-      setError(
-        "Scanning needs internet. Your saved history and agenda remain available.",
-      );
+      showError("Scanning needs an internet connection. Your saved history and Planner are still available.");
       return;
     }
     setError("");
+    setErrorAction(null);
     setSuccess("");
 
     const isImage = file.type.startsWith("image/");
     const isPdf = file.type === "application/pdf";
     if (!isImage && !isPdf) {
-      setError("Zest Snap currently accepts images and PDFs.");
+      showError("Zest Snap reads photos, screenshots (JPEG, PNG, WebP) and PDF documents.");
+      return;
+    }
+    if (isImage && !["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(file.type) && file.size > 0) {
+      showError("This image format isn’t supported yet. Use a JPEG, PNG or WebP image.");
       return;
     }
     if (isPdf && file.size > 3_000_000) {
-      setError(
-        "This PDF is too large to scan right now. Please use a PDF smaller than 3 MB.",
-      );
+      showError("This PDF is too large to scan. Please use a PDF smaller than 3 MB, or photograph the relevant page.");
       return;
     }
     if (isImage && file.size > 15_000_000) {
-      setError(
-        "This photo is too large to scan. Please choose a smaller image.",
-      );
+      showError("This photo is too large to scan. Please choose a smaller image.");
       return;
     }
 
@@ -355,35 +435,28 @@ export default function App() {
     setScanStage(isPdf ? "Preparing your PDF..." : "Preparing your photo...");
     try {
       const prepared = await prepareFileForScan(file);
-      if (prepared.dataUrl.length > 4_000_100)
-        throw new Error(
-          "This file is still too large after compression. Try a smaller image or PDF.",
-        );
+      if (prepared.dataUrl.length > 4_000_100) throw new Error("This file is still too large after compression. Try a smaller image or PDF.");
       setScanStage("Finding dates and times...");
-      const preferences = await provider.current!.loadProfile();
-      const timezone = preferences.timezone;
-      const locale = preferences.locale;
       const requestId = crypto.randomUUID();
-      const res = await fetch("/api/extract", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Request-Id": requestId,
-          "X-Zest-Device": deviceId(),
-        },
-        signal: AbortSignal.timeout(65000),
-        body: JSON.stringify({
-          dataUrl: prepared.dataUrl,
-          mimeType: prepared.mimeType,
-          fileName: file.name,
-          timezone,
-          locale,
-        }),
-      });
+      let res: Response;
+      try {
+        res = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Request-Id": requestId, "X-Zest-Device": deviceId() },
+          signal: AbortSignal.timeout(65000),
+          body: JSON.stringify({ dataUrl: prepared.dataUrl, mimeType: prepared.mimeType, fileName: file.name, timezone, locale }),
+        });
+      } catch (e) {
+        throw new Error(
+          e instanceof DOMException && e.name === "TimeoutError"
+            ? "This is taking longer than expected. Check your connection and try again — you won’t be charged twice."
+            : "Connection lost while scanning. Check your internet and try again — you won’t be charged twice.",
+        );
+      }
 
       setScanStage("Organising your events...");
       const raw = await res.text();
-      let payload: ExtractionResult | { error?: string } | null = null;
+      let payload: (ExtractionResult & { trialRemaining?: number }) | { error?: string; code?: string } | null = null;
       try {
         payload = raw ? JSON.parse(raw) : null;
       } catch {
@@ -391,24 +464,16 @@ export default function App() {
       }
 
       if (!res.ok) {
-        if (res.status === 413)
-          throw new Error(
-            "This file is too large to scan. Try a smaller PDF or photo.",
-          );
-        throw new Error(
-          (payload && "error" in payload && payload.error) ||
-            "We could not scan this file right now. Please try again.",
-        );
+        const code = payload && "code" in payload ? payload.code : undefined;
+        if (res.status === 413 && !code) throw new Error("This file is too large to scan. Try a smaller PDF or photo.");
+        const message = (payload && "error" in payload && payload.error) || "We couldn’t scan this file right now. Please try again.";
+        if ((code === "guest_trial_exhausted" || code === "sign_in_required") && mode === "local") {
+          showError(message, "signup");
+          return;
+        }
+        throw new Error(message);
       }
-      if (
-        !payload ||
-        !("events" in payload) ||
-        !Array.isArray(payload.events)
-      ) {
-        throw new Error(
-          "The scan finished, but the result could not be read. Please try again.",
-        );
-      }
+      if (!payload || !("events" in payload) || !Array.isArray(payload.events)) throw new Error("The scan finished, but the result could not be read. Please try again.");
 
       const scan: StoredScan = {
         id: requestId,
@@ -420,18 +485,20 @@ export default function App() {
         warnings: payload.warnings,
       };
 
-      await persist({
-        ...store,
-        scans: [scan, ...store.scans],
-      });
+      await persist({ ...store, scans: [scan, ...store.scans.filter((s) => s.id !== scan.id)] });
 
       setActiveScan(scan.id);
       setResult(payload);
-      setSelected(payload.events.map((_: ExtractedEvent, i: number) => i));
-      setView("review");
-      // Cloud reward balances are authoritative and refreshed by persist().
+      setSelected(payload.events.map((_: ExtractedEvent, i: number) => i).filter((i: number) => !duplicateOf(payload.events[i])));
+      openView("review");
+      if (mode === "local" && typeof payload.trialRemaining === "number")
+        setSuccess(
+          payload.trialRemaining > 0
+            ? `Free trial: ${payload.trialRemaining} scan${payload.trialRemaining === 1 ? "" : "s"} left on this device. Create a free account to keep scanning and sync.`
+            : "That was your last free trial scan. Create a free account to keep scanning and sync your plans.",
+        );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "We could not scan this file.");
+      showError(e instanceof Error ? e.message : "We couldn’t scan this file.");
     } finally {
       setBusy(false);
       setScanStage("");
@@ -441,14 +508,19 @@ export default function App() {
   }
 
   function toggle(index: number) {
-    setSelected((s) =>
-      s.includes(index) ? s.filter((i) => i !== index) : [...s, index],
-    );
+    setSelected((s) => (s.includes(index) ? s.filter((i) => i !== index) : [...s, index]));
   }
 
+  const plannerPrints = useMemo(() => new Set(plannerItems.filter((i) => i.status !== "cancelled").map(plannerFingerprint)), [plannerItems]);
+  /** "Already in your Zest agenda": present in Planner or previously added to the device calendar. */
   function duplicateOf(event: ExtractedEvent) {
     const key = eventKey(event);
-    return store.events.some((e) => eventKey(e) === key);
+    if (store.events.some((e) => eventKey(e) === key)) return true;
+    try {
+      return plannerPrints.has(plannerFingerprint(extractionToPlannerSuggestion(event, "x").item));
+    } catch {
+      return false;
+    }
   }
 
   function beginEdit(index: number) {
@@ -462,20 +534,15 @@ export default function App() {
     try {
       validateEvent(draft);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Check event details.");
+      showError(e instanceof Error ? e.message : "Check event details.");
       return;
     }
     const events = [...result.events];
     events[editingIndex] = draft;
     try {
-      await persist({
-        ...store,
-        scans: store.scans.map((s) =>
-          s.id === activeScan ? { ...s, events } : s,
-        ),
-      });
+      await persist({ ...store, scans: store.scans.map((s) => (s.id === activeScan ? { ...s, events } : s)) });
     } catch {
-      setError("Could not save changes. Try again.");
+      showError("Could not save changes. Try again.");
       return;
     }
     setResult({ ...result, events });
@@ -484,41 +551,49 @@ export default function App() {
   }
 
   async function saveSelectedToPlanner(indexes: number[]) {
-    if (!result || !activeScan || !indexes.length) return;
-    setBusy(true); setError("");
+    if (!result || !activeScan || !indexes.length || !identity) return;
+    setBusy(true);
+    setError("");
     try {
-      const planner = await PlannerStore.create();
-      let saved = 0;
+      const planner = await sharedPlannerStore(identity);
+      const scanId = planner.mode === "cloud" && store.scans.some((s) => s.id === activeScan) ? activeScan : activeScan;
+      let saved = 0,
+        skipped = 0;
       for (const index of indexes) {
         const event = result.events[index];
         if (!event) continue;
-        await planner.upsert(extractionToPlannerSuggestion(event, activeScan).item);
+        if (duplicateOf(event)) {
+          skipped++;
+          continue;
+        }
+        if (!event.startDate) {
+          skipped++;
+          continue;
+        }
+        await planner.upsert(extractionToPlannerSuggestion(event, scanId).item);
         saved++;
       }
-      setSuccess(saved === 1 ? "Saved to Planner." : `${saved} items saved to Planner.`);
-      setPlannerInitialTab("upcoming");
-      setView("calendar");
-    } catch (e) { setError(e instanceof Error ? e.message : "Could not save to Planner."); }
-    finally { setBusy(false); }
+      const parts = [saved === 1 ? "Saved to Planner." : saved ? `${saved} items saved to Planner.` : "Nothing new to save."];
+      if (skipped) parts.push(`${skipped} skipped (already in your agenda or missing a date).`);
+      setSuccess(parts.join(" "));
+      if (saved) openView("calendar", { tab: "upcoming" });
+      if (saved && mode === "cloud") refresh();
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not save to Planner.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function downloadIcs(events: ExtractedEvent | ExtractedEvent[]) {
     const items = Array.isArray(events) ? events : [events];
     if (!items.length) return;
-
-    const newItems = [
-      ...new Map(
-        items
-          .filter((e) => !duplicateOf(e))
-          .map((e) => [eventFingerprint(e), e]),
-      ).values(),
-    ];
+    const newItems = [...new Map(items.filter((e) => !store.events.some((x) => eventKey(x) === eventKey(e))).map((e) => [eventFingerprint(e), e])).values()];
     const duplicateCount = items.length - newItems.length;
     if (!newItems.length) {
-      setSuccess("These events are already in your Zest agenda.");
+      setSuccess("These events were already added to your device calendar.");
       return;
     }
-
     setError("");
     try {
       let blob: Blob;
@@ -531,75 +606,29 @@ export default function App() {
         });
         if (!res.ok) throw new Error("Calendar export failed");
         blob = await res.blob();
-      } else
-        blob = new Blob([await generateIcs(newItems)], {
-          type: "text/calendar;charset=utf-8",
-        });
+      } else blob = new Blob([await generateIcs(newItems)], { type: "text/calendar;charset=utf-8" });
       const href = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = href;
-      a.download =
-        newItems.length > 1 ? "zest-snap-events.ics" : "zest-snap-event.ics";
+      a.download = newItems.length > 1 ? "zest-snap-events.ics" : "zest-snap-event.ics";
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(href), 1000);
-
       const now = new Date().toISOString();
-      const added = newItems.map((event) => ({
-        ...event,
-        id: crypto.randomUUID(),
-        addedAt: now,
-        exportedAt: now,
-      }));
-      const calendarReward = !store.firstCalendarRewarded ? 1 : 0;
-      await persist({
-        ...store,
-        events: [...store.events, ...added],
-        credits: store.credits + calendarReward,
-        firstCalendarRewarded: true,
-      });
-
-      const parts = [
-        newItems.length === 1
-          ? "1 event prepared for your calendar."
-          : `${newItems.length} events prepared for your calendar.`,
-      ];
-      if (duplicateCount)
-        parts.push(
-          `${duplicateCount} duplicate ${duplicateCount === 1 ? "was" : "were"} skipped.`,
-        );
-      if (calendarReward && mode === "local")
-        parts.push("You earned 1 Zest Credit.");
+      const added = newItems.map((event) => ({ ...event, id: crypto.randomUUID(), addedAt: now, exportedAt: now }));
+      // Local mode keeps the calendar flag for progress only; credits are awarded by the server.
+      await persist({ ...store, events: [...store.events, ...added], firstCalendarRewarded: true });
+      const parts = [newItems.length === 1 ? "1 event prepared for your calendar." : `${newItems.length} events prepared for your calendar.`];
+      if (duplicateCount) parts.push(`${duplicateCount} already added ${duplicateCount === 1 ? "was" : "were"} skipped.`);
+      parts.push("Open the downloaded file to add it to your phone’s calendar.");
       setSuccess(parts.join(" "));
     } catch {
-      setError(
-        "Check dates, start/end times and timezone, then retry. Ambiguous clock-change times need correction.",
-      );
+      showError("Check dates, start/end times and timezone, then retry. Ambiguous clock-change times need correction.");
     }
   }
 
-  async function addPlannerItem(event: ExtractedEvent) {
-    try {
-      validateEvent(event);
-      const reward = !store.firstCalendarRewarded ? 1 : 0;
-      await persist({ ...store, events: [...store.events, { ...event, id: crypto.randomUUID(), addedAt: new Date().toISOString() }], credits: store.credits + reward, firstCalendarRewarded: true });
-      setPlannerOpen(false);
-      setSuccess(reward ? "Added to Planner - you earned 1 Zest Credit." : "Added to Planner.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Could not add this item."); }
-  }
-
-  async function removeAgendaEvent(id: string) {
-    try {
-      await persist({
-        ...store,
-        events: store.events.filter((e) => e.id !== id),
-      });
-      setSuccess("Removed from Zest. External calendars are unchanged.");
-    } catch {
-      setError("Could not remove event. Try again.");
-    }
-  }
+  const goToSignUp = () => router.push("/login?mode=signup&next=" + encodeURIComponent(window.location.pathname + window.location.search));
 
   return (
     <main className="appShell">
@@ -608,8 +637,9 @@ export default function App() {
           Zest <span>Snap</span>
         </div>
         <div className="appHeaderActions">
-          <button className="creditPill" onClick={() => setView("rewards")}>
-            <Sparkles size={14} /> {ready ? store.credits : startupCredits ?? "—"} credits
+          <button className="creditPill" onClick={() => openView("rewards")} aria-label={mode === "cloud" ? "Zest Credits and rewards" : "Open rewards"}>
+            <Sparkles size={14} aria-hidden="true" />{" "}
+            {mode === "cloud" ? `${ready && store.earned ? store.credits : (startupCredits ?? "—")} credits` : "Rewards"}
           </button>
           <a className="settingsIconButton" href="/settings" aria-label="Settings">
             <SettingsIcon aria-hidden="true" />
@@ -618,7 +648,7 @@ export default function App() {
       </header>
 
       <div className="appContent">
-        {error && (
+        {error && view !== "home" && (
           <div className="errorBox" role="alert">
             {error}
           </div>
@@ -631,13 +661,18 @@ export default function App() {
               </button>
             )}
             <section className="appIntro homeHero">
-              <div className="homeGreeting">Good morning{displayName ? `, ${displayName.split(" ")[0]}` : ""} <span aria-hidden="true">👋</span></div>
+              <div className="homeGreeting">
+                {greeting(timezone)}
+                {displayName ? `, ${displayName.split(" ")[0]}` : ""} <span aria-hidden="true">👋</span>
+              </div>
               <h1>What do you want to remember?</h1>
               <p>Snap or upload it. Zest finds the important dates.</p>
             </section>
 
             <section className="captureCard captureCardHome">
-              <div className="captureMark zestCaptureMark"><Camera /></div>
+              <div className="captureMark zestCaptureMark">
+                <Camera />
+              </div>
               <h2>Capture something with a date</h2>
               <p>Appointments, notices, bookings, schedules and PDFs.</p>
               <div className="captureActions">
@@ -648,26 +683,75 @@ export default function App() {
                   <Upload size={20} /> Upload
                 </button>
               </div>
-              <input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(e: ChangeEvent<HTMLInputElement>) => scanFile(e.target.files?.[0])}/>
-              <input ref={fileRef} hidden type="file" accept="image/*,application/pdf" onChange={(e: ChangeEvent<HTMLInputElement>) => scanFile(e.target.files?.[0])}/>
-              {busy && <div className="scanStatus"><Loader2 className="spin" size={17}/>{scanStage || "Reading your file..."}</div>}
-              {error && <div className="errorBox"><AlertTriangle size={16}/>{error}</div>}
-              {success && <div className="successBox"><CheckCircle2 size={16}/>{success}</div>}
+              <input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(e: ChangeEvent<HTMLInputElement>) => scanFile(e.target.files?.[0])} />
+              <input ref={fileRef} hidden type="file" accept="image/*,application/pdf" onChange={(e: ChangeEvent<HTMLInputElement>) => scanFile(e.target.files?.[0])} />
+              {busy && (
+                <div className="scanStatus" role="status">
+                  <Loader2 className="spin" size={17} />
+                  {scanStage || "Reading your file..."}
+                </div>
+              )}
+              {error && (
+                <div className="errorBox" role="alert">
+                  <AlertTriangle size={16} />
+                  {error}
+                  {errorAction === "signup" && (
+                    <button className="textButton" onClick={goToSignUp}>
+                      Create a free account
+                    </button>
+                  )}
+                </div>
+              )}
+              {success && (
+                <div className="successBox" role="status">
+                  <CheckCircle2 size={16} />
+                  {success}
+                </div>
+              )}
             </section>
 
             <section className="homeToday">
               <div className="homeTodayHead">
-                <div className="homeTodayTitle"><span><CalendarDays/></span><div><h2>Today</h2><p>{homeTodayEvents.length} things in your day</p></div></div>
-                <button className="homeViewAll" onClick={()=>openView("calendar")}>View all <ChevronRight size={17}/></button>
+                <div className="homeTodayTitle">
+                  <span>
+                    <CalendarDays />
+                  </span>
+                  <div>
+                    <h2>Today</h2>
+                    <p>
+                      {homeToday.length} {homeToday.length === 1 ? "thing" : "things"} in your day
+                    </p>
+                  </div>
+                </div>
+                <button className="homeViewAll" onClick={() => openView("calendar", { tab: "today" })}>
+                  View all <ChevronRight size={17} />
+                </button>
               </div>
               <div className="homeTimeline">
-                {homeTodayEvents.slice(0,3).map((event,i)=><button key={event.id} className={"homeTimelineItem tone"+(i%3)} onClick={()=>openView("calendar")}>
-                  <span className="homeTimelineTime">{event.startTime || "All day"}</span>
-                  <span className="homeTimelineDot"/>
-                  <span className="homeTimelineBody"><b>{event.title}</b><small>{event.location || (event.startTime ? "Today" : "All day")}</small></span>
-                  <ChevronRight size={18}/>
-                </button>)}
-                {!homeTodayEvents.length&&<button className="homeTodayEmpty" onClick={()=>openView("calendar")}><span>Your day is clear.</span><b>Open Planner <ChevronRight size={16}/></b></button>}
+                {homeToday.slice(0, 3).map((item, i) => {
+                  const time = plannerReferenceTime(item);
+                  return (
+                    <button key={item.id} className={"homeTimelineItem tone" + (i % 3)} onClick={() => openView("calendar", { tab: "today" })}>
+                      <span className="homeTimelineTime">
+                        {time ? new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" }).format(new Date(`1970-01-01T${time}:00Z`)) : "All day"}
+                      </span>
+                      <span className="homeTimelineDot" />
+                      <span className="homeTimelineBody">
+                        <b>{item.status === "completed" ? <s>{item.title}</s> : item.title}</b>
+                        <small>{item.location || (item.type === "event" ? (time ? "Today" : "All day") : item.type[0].toUpperCase() + item.type.slice(1))}</small>
+                      </span>
+                      <ChevronRight size={18} />
+                    </button>
+                  );
+                })}
+                {!homeToday.length && (
+                  <button className="homeTodayEmpty" onClick={() => openView("calendar", { tab: "today" })}>
+                    <span>Your day is clear.</span>
+                    <b>
+                      Open Planner <ChevronRight size={16} />
+                    </b>
+                  </button>
+                )}
               </div>
             </section>
           </>
@@ -676,7 +760,7 @@ export default function App() {
         {view === "review" && result && (
           <>
             <section className="reviewTop">
-              <button className="textButton" onClick={() => setView("home")}>
+              <button className="textButton" onClick={() => openView("home")}>
                 ← Scan another
               </button>
               <div className="eyebrow">AI REVIEW</div>
@@ -797,7 +881,7 @@ export default function App() {
                           disabled={duplicate}
                         >
                           <Download size={16} />
-                          {duplicate ? "Added" : "Add to device calendar"}
+                          {duplicate ? "In your agenda" : "Add to device calendar"}
                         </button>
                       </div>
                     </div>
@@ -838,7 +922,7 @@ export default function App() {
               setActiveScan(s.id);
               setResult({ ...s, warnings: s.warnings || [] });
               setSelected(s.events.map((_, i) => i));
-              setView("review");
+              openView("review");
             }}
             onDelete={async (id) => {
               try {
@@ -852,17 +936,79 @@ export default function App() {
             }}
           />
         )}
-        {(view === "calendar" || plannerVisited) && (
+        {(view === "calendar" || plannerVisited) && identity && (
           <div hidden={view !== "calendar"} aria-hidden={view !== "calendar"}>
+            {success && view === "calendar" && (
+              <div className="successBox standalone" role="status">
+                <CheckCircle2 size={18} />
+                {success}
+              </div>
+            )}
             <PlannerView
-              initialTab={plannerInitialTab}
-              onNotice={(kind, message) => kind === "success" ? setSuccess(message) : setError(message)}
+              identity={identity}
+              timezone={timezone}
+              locale={locale}
+              signedIn={mode === "cloud"}
+              request={plannerRequest}
+              onSignIn={goToSignUp}
+              onNotice={(kind, message) => (kind === "success" ? (setError(""), setSuccess(message)) : showError(message))}
             />
           </div>
         )}
-        {view === "rewards" && <RewardsView ready={ready} store={store} onPlan={() => { setView("calendar"); setPlannerOpen(true); }} onFeedback={async(rating,feedback)=>{try{if(mode!=="cloud"){window.location.href="/login?next=/app?view=rewards";return false;}const db=createClient();const {data,error}=await db.rpc("submit_product_feedback",{p_rating:rating,p_feedback:feedback});if(error)throw error;const fresh=await provider.current?.load();if(fresh)setStore(fresh);setSuccess(Number(data)>0?`Thanks for the feedback — +${data} Zest Credits.`:"Thanks — your feedback was already received.");return true;}catch{setError("We couldn’t submit your feedback right now.");return false;}}} onInvite={async () => { try { const code = await provider.current?.createReferral(); if (!code) { window.location.href = "/login?next=/app?view=rewards"; return; } const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`; if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url }); else { await navigator.clipboard.writeText(url); setSuccess("Referral link copied."); } } catch (error) { if (error instanceof DOMException && error.name === "AbortError") return; setError("We couldn’t open sharing right now. Please try again."); } }} />}
-
-        {plannerOpen && <PlannerSheet onClose={() => setPlannerOpen(false)} onSave={addPlannerItem} />}
+        {view === "rewards" && (
+          <RewardsView
+            ready={ready}
+            signedIn={mode === "cloud"}
+            store={store}
+            rules={rules}
+            credits={store.earned ? store.credits : startupCredits}
+            onSignIn={goToSignUp}
+            onOpen={(target) => openView(target === "scan" ? "home" : "calendar", target === "scan" ? {} : { tab: target === "reminder" ? "reminders" : "today" })}
+            onFeedback={async (rating, feedback) => {
+              if (mode !== "cloud") {
+                goToSignUp();
+                return false;
+              }
+              try {
+                const db = createClient();
+                const { data, error } = await db.rpc("submit_product_feedback", { p_rating: rating, p_feedback: feedback });
+                if (error) throw error;
+                await refresh();
+                setSuccess(Number(data) > 0 ? `Thanks for the feedback — +${data} Zest Credits.` : "Thanks — your feedback was received.");
+                return true;
+              } catch (e) {
+                showError(
+                  e instanceof Error && e.message.includes("feedback_required")
+                    ? "Add a rating or a few words first."
+                    : "We couldn’t send your feedback right now. Please try again.",
+                );
+                return false;
+              }
+            }}
+            onInvite={async () => {
+              if (mode !== "cloud") return goToSignUp();
+              try {
+                const code = await provider.current?.createReferral();
+                if (!code) return goToSignUp();
+                const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+                if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url });
+                else {
+                  await navigator.clipboard.writeText(url);
+                  setSuccess("Invite link copied.");
+                }
+              } catch (e) {
+                if (e instanceof DOMException && e.name === "AbortError") return; // share sheet cancelled: nothing happens
+                showError("We couldn’t open sharing right now. Please try again.");
+              }
+            }}
+          />
+        )}
+        {view === "rewards" && success && (
+          <div className="successBox standalone" role="status">
+            <CheckCircle2 size={18} />
+            {success}
+          </div>
+        )}
 
         {editingIndex !== null && draft && (
           <dialog
@@ -1004,31 +1150,11 @@ export default function App() {
         )}
       </div>
 
-      <nav className="bottomNav">
-        <NavButton
-          active={view === "home" || view === "review"}
-          label="Home"
-          onClick={() => openView("home")}
-          icon={<HomeIcon />}
-        />
-        <NavButton
-          active={view === "calendar"}
-          label="Planner"
-          onClick={() => openView("calendar")}
-          icon={<CalendarDays />}
-        />
-        <NavButton
-          active={view === "history"}
-          label="History"
-          onClick={() => openView("history")}
-          icon={<Clock />}
-        />
-        <NavButton
-          active={view === "rewards"}
-          label="Rewards"
-          onClick={() => openView("rewards")}
-          icon={<Gift />}
-        />
+      <nav className="bottomNav" aria-label="Main">
+        <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
+        <NavButton active={view === "calendar"} label="Planner" onClick={() => openView("calendar")} icon={<CalendarDays />} />
+        <NavButton active={view === "history"} label="History" onClick={() => openView("history")} icon={<Clock />} />
+        <NavButton active={view === "rewards"} label="Rewards" onClick={() => openView("rewards")} icon={<Gift />} />
       </nav>
     </main>
   );
@@ -1046,7 +1172,7 @@ function NavButton({
   icon: React.ReactNode;
 }) {
   return (
-    <button type="button" className={active ? "active" : ""} onClick={onClick}>
+    <button type="button" className={active ? "active" : ""} onClick={onClick} aria-current={active ? "page" : undefined}>
       {icon}
       <small>{label}</small>
     </button>
@@ -1131,36 +1257,6 @@ function HistoryView({
   );
 }
 
-function AgendaView({ events, onDelete, onAdd }: { events: StoredEvent[]; onDelete: (id: string) => void; onAdd: () => void }) {
-  const [tab, setTab] = useState<"today" | "upcoming" | "calendar" | "reminders">("today");
-  const today = new Date().toISOString().slice(0, 10);
-  const reminderLike = (event: StoredEvent) => event.sourceText === "Manual Planner item" && /remind/i.test(event.description + " " + event.title);
-  const visible = events.filter(event => {
-    if (tab === "today") return event.startDate === today;
-    if (tab === "upcoming") return event.startDate >= today;
-    if (tab === "reminders") return reminderLike(event);
-    return event.startDate >= today;
-  });
-  const monthLabel = new Date().toLocaleDateString(undefined,{month:"long",year:"numeric"});
-  return (
-    <section className="dataView plannerView">
-      <div className="plannerHeading"><div><div className="eyebrow">PLANNER</div><h1>Your planner</h1></div><button className="plannerPlus" onClick={onAdd} aria-label="Add to Planner">+</button></div>
-      <p>Events, tasks and reminders from your scans and the things you add yourself.</p>
-      <div className="plannerTabs">
-        {(["today","upcoming","calendar","reminders"] as const).map(x => <button key={x} className={tab===x?"active":""} onClick={()=>setTab(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}
-      </div>
-      {tab === "today" && <div className="plannerSummary"><b>{visible.length ? visible.length + " planned today" : "Your day is clear"}</b><span>{new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}</span></div>}
-      {tab === "calendar" && <div className="monthStrip"><b>{monthLabel}</b><span>{visible.length} upcoming</span></div>}
-      {!visible.length ? <div className="plannerEmpty"><CalendarDays/><b>{tab === "reminders" ? "No reminders yet" : tab === "today" ? "Nothing planned for today" : "Nothing here yet"}</b><span>Tap + to add an event, task or reminder.</span><button className="button alt" onClick={onAdd}>Add to Planner</button></div> :
-      <div className="agendaList">{visible.map(event => <article className="agendaCard" key={event.id}>
-        <div className="agendaDate"><b>{event.startDate.slice(8,10)}</b><span>{monthName(event.startDate)}</span></div>
-        <div className="agendaBody"><div className="agendaTop"><span className="category">{event.category === "deadline" ? "task" : reminderLike(event) ? "reminder" : event.category}</span><em>{agendaGroup(event)}</em></div><h3>{event.title}</h3><p>{event.startTime || "All day"}{event.location ? " · "+event.location : ""}</p></div>
-        <button className="iconButton danger" onClick={()=>onDelete(event.id)} aria-label={"Remove "+event.title+" from Planner"}><Trash2/></button>
-      </article>)}</div>}
-    </section>
-  );
-}
-
 function EmptyView({
   title,
   text,
@@ -1179,71 +1275,167 @@ function EmptyView({
   );
 }
 
-function PlannerSheet({ onClose, onSave }: { onClose: () => void; onSave: (event: ExtractedEvent) => void }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const [kind, setKind] = useState<"event" | "task" | "reminder">("event");
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState(today);
-  const [time, setTime] = useState("");
-  const [notes, setNotes] = useState("");
-  const submit = () => {
-    if (!title.trim() || !date) return;
-    onSave({ title: title.trim(), startDate: date, endDate: date, startTime: time, endTime: "", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", location: "", description: notes, allDay: !time, confidence: 1, confidenceReason: "Added manually", sourceText: "Manual Planner item", category: kind === "task" ? "deadline" : "event" });
-  };
-  return <div className="plannerOverlay" role="presentation" onClick={onClose}>
-    <section className="plannerSheet" role="dialog" aria-modal="true" aria-label="Add to Planner" onClick={e => e.stopPropagation()}>
-      <div className="sheetHandle" /><div className="sheetTop"><div><div className="eyebrow">NEW PLAN</div><h2>Add to Planner</h2></div><button className="iconButton" aria-label="Close" onClick={onClose}>×</button></div>
-      <div className="plannerKinds">{(["event","task","reminder"] as const).map(x => <button key={x} className={kind === x ? "active" : ""} onClick={() => setKind(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</div>
-      <label><span>Title</span><input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={kind === "task" ? "What needs to be done?" : kind === "reminder" ? "What should Zest remind you about?" : "What's happening?"} /></label>
-      <div className="fieldGrid"><label><span>Date</span><input type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label><span>Time (optional)</span><input type="time" value={time} onChange={e => setTime(e.target.value)} /></label></div>
-      <label><span>Notes (optional)</span><textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></label>
-      <button className="button sheetSave" disabled={!title.trim() || !date} onClick={submit}>Add to Planner</button>
-    </section>
-  </div>;
-}
+const MILESTONES: { key: string; title: string; hint: string; open?: "scan" | "planner" | "reminder"; icon: React.ReactNode }[] = [
+  { key: "first_scan", title: "Complete your first scan", hint: "Capture or upload something with a date", open: "scan", icon: <CheckCircle2 /> },
+  { key: "first_planner_item", title: "Add your first Planner item", hint: "Save a scan or tap + in Planner", open: "planner", icon: <CalendarDays /> },
+  { key: "first_calendar", title: "Add an event to your device calendar", hint: "Use “Add to device calendar” after a scan", open: "scan", icon: <Download /> },
+  { key: "first_reminder", title: "Set your first reminder", hint: "Use the bell in Planner", open: "reminder", icon: <Bell /> },
+  { key: "first_completed_task", title: "Complete your first task", hint: "Tick off a task or deadline", open: "planner", icon: <ListChecks /> },
+  { key: "organised_5_scans", title: "Organise 5 scans", hint: "Save items from 5 different scans to Planner", open: "scan", icon: <Layers /> },
+  { key: "organised_10_scans", title: "Organise 10 scans", hint: "Save items from 10 different scans to Planner", open: "scan", icon: <Layers /> },
+];
 
-function RewardsView({ ready, store, onPlan, onInvite, onFeedback }: { ready: boolean; store: LocalState; onPlan: () => void; onInvite: () => void; onFeedback: (rating:number|null,feedback:string)=>Promise<boolean> }) {
-  const [feedbackOpen,setFeedbackOpen]=useState(false);
-  const [rating,setRating]=useState<number|null>(null);
-  const [feedback,setFeedback]=useState("");
-  const [sending,setSending]=useState(false);
-  const submitFeedback=async()=>{if(sending)return;setSending(true);const ok=await onFeedback(rating,feedback);setSending(false);if(ok)setFeedbackOpen(false);};
+function RewardsView({
+  ready,
+  signedIn,
+  store,
+  rules,
+  credits,
+  onSignIn,
+  onOpen,
+  onInvite,
+  onFeedback,
+}: {
+  ready: boolean;
+  signedIn: boolean;
+  store: LocalState;
+  rules: Record<string, number>;
+  credits: number | null;
+  onSignIn: () => void;
+  onOpen: (target: "scan" | "planner" | "reminder") => void;
+  onInvite: () => void;
+  onFeedback: (rating: number | null, feedback: string) => Promise<boolean>;
+}) {
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [rating, setRating] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState("");
+  const [sending, setSending] = useState(false);
+  const earned = new Set(store.earned || []);
+  const submitFeedback = async () => {
+    if (sending) return;
+    setSending(true);
+    const ok = await onFeedback(rating, feedback);
+    setSending(false);
+    if (ok) setFeedbackOpen(false);
+  };
+  // Completed milestones never show today's amount: they may have been earned under earlier rules.
+  const amount = (key: string) => (rules[key] ? `+${rules[key]} credit${rules[key] === 1 ? "" : "s"}` : "");
+  const visible = MILESTONES.filter((m) => earned.has(m.key) || !signedIn || rules[m.key]);
+  const feedbackDone = earned.has("product_feedback");
+  const referrals = (store.earned || []).filter((r) => r === "referral_qualified").length;
   return (
     <section className="rewardsView">
       <h1>Your rewards</h1>
-      <p>Earn small milestone credits, and earn more by helping Zest grow.</p>
-      <div className="rewardBalance"><span>Current balance</span><b>{ready ? store.credits : "—"}</b><small>{ready ? "Zest Credits" : "Syncing…"}</small></div>
-      <div className="rewardRows">
-        <div className={"rewardItem " + (store.firstScanRewarded ? "completed" : "")}>
-          <span className="rewardIcon"><CheckCircle2 /></span>
-          <span className="rewardCopy"><b>Complete your first scan</b><small>{store.firstScanRewarded ? "Completed" : "Complete a scan · +1 credit"}</small></span>
-          <span className="rewardState">{store.firstScanRewarded ? <Check size={18} /> : "+1"}</span>
+      <p>Earn bonus AI credits for milestones and for helping Zest grow. Credits can pay for extra scans.</p>
+      {signedIn ? (
+        <div className="rewardBalance">
+          <span>Current balance</span>
+          <b>{credits ?? "—"}</b>
+          <small>{ready && credits !== null ? "Zest Credits" : "Syncing…"}</small>
         </div>
-        {store.firstCalendarRewarded ? (
+      ) : (
+        <button className="rewardBalance" type="button" onClick={onSignIn}>
+          <span>Rewards need a free account</span>
+          <small>Sign in or create an account to earn credits →</small>
+        </button>
+      )}
+      <div className="rewardRows">
+        {visible.map((m) => {
+          const done = signedIn && earned.has(m.key);
+          if (done)
+            return (
+              <div className="rewardItem completed" key={m.key}>
+                <span className="rewardIcon">{m.icon}</span>
+                <span className="rewardCopy">
+                  <b>{m.title}</b>
+                  <small>Completed</small>
+                </span>
+                <span className="rewardState">
+                  <Check size={18} aria-label="Completed" />
+                </span>
+              </div>
+            );
+          return (
+            <button className="rewardItem actionable" type="button" key={m.key} onClick={() => (signedIn ? m.open && onOpen(m.open) : onSignIn())}>
+              <span className="rewardIcon">{m.icon}</span>
+              <span className="rewardCopy">
+                <b>{m.title}</b>
+                <small>{signedIn ? [m.hint, amount(m.key)].filter(Boolean).join(" · ") : "Sign in to earn"}</small>
+              </span>
+              <ChevronRight className="rewardChevron" size={18} />
+            </button>
+          );
+        })}
+        {feedbackDone ? (
           <div className="rewardItem completed">
-            <span className="rewardIcon"><CalendarDays /></span>
-            <span className="rewardCopy"><b>Plan your first item</b><small>Completed</small></span>
-            <span className="rewardState"><Check size={18} /></span>
+            <span className="rewardIcon">
+              <MessageSquare />
+            </span>
+            <span className="rewardCopy">
+              <b>Share your experience</b>
+              <small>Completed — thank you</small>
+            </span>
+            <span className="rewardState">
+              <Check size={18} aria-label="Completed" />
+            </span>
           </div>
         ) : (
-          <button className="rewardItem actionable" type="button" onClick={onPlan}>
-            <span className="rewardIcon"><CalendarDays /></span>
-            <span className="rewardCopy"><b>Plan your first item</b><small>Open Planner · +1 credit</small></span>
+          <button className="rewardItem actionable" type="button" onClick={() => (signedIn ? setFeedbackOpen(true) : onSignIn())}>
+            <span className="rewardIcon">
+              <MessageSquare />
+            </span>
+            <span className="rewardCopy">
+              <b>Share your experience</b>
+              <small>{signedIn ? ["Any honest feedback", amount("product_feedback") && amount("product_feedback") + " once"].filter(Boolean).join(" · ") : "Sign in to earn"}</small>
+            </span>
             <ChevronRight className="rewardChevron" size={18} />
           </button>
         )}
-        <button className="rewardItem actionable" type="button" onClick={()=>setFeedbackOpen(true)}>
-          <span className="rewardIcon"><MessageSquare /></span>
-          <span className="rewardCopy"><b>Share your experience</b><small>Any honest feedback · +2 credits once</small></span>
-          <ChevronRight className="rewardChevron" size={18} />
-        </button>
-        <button className="rewardItem actionable" type="button" onClick={onInvite}>
-          <span className="rewardIcon"><Gift /></span>
-          <span className="rewardCopy"><b>Invite a friend</b><small>Qualified referral · +5 credits</small></span>
+        <button className="rewardItem actionable" type="button" onClick={signedIn ? onInvite : onSignIn}>
+          <span className="rewardIcon">
+            <Gift />
+          </span>
+          <span className="rewardCopy">
+            <b>Invite a friend</b>
+            <small>
+              {signedIn
+                ? [`When they sign up and complete their first scan`, amount("referral_qualified"), referrals ? `${referrals} rewarded` : ""].filter(Boolean).join(" · ")
+                : "Sign in to earn"}
+            </small>
+          </span>
           <ChevronRight className="rewardChevron" size={18} />
         </button>
       </div>
-      {feedbackOpen&&<div className="plannerOverlay"><section className="plannerSheet compact feedbackSheet" role="dialog" aria-modal="true" aria-labelledby="feedback-title"><div className="sheetTop"><div><h2 id="feedback-title">Share your experience</h2><span className="sheetHint">Positive or negative — honest feedback earns the same reward.</span></div><button className="iconButton" onClick={()=>setFeedbackOpen(false)} aria-label="Close"><X/></button></div><div className="feedbackStars" aria-label="Optional rating">{[1,2,3,4,5].map(n=><button key={n} type="button" className={rating&&n<=rating?"active":""} aria-label={`${n} star${n===1?"":"s"}`} onClick={()=>setRating(n)}><Star/></button>)}</div><label><span>Tell us what you think (optional)</span><textarea rows={5} maxLength={2000} value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="What works well? What should we improve?"/></label><p className="feedbackPolicy">Credits are for submitting feedback, not for giving a positive rating.</p><button className="button sheetSave" disabled={sending} onClick={submitFeedback}>{sending?"Sending…":"Send feedback · +2 credits"}</button></section></div>}
+      {feedbackOpen && (
+        <div className="plannerOverlay" onClick={() => setFeedbackOpen(false)}>
+          <section className="plannerSheet compact feedbackSheet" role="dialog" aria-modal="true" aria-labelledby="feedback-title" onClick={(e) => e.stopPropagation()}>
+            <div className="sheetTop">
+              <div>
+                <h2 id="feedback-title">Share your experience</h2>
+                <span className="sheetHint">Positive or negative — honest feedback earns the same reward.</span>
+              </div>
+              <button className="iconButton" onClick={() => setFeedbackOpen(false)} aria-label="Close">
+                <X />
+              </button>
+            </div>
+            <div className="feedbackStars" role="radiogroup" aria-label="Optional rating">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} type="button" role="radio" aria-checked={rating === n} className={rating && n <= rating ? "active" : ""} aria-label={`${n} star${n === 1 ? "" : "s"}`} onClick={() => setRating(rating === n ? null : n)}>
+                  <Star />
+                </button>
+              ))}
+            </div>
+            <label>
+              <span>Tell us what you think (optional)</span>
+              <textarea rows={5} maxLength={2000} value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="What works well? What should we improve?" />
+            </label>
+            <p className="feedbackPolicy">Credits are for submitting feedback, not for giving a positive rating. Add a rating or a few words.</p>
+            <button className="button sheetSave" disabled={sending || (!rating && !feedback.trim())} onClick={submitFeedback}>
+              {sending ? "Sending…" : amount("product_feedback") ? `Send feedback · ${amount("product_feedback")}` : "Send feedback"}
+            </button>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -1257,11 +1449,6 @@ function friendlySourceName(file: File) {
 }
 
 const eventKey = eventFingerprint;
-
-function monthName(date: string) {
-  const d = new Date(date + "T00:00:00");
-  return d.toLocaleDateString(undefined, { month: "short" }).toUpperCase();
-}
 
 async function readAsDataUrl(file: Blob): Promise<string> {
   return await new Promise<string>((resolve, reject) => {

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { safeAuthNext } from "@/lib/auth";
+import { captureReferral, claimPendingReferral, registerDevice, setActiveUser } from "@/lib/session";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -33,7 +35,10 @@ export default function LoginPage() {
   const [name, setName] = useState("");
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has("error"))
+    captureReferral();
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("mode") === "signup") setMode("signup");
+    if (q.has("error"))
       setMessage(
         "This link has expired or could not be verified. Request a new link and use the same browser.",
       );
@@ -66,25 +71,12 @@ export default function LoginPage() {
     }
   }
 
-  function deviceId() {
-    const key="zest-device-id";
-    let id=localStorage.getItem(key);
-    if(!id){id=crypto.randomUUID()+"-"+crypto.randomUUID();localStorage.setItem(key,id);}
-    return id;
-  }
-
-  async function registerDevice(supabase: ReturnType<typeof createClient>) {
-    await supabase.rpc("register_device",{p_device_id:deviceId()});
-  }
-
-  async function finishReferral(supabase: ReturnType<typeof createClient>) {
-    const code =
-      new URLSearchParams(window.location.search).get("ref") ||
-      sessionStorage.getItem("zest-referral");
-    if (code) {
-      await supabase.rpc("claim_referral_device", { p_code: code, p_device_id: deviceId() });
-      sessionStorage.removeItem("zest-referral");
-    }
+  const nextPath = () => safeAuthNext(new URLSearchParams(window.location.search).get("next"));
+  async function afterSignIn(userId: string) {
+    // A different person may have used this device: drop their cached state before opening the app.
+    setActiveUser(userId);
+    await Promise.allSettled([registerDevice(), claimPendingReferral()]);
+    window.location.assign(new URL(nextPath(), window.location.origin).href);
   }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -101,8 +93,6 @@ export default function LoginPage() {
     const form = new FormData(e.currentTarget);
     const email = String(form.get("email") || "");
     const password = String(form.get("password") || "");
-    const ref = new URLSearchParams(window.location.search).get("ref");
-    if (ref) sessionStorage.setItem("zest-referral", ref);
 
     const supabase = createClient();
     try {
@@ -120,17 +110,15 @@ export default function LoginPage() {
       }
 
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (error) {
-          setMessage(authErrorMessage(error.code, error.message));
+        if (error || !data.user) {
+          setMessage(authErrorMessage(error?.code, error?.message));
           return;
         }
-        await registerDevice(supabase);
-        await finishReferral(supabase);
-        window.location.assign(new URL("/app", window.location.origin).href);
+        await afterSignIn(data.user.id);
         return;
       }
 
@@ -143,18 +131,21 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin + "/auth/callback",
-          data: { display_name: cleanName, full_name: cleanName },
+          emailRedirectTo: window.location.origin + "/auth/callback?next=" + encodeURIComponent(nextPath()),
+          data: {
+            display_name: cleanName,
+            full_name: cleanName,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+            locale: navigator.language || "en",
+          },
         },
       });
       if (error) {
         setMessage(authErrorMessage(error.code, error.message));
         return;
       }
-      if (data.session) {
-        await registerDevice(supabase);
-        await finishReferral(supabase);
-        window.location.assign(new URL("/app", window.location.origin).href);
+      if (data.session && data.user) {
+        await afterSignIn(data.user.id);
       } else {
         setMessage(
           "Check your email to confirm your Zest Snap account, then sign in.",

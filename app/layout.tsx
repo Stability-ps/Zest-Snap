@@ -1,8 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaRegister from "./pwa-register";
+import ReferralCapture from "./referral-capture";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://zestsnap.app"),
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Zest Snap",
+    title: "Zest Snap — Anything with a date becomes actionable",
+    description: "Turn photos, screenshots and PDFs into reviewed events, tasks, deadlines and reminders.",
+    images: [{ url: "/icons/zest-snap-512.png", width: 512, height: 512, alt: "Zest Snap" }],
+  },
   title: "Zest Snap — Anything with a date becomes actionable",
   description:
     "AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines.",
@@ -57,6 +67,7 @@ export default function RootLayout({
       <body>
         {children}
         <PwaRegister />
+        <ReferralCapture />
       </body>
     </html>
   );

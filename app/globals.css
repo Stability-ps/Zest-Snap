@@ -2612,3 +2612,15 @@ dialog::backdrop {
 .reminderAddButton svg{width:20px;height:20px}
 .reminderAddButton:disabled{opacity:.55}
 @media(max-width:420px){.reminderAddButton{min-width:48px;width:48px;padding:0}.reminderAddButton span{display:none}}
+
+/* Production-readiness additions (2026-10-04) */
+.calendarActionChoices .calendarViewDay{grid-column:1/-1;min-height:64px;flex-direction:row;align-items:center;gap:10px}
+.calendarActionChoices .calendarViewDay span{margin-left:auto}
+button.rewardBalance{width:100%;border:0;font:inherit;text-align:inherit;cursor:pointer;color:inherit}
+button.rewardBalance{gap:10px}
+.errorBox .textButton{margin-left:6px;font-weight:800;text-decoration:underline}
+.plannerCard h3 s,.homeTimelineBody s{color:var(--muted)}
+.plannerSheet .sheetHint{margin:0}
+.reminderCardMenu>button:first-child{min-width:44px;min-height:44px}
+.plannerCardActions button,.reminderActions button{min-height:44px}
+.monthGrid button:focus-visible,.plannerTabs button:focus-visible,.reminderFilters button:focus-visible{outline:3px solid #78d7c7;outline-offset:2px}
