@@ -2410,3 +2410,84 @@ dialog::backdrop {
 .reminderMenuPopover{position:absolute;right:0;top:36px;z-index:12;width:180px;background:#fff;border:1px solid #e1e7eb;border-radius:14px;padding:6px;box-shadow:0 12px 32px rgba(8,31,55,.16)}
 .reminderMenuPopover button{display:block;width:100%;height:auto!important;min-height:40px;padding:9px 10px!important;border:0!important;border-radius:9px!important;background:transparent!important;text-align:left;font-size:14px;font-weight:650}
 .reminderMenuPopover button:hover{background:#f4f7f8!important}.reminderMenuPopover button.danger{color:#b42318}
+
+/* Refreshed Zest home */
+.homeHero{padding:24px 0 16px}.homeHeroGrid{display:grid;grid-template-columns:minmax(0,1fr) 150px;align-items:center;gap:12px}.homeGreeting{font-size:18px;font-weight:750;color:var(--navy);margin-top:15px}.homeHero h1{margin-top:8px}.homeHero p{margin:12px 0 0;max-width:440px}.homeHeroArt{height:150px;position:relative;background:radial-gradient(circle,#dffaf4 0,#effcf9 55%,transparent 72%);border-radius:50%}.homeHeroArt svg{position:absolute;padding:11px;background:#fff;border-radius:15px;box-shadow:0 8px 24px rgba(11,31,59,.08)}.homeHeroArt svg:nth-child(1){width:62px;height:74px;right:38px;top:16px;color:#77869a;transform:rotate(7deg)}.homeHeroArt svg:nth-child(2){width:52px;height:52px;right:4px;top:54px;color:#ff7a85;transform:rotate(6deg)}.homeHeroArt svg:nth-child(3){width:54px;height:54px;right:66px;top:78px;color:#087e78;transform:rotate(-8deg)}
+.captureCardHome{padding:28px 26px 24px;border-radius:28px;background:linear-gradient(145deg,#fff 35%,#f0fffb);box-shadow:0 16px 42px rgba(11,31,59,.07)}.captureCardHome .captureMark{width:82px;height:82px;margin-bottom:14px}.captureCardHome h2{font-size:25px}.captureCardHome .captureActions{display:grid;grid-template-columns:1.45fr 1fr}.captureCardHome .captureActions .button{min-height:58px;font-size:17px;border-radius:16px;justify-content:center}.captureCardHome .captureActions .alt{background:#e7faf6;color:#087e78;border-color:#d4f2ec}
+.homeToday{margin-top:18px;padding:22px;background:linear-gradient(145deg,#f0fffb,#fff);border:1px solid #dceeea;border-radius:26px;box-shadow:0 12px 34px rgba(11,31,59,.045)}.homeTodayHead,.homeTodayTitle{display:flex;align-items:center}.homeTodayHead{justify-content:space-between;gap:12px}.homeTodayTitle{gap:12px}.homeTodayTitle>span{width:46px;height:46px;border-radius:15px;background:#dff9f3;color:#009c87;display:grid;place-items:center}.homeTodayTitle h2{margin:0;font-size:24px}.homeTodayTitle p{margin:2px 0 0;color:var(--muted);font-size:13px}.homeViewAll{display:flex;align-items:center;gap:3px;border:1px solid #dfe7ef;background:#fff;border-radius:999px;padding:10px 12px;color:var(--navy);font-weight:750}.homeTimeline{margin-top:17px;display:flex;flex-direction:column;gap:8px}.homeTimelineItem{display:grid;grid-template-columns:58px 10px 1fr 20px;align-items:center;gap:8px;border:0;background:transparent;padding:0;text-align:left;color:var(--ink)}.homeTimelineTime{font-size:13px;font-weight:750;text-align:right}.homeTimelineDot{width:9px;height:9px;border-radius:50%;background:#1688f4}.homeTimelineBody{display:flex;flex-direction:column;padding:10px 12px;border-radius:14px;background:#eaf5ff}.homeTimelineBody small{color:var(--muted);margin-top:2px}.homeTimelineItem.tone1 .homeTimelineDot{background:#0fc6a6}.homeTimelineItem.tone1 .homeTimelineBody{background:#e7faf6}.homeTimelineItem.tone2 .homeTimelineDot{background:#f5a000}.homeTimelineItem.tone2 .homeTimelineBody{background:#fff6df}.homeTimelineItem>svg{color:#698097}.homeTodayEmpty{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:#fff;border-radius:15px;padding:14px;color:var(--muted);text-align:left}.homeTodayEmpty b{display:flex;align-items:center;color:#087e78}
+@media(max-width:600px){.appShell{background:linear-gradient(180deg,#f7fffd 0,#f7fafc 52%)}.homeHero{padding-top:20px}.homeHeroGrid{grid-template-columns:minmax(0,1fr) 112px}.homeHeroArt{height:125px}.homeHeroArt svg:nth-child(1){right:28px}.homeHeroArt svg:nth-child(2){right:0}.homeHeroArt svg:nth-child(3){right:50px}.homeHero h1{font-size:36px}.captureCardHome{margin-top:2px;padding:24px 20px 20px}.captureCardHome .captureActions{grid-template-columns:1.35fr 1fr;margin-top:20px}.homeToday{padding:18px 16px;margin-top:16px}.homeTimelineItem{grid-template-columns:50px 9px 1fr 16px}}
+@media(max-width:380px){.homeHeroGrid{grid-template-columns:1fr}.homeHeroArt{display:none}.homeHero h1{font-size:34px}.captureCardHome .captureActions{grid-template-columns:1fr}.homeViewAll{padding:9px}.homeTodayTitle>span{display:none}}
+
+/* Final mobile sizing pass for Home */
+@media(max-width:600px){
+  .appContent{padding-top:12px}
+  .homeHero{padding:14px 0 10px}
+  .homeHeroGrid{grid-template-columns:1fr;gap:0}
+  .homeHeroArt{display:none}
+  .homeGreeting{font-size:16px;margin-top:10px}
+  .homeHero h1{font-size:32px;line-height:1.04;letter-spacing:-1.2px;margin:6px 0 0;max-width:520px}
+  .homeHero p{font-size:15px;line-height:1.42;margin:10px 0 0}
+  .captureCardHome{margin-top:0;padding:20px 18px 18px;border-radius:24px}
+  .captureCardHome .captureMark{width:68px;height:68px;border-radius:20px;margin-bottom:10px}
+  .captureCardHome .captureMark svg{width:28px;height:28px}
+  .captureCardHome h2{font-size:22px;line-height:1.12;margin-bottom:6px}
+  .captureCardHome>p{font-size:14px;line-height:1.35;max-width:330px}
+  .captureCardHome .captureActions{grid-template-columns:1.4fr 1fr;gap:8px;margin-top:16px}
+  .captureCardHome .captureActions .button{min-height:52px;font-size:16px;border-radius:14px}
+  .homeToday{margin-top:12px;padding:16px 14px;border-radius:22px}
+  .homeTodayTitle>span{width:42px;height:42px;border-radius:14px}
+  .homeTodayTitle h2{font-size:21px}
+  .homeTodayTitle p{font-size:12px}
+  .homeViewAll{padding:9px 11px;font-size:13px}
+  .homeTimeline{margin-top:13px}
+}
+@media(max-width:390px){
+  .homeHero h1{font-size:30px}
+  .captureCardHome{padding:18px 16px 16px}
+  .captureCardHome .captureActions{grid-template-columns:1fr 1fr}
+}
+
+/* Match approved Home mockup on real phones */
+@media(max-width:600px){
+  .appHeader{height:64px;padding:0 22px}
+  .appHeader .brand{font-size:25px}
+  .creditPill{padding:8px 10px;font-size:12px}
+  .settingsIconButton{width:42px;height:42px;flex-basis:42px;border-radius:13px}
+  .appContent{padding:12px 22px 104px}
+  .homeHero{padding:14px 0 12px}
+  .homeHeroGrid{grid-template-columns:minmax(0,1.28fr) 118px;gap:8px;align-items:center}
+  .homeGreeting{font-size:16px;margin-top:10px}
+  .homeHero h1{font-size:31px;line-height:1.04;letter-spacing:-1.2px;margin:7px 0 0}
+  .homeHero p{font-size:15px;line-height:1.42;margin:10px 0 0;max-width:320px}
+  .homeHeroArt{display:block;height:150px;border-radius:48%}
+  .homeHeroArt svg:nth-child(1){width:58px;height:70px;right:30px;top:15px}
+  .homeHeroArt svg:nth-child(2){width:50px;height:50px;right:2px;top:58px}
+  .homeHeroArt svg:nth-child(3){width:52px;height:52px;right:60px;top:82px}
+  .captureCardHome{margin-top:3px;padding:24px 18px 18px;border-radius:26px}
+  .captureCardHome .captureMark{width:76px;height:76px;border-radius:22px;margin-bottom:12px}
+  .captureCardHome .captureMark svg{width:30px;height:30px}
+  .captureCardHome h2{font-size:23px;line-height:1.08;margin-bottom:6px}
+  .captureCardHome>p{font-size:14px;line-height:1.35;max-width:335px}
+  .captureCardHome .captureActions{grid-template-columns:1fr;gap:9px;margin-top:17px}
+  .captureCardHome .captureActions .button{min-height:54px;font-size:16px;border-radius:15px}
+  .captureCardHome .captureActions .alt{min-height:50px}
+  .homeToday{margin-top:14px;padding:16px 14px 14px;border-radius:23px}
+  .homeTodayHead{align-items:center}
+  .homeTodayTitle{gap:10px}
+  .homeTodayTitle>span{width:43px;height:43px;border-radius:14px}
+  .homeTodayTitle h2{font-size:21px}
+  .homeTodayTitle p{font-size:12px;line-height:1.3}
+  .homeViewAll{padding:9px 11px;font-size:13px}
+  .homeTimeline{margin-top:12px;gap:7px}
+  .homeTimelineItem{grid-template-columns:48px 9px 1fr 16px;gap:7px}
+  .homeTimelineTime{font-size:13px}
+  .homeTimelineBody{padding:9px 11px;border-radius:13px}
+  .homeTimelineBody b{font-size:14px}
+  .homeTimelineBody small{font-size:12px}
+}
+@media(max-width:390px){
+  .homeHeroGrid{grid-template-columns:minmax(0,1.25fr) 104px}
+  .homeHero h1{font-size:29px}
+  .homeHeroArt{height:138px}
+  .captureCardHome{padding:22px 16px 16px}
+}

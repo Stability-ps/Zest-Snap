@@ -528,150 +528,52 @@ export default function App() {
                 Install Zest Snap
               </button>
             )}
-            <section className="appIntro">
+            <section className="appIntro homeHero">
               <div className="eyebrow">YOUR DAY</div>
-              <h1>What do you want to remember?</h1>
-              <p>
-                Capture anything with a date. Zest Snap will find it, organise
-                it and let you review it before you save it to Planner.
-              </p>
+              <div className="homeHeroGrid">
+                <div>
+                  <div className="homeGreeting">Good morning <span aria-hidden="true">👋</span></div>
+                  <h1>What do you want to remember?</h1>
+                  <p>Snap or upload it. Zest finds the important dates.</p>
+                </div>
+                <div className="homeHeroArt" aria-hidden="true">
+                  <FileText/><CalendarDays/><Camera/>
+                </div>
+              </div>
             </section>
 
-            <section className="captureCard">
-              <div className="captureMark">
-                <Camera />
-              </div>
+            <section className="captureCard captureCardHome">
+              <div className="captureMark"><Camera /></div>
               <h2>Snap something with a date</h2>
-              <p>
-                Appointments, notices, screenshots, travel bookings, invoices,
-                schedules and PDFs.
-              </p>
+              <p>Appointments, notices, screenshots, travel bookings, invoices, schedules and PDFs.</p>
               <div className="captureActions">
-                <button
-                  className="button"
-                  onClick={() => cameraRef.current?.click()}
-                  disabled={busy || !ready}
-                >
-                  {busy ? (
-                    <Loader2 className="spin" size={18} />
-                  ) : (
-                    <Camera size={18} />
-                  )}{" "}
-                  Take photo
+                <button className="button" onClick={() => cameraRef.current?.click()} disabled={busy || !ready}>
+                  {busy ? <Loader2 className="spin" size={20} /> : <Camera size={20} />} Take photo
                 </button>
-                <button
-                  className="button alt"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={busy || !ready}
-                >
-                  <Upload size={18} /> Upload
+                <button className="button alt" onClick={() => fileRef.current?.click()} disabled={busy || !ready}>
+                  <Upload size={20} /> Upload
                 </button>
               </div>
-              <input
-                ref={cameraRef}
-                hidden
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  scanFile(e.target.files?.[0])
-                }
-              />
-              <input
-                ref={fileRef}
-                hidden
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  scanFile(e.target.files?.[0])
-                }
-              />
-              {busy && (
-                <div className="scanStatus">
-                  <Loader2 className="spin" size={17} />
-                  {scanStage || "Reading your file..."}
-                </div>
-              )}
-              {error && (
-                <div className="errorBox">
-                  <AlertTriangle size={16} />
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="successBox">
-                  <CheckCircle2 size={16} />
-                  {success}
-                </div>
-              )}
+              <input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(e: ChangeEvent<HTMLInputElement>) => scanFile(e.target.files?.[0])}/>
+              <input ref={fileRef} hidden type="file" accept="image/*,application/pdf" onChange={(e: ChangeEvent<HTMLInputElement>) => scanFile(e.target.files?.[0])}/>
+              {busy && <div className="scanStatus"><Loader2 className="spin" size={17}/>{scanStage || "Reading your file..."}</div>}
+              {error && <div className="errorBox"><AlertTriangle size={16}/>{error}</div>}
+              {success && <div className="successBox"><CheckCircle2 size={16}/>{success}</div>}
             </section>
 
-            <section className="quickGrid">
-              <a className="miniCard" href="/app?view=planner">
-                <div className="miniIcon blue">
-                  <CalendarDays />
-                </div>
-                <div>
-                  <b>Planner</b>
-                  <span>
-                    {store.events.length
-                      ? `${store.events.length} saved ${store.events.length === 1 ? "event" : "events"}`
-                      : "Today & upcoming"}
-                  </span>
-                </div>
-                <ChevronRight />
-              </a>
-              <button className="miniCard" onClick={() => setView("rewards")}>
-                <div className="miniIcon teal">
-                  <Gift />
-                </div>
-                <div>
-                  <b>Zest Rewards</b>
-                  <span>{ready ? `${store.credits} credits earned` : "Syncing your rewards…"}</span>
-                </div>
-                <ChevronRight />
-              </button>
-            </section>
-
-            {insights && (
-              <section className="insightCard">
-                <CalendarDays size={18} />
-                <div>
-                  <b>
-                    {
-                      store.events.filter((e) =>
-                        ["Today", "Tomorrow"].includes(agendaGroup(e)),
-                      ).length
-                    }{" "}
-                    items today or tomorrow
-                  </b>
-                  <p>
-                    {
-                      store.scans.filter((s) =>
-                        s.events.some(
-                          (e) =>
-                            !store.events.some(
-                              (a) =>
-                                eventFingerprint(a) === eventFingerprint(e),
-                            ),
-                        ),
-                      ).length
-                    }{" "}
-                    scans have items you can still review. No external reminder
-                    has been sent.
-                  </p>
-                </div>
-              </section>
-            )}
-            <section className="insightCard">
-              <Sparkles size={18} />
-              <div>
-                <b>Zest keeps working after the scan.</b>
-                <p>
-                  Your saved agenda, scan history and duplicate protection stay
-                  available on this device and remain separate from your
-                  external calendars.
-                </p>
+            <section className="homeToday">
+              <div className="homeTodayHead">
+                <div className="homeTodayTitle"><span><CalendarDays/></span><div><h2>Today</h2><p>{store.events.filter(e=>agendaGroup(e)==="Today").length} things in your day</p></div></div>
+                <button className="homeViewAll" onClick={()=>openView("calendar")}>View all <ChevronRight size={17}/></button>
+              </div>
+              <div className="homeTimeline">
+                {store.events.filter(e=>agendaGroup(e)==="Today").slice(0,3).map((event,i)=><button key={event.id} className={"homeTimelineItem tone"+(i%3)} onClick={()=>openView("calendar")}>
+                  <span className="homeTimelineTime">{event.startTime || "All day"}</span>
+                  <span className="homeTimelineDot"/>
+                  <span className="homeTimelineBody"><b>{event.title}</b><small>{event.location || (event.startTime ? "Today" : "All day")}</small></span>
+                  <ChevronRight size={18}/>
+                </button>)}
+                {!store.events.some(e=>agendaGroup(e)==="Today")&&<button className="homeTodayEmpty" onClick={()=>openView("calendar")}><span>Your day is clear.</span><b>Open Planner <ChevronRight size={16}/></b></button>}
               </div>
             </section>
           </>
