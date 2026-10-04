@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient,isSupabaseConfigured } from "./supabase/client";
 import type { PlannerItem } from "./planner";
 import { plannerFingerprint,validatePlannerItem } from "./planner";
-const GUEST_KEY="zest-planner-v1"; const cloudKey=(u:string)=>`zest-planner-cloud-${u}`;
+const GUEST_KEY="zest-planner-v1"; const LAST_USED_KEY="zest-planner-last-used-v1"; const cloudKey=(u:string)=>`zest-planner-cloud-${u}`;
 type Pending={op:"upsert";item:PlannerItem}|{op:"delete";id:string}; type Cache={items:PlannerItem[];pending:Pending[]};
 function parse(raw:string|null):Cache{if(!raw)return{items:[],pending:[]};try{const v=JSON.parse(raw);return{items:Array.isArray(v.items)?v.items:[],pending:Array.isArray(v.pending)?v.pending:[]};}catch{return{items:[],pending:[]};}}
 function row(r:Record<string,any>):PlannerItem{return{id:r.id,type:r.type,title:r.title,description:r.description||"",startDate:r.start_date||"",endDate:r.end_date||"",startTime:r.start_time?String(r.start_time).slice(0,5):"",endTime:r.end_time?String(r.end_time).slice(0,5):"",dueDate:r.due_date||"",dueTime:r.due_time?String(r.due_time).slice(0,5):"",allDay:Boolean(r.all_day),timezone:r.timezone||"UTC",location:r.location||"",status:r.status,source:r.source,sourceScanId:r.source_scan_id||undefined,completedAt:r.completed_at||undefined,createdAt:r.created_at,updatedAt:r.updated_at};}
@@ -12,7 +12,8 @@ function merge(items:PlannerItem[]){const ids=new Map<string,PlannerItem>(),fps=
 export class PlannerStore{
  private constructor(readonly mode:"local"|"cloud",private storage:Storage,private db?:SupabaseClient,private userId?:string){}
  static async create(storage=localStorage){if(!isSupabaseConfigured())return new PlannerStore("local",storage);const db=createClient(),s=await db.auth.getSession(),u=s.data.session?.user;if(!u)return new PlannerStore("local",storage);return new PlannerStore("cloud",storage,db,u.id);}
- private key(){return this.mode==="cloud"?cloudKey(this.userId!):GUEST_KEY;} private cache(){return parse(this.storage.getItem(this.key()));} private write(c:Cache){this.storage.setItem(this.key(),JSON.stringify(c));}
+ private key(){return this.mode==="cloud"?cloudKey(this.userId!):GUEST_KEY;} private cache(){return parse(this.storage.getItem(this.key()));} private write(c:Cache){const raw=JSON.stringify(c);this.storage.setItem(this.key(),raw);this.storage.setItem(LAST_USED_KEY,raw);}
+ static loadLastUsed(storage=localStorage){return parse(storage.getItem(LAST_USED_KEY)).items;}
  loadCached(){return this.cache().items;}
  async load(){if(this.mode==="local"||!navigator.onLine)return this.cache().items;await this.flush();const{data,error}=await this.db!.from("planner_items").select("id,type,title,description,start_date,end_date,start_time,end_time,due_date,due_time,all_day,timezone,location,status,source,source_scan_id,completed_at,created_at,updated_at").eq("user_id",this.userId!).order("updated_at",{ascending:false});if(error)throw new Error("Planner could not sync. Your cached items remain available.");const items=(data||[]).map(row);this.write({items,pending:[]});return items;}
  async upsert(item:PlannerItem){validatePlannerItem(item);const c=this.cache();c.items=merge([item,...c.items.filter(x=>x.id!==item.id)]);if(this.mode==="local"){this.write(c);return;}if(!navigator.onLine){c.pending=[...c.pending.filter(x=>!(x.op==="upsert"&&x.item.id===item.id)),{op:"upsert",item}];this.write(c);return;}const{error}=await this.db!.from("planner_items").upsert(dbRow(item,this.userId!));if(error)throw new Error("Planner item could not sync. Retry when connected.");this.write(c);}
