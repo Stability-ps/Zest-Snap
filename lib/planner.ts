@@ -31,6 +31,20 @@ export function validatePlannerItem(item:PlannerItem){
 }
 export function reminderMinutes(d:ReminderDraft){const map:Record<string,number>={at_time:0,"5m":5,"15m":15,"30m":30,"1h":60,"1d":1440,"1w":10080};if(d.preset!=="custom")return map[d.preset];const n=Number(d.customMinutes);if(!Number.isFinite(n)||n<0||n>525600)throw new Error("Custom reminder must be between 0 minutes and 1 year.");return Math.round(n);}
 export function calculateReminderAt(item:PlannerItem,draft:ReminderDraft){let instant=plannerInstant(item);if(!instant&&item.allDay){const date=plannerReferenceDate(item),time=draft.allDayTime||"09:00";if(!DATE.test(date)||!TIME.test(time))throw new Error("Choose a valid reminder time.");instant=Temporal.PlainDateTime.from(`${date}T${time}`).toZonedDateTime(item.timezone||"UTC",{disambiguation:"reject"}).toInstant();}if(!instant)throw new Error("Timed reminders need a time. Choose a time first.");return instant.subtract({minutes:reminderMinutes(draft)}).toString();}
-export function plannerStatus(item:PlannerItem,now=Temporal.Now.instant()):"completed"|"overdue"|"today"|"upcoming"|"past"|"open"{if(item.status==="completed")return "completed";let today;try{today=now.toZonedDateTimeISO(item.timezone||"UTC").toPlainDate();}catch{return "open";}const target=Temporal.PlainDate.from(plannerReferenceDate(item)),cmp=Temporal.PlainDate.compare(target,today);if((item.type==="task"||item.type==="deadline")&&cmp<0)return "overdue";if(cmp>0)return "upcoming";if(cmp<0)return item.type==="task"||item.type==="deadline"?"overdue":"past";if(item.allDay)return "today";try{const instant=plannerInstant(item);if(instant&&Temporal.Instant.compare(instant,now)<0)return item.type==="task"||item.type==="deadline"?"overdue":"past";}catch{return "open";}return "today";}
+export function plannerStatus(item:PlannerItem,now=Temporal.Now.instant()):"completed"|"overdue"|"today"|"upcoming"|"past"|"open"{
+ if(item.status==="completed")return "completed";
+ let today;try{today=now.toZonedDateTimeISO(item.timezone||"UTC").toPlainDate();}catch{return "open";}
+ const target=Temporal.PlainDate.from(plannerReferenceDate(item)),cmp=Temporal.PlainDate.compare(target,today);
+ if((item.type==="task"||item.type==="deadline")&&cmp<0)return "overdue";
+ if(cmp>0)return "upcoming";
+ if(cmp<0)return item.type==="task"||item.type==="deadline"?"overdue":"past";
+ if(item.allDay)return "today";
+ try{
+   const instant=plannerInstant(item);
+   if(instant&&Temporal.Instant.compare(instant,now)<0)
+     return item.type==="task"||item.type==="deadline"?"overdue":"past";
+ }catch{return "open";}
+ return "today";
+}
 export function plannerFingerprint(item:Pick<PlannerItem,"type"|"title"|"startDate"|"startTime"|"dueDate"|"dueTime"|"timezone"|"location">){const norm=(v:string)=>v.normalize("NFKC").trim().toLowerCase().replace(/\s+/g," ");return JSON.stringify([item.type,norm(item.title),plannerReferenceDate(item as PlannerItem),plannerReferenceTime({...item as PlannerItem,allDay:false}),item.timezone||"UTC",norm(item.location||"")]);}
 export function monthGrid(year:number,month:number,locale:string,timezone:string){const first=Temporal.PlainDate.from({year,month,day:1}),loc=new Intl.Locale(locale||"en");const firstDay=(loc as Intl.Locale&{weekInfo?:{firstDay:number}}).weekInfo?.firstDay??7;const offset=(first.dayOfWeek-firstDay+7)%7;const fmt=new Intl.DateTimeFormat(locale||undefined,{weekday:"short",timeZone:timezone||"UTC"}),monday=new Date(Date.UTC(2023,0,2));const weekdayLabels=Array.from({length:7},(_,i)=>fmt.format(new Date(monday.getTime()+((firstDay-1+i)%7)*86400000)));const cells=[] as Array<{date:string;inMonth:boolean}>;const start=first.subtract({days:offset});for(let i=0;i<42;i++){const d=start.add({days:i});cells.push({date:d.toString(),inMonth:d.month===month});}return{weekdayLabels,cells,daysInMonth:first.daysInMonth};}
