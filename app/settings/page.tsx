@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search } from "lucide-react";
+import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search, History } from "lucide-react";
 import {
   getDataProvider,
   LocalDataProvider,
@@ -115,6 +115,7 @@ export default function Settings() {
 
         <h2 className="settingsSectionTitle">Calendar & history</h2>
         <section className="settingsGroup">
+          <a className="settingsRow" href="/app?view=history"><span className="settingsIcon"><History /></span><span className="settingsRowCopy"><b>History</b><small>View and search your previous scans</small></span><ChevronRight /></a>
           <button type="button" className="settingsRow" onClick={()=>setSheet("calendar")}><span className="settingsIcon"><CalendarDays /></span><span className="settingsRowCopy"><b>Device calendar</b><small>Add selected Zest events to your calendar</small></span><ChevronRight /></button>
           <button type="button" className="settingsRow" onClick={()=>setSheet("retention")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history</b><small>How long scan history is kept</small></span><span className="settingsValue">{retentionLabel}</span><ChevronRight /></button>
         </section>
