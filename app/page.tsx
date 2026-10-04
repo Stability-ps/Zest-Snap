@@ -1,3 +1,4 @@
+import { productConfig, plans } from "@/lib/product-config";
 import {
   Camera,
   CalendarDays,
@@ -168,9 +169,9 @@ export default function Home() {
           <div className="cards">
             <div className="card">
               <h3>Free</h3>
-              <div className="price">$0</div>
+              <div className="price">${plans.free.monthlyUsd}</div>
               <p>
-                AI scans to get started, event review, calendar export and your
+                ${plans.free.monthlyScans} AI scans each month, event review, calendar export and your
                 upcoming agenda.
               </p>
               <a className="button alt" href="https://app.zestsnap.app/app">
@@ -180,11 +181,11 @@ export default function Home() {
             <div className="card">
               <h3>Zest Snap+</h3>
               <div className="price">
-                $4.99 <small>/ month</small>
+                ${plans.plus.monthlyUsd.toFixed(2)} <small>/ month</small>
               </div>
               <p>
-                More AI scans, PDFs, multiple-event extraction, smart reminders
-                and richer AI understanding.
+                ${plans.plus.monthlyScans} AI scans each month, PDFs up to ${plans.plus.pdfPagesPerScan} pages, multiple-event extraction,
+                smart reminders and richer AI understanding.
               </p>
               <a className="button" href="https://app.zestsnap.app/app">
                 Start with Free
@@ -193,11 +194,11 @@ export default function Home() {
             <div className="card">
               <h3>Business</h3>
               <div className="price">
-                $11.99 <small>/ month</small>
+                ${plans.business.monthlyUsd.toFixed(2)} <small>/ month</small>
               </div>
               <p>
-                Higher allowances, business deadlines, advanced document
-                workflows and future team tools.
+                ${plans.business.monthlyScans} AI scans each month, PDFs up to ${plans.business.pdfPagesPerScan} pages, business deadlines,
+                advanced document workflows and priority processing.
               </p>
               <a className="button alt" href="https://app.zestsnap.app/app">
                 Explore Business
