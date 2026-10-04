@@ -339,3 +339,54 @@ export async function listGoogleCalendarEvents(
       };
     });
 }
+
+
+export async function upsertPlannerGoogleEvent(userId: string, plannerItemId: string, event: ExtractedEvent, fallbackTimezone: string, reminders?: number[]) {
+  const db = serviceClient();
+  const { data: planner, error } = await db.from("planner_items").select("google_event_id").eq("id", plannerItemId).eq("user_id", userId).single();
+  if (error) throw new Error("planner_item_not_found");
+  const { token, connection } = await googleAccessToken(userId);
+  const calendarId = encodeURIComponent(connection.calendar_id || "primary");
+  const googleId = planner.google_event_id as string | null;
+  const body: Record<string, unknown> = googleEventBody(event, fallbackTimezone);
+  body.extendedProperties = { private: { zestPlannerItemId: plannerItemId } };
+  if (reminders?.length) body.reminders = { useDefault: false, overrides: [...new Set(reminders)].slice(0, 5).map((minutes) => ({ method: "popup", minutes: Math.max(0, Math.round(minutes)) })) };
+  const url = googleId
+    ? `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(googleId)}`
+    : `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`;
+  const res = await fetch(url, {
+    method: googleId ? "PATCH" : "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) throw new Error("google_calendar_reconnect_required");
+    if (res.status === 404 && googleId) {
+      await db.from("planner_items").update({ google_event_id: null }).eq("id", plannerItemId).eq("user_id", userId);
+      return upsertPlannerGoogleEvent(userId, plannerItemId, event, fallbackTimezone, reminders);
+    }
+    throw new Error("google_calendar_sync_failed");
+  }
+  const saved = (await res.json()) as { id: string; htmlLink?: string };
+  await db.from("planner_items").update({ google_event_id: saved.id, google_synced_at: new Date().toISOString() }).eq("id", plannerItemId).eq("user_id", userId);
+  return saved;
+}
+
+export async function deletePlannerGoogleEvent(userId: string, plannerItemId: string) {
+  const db = serviceClient();
+  const { data } = await db.from("planner_items").select("google_event_id").eq("id", plannerItemId).eq("user_id", userId).maybeSingle();
+  const googleId = data?.google_event_id as string | null | undefined;
+  if (!googleId) return;
+  const { token, connection } = await googleAccessToken(userId);
+  const calendarId = encodeURIComponent(connection.calendar_id || "primary");
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(googleId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok && res.status !== 404) {
+    if (res.status === 401 || res.status === 403) throw new Error("google_calendar_reconnect_required");
+    throw new Error("google_calendar_sync_failed");
+  }
+}
