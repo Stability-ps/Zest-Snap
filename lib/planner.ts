@@ -10,6 +10,7 @@ export type PlannerItem = {
   status:PlannerItemStatus; source:PlannerSource; sourceScanId?:string; completedAt?:string;
   createdAt:string; updatedAt:string;
   externalProvider?:"google"; externalId?:string; externalUrl?:string|null; externalCalendarName?:string; externalCalendarPrimary?:boolean;
+  googleEventId?:string; googleSyncedAt?:string;
 };
 export type ReminderPreset="at_time"|"5m"|"15m"|"30m"|"1h"|"1d"|"1w"|"custom";
 export type ReminderDraft={preset:ReminderPreset;customMinutes?:number;allDayTime?:string};
@@ -71,11 +72,15 @@ export function isPastLocal(date:string,time:string,timezone:string){
 
 /** Google events are a live read-only overlay. Matching Zest events win so the same event is never rendered twice. */
 export function mergePlannerWithExternal(local: PlannerItem[], external: PlannerItem[]) {
-  const localPrints = new Set(local.filter(x => x.status !== "cancelled").map(plannerFingerprint));
+  const activeLocal = local.filter(x => x.status !== "cancelled");
+  const localPrints = new Set(activeLocal.map(plannerFingerprint));
+  const linkedGoogleIds = new Set(activeLocal.map(x => x.googleEventId).filter(Boolean));
   const externalIds = new Set<string>();
   const cleanExternal = external.filter((item) => {
     if (!item.externalId || externalIds.has(item.externalId)) return false;
     externalIds.add(item.externalId);
+    const googleEventId = item.externalId.includes(":") ? item.externalId.slice(item.externalId.lastIndexOf(":") + 1) : item.externalId;
+    if (linkedGoogleIds.has(googleEventId)) return false;
     return !localPrints.has(plannerFingerprint(item));
   });
   return plannerSort([...local, ...cleanExternal]);
