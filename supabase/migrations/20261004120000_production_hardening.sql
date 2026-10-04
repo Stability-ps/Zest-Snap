@@ -108,7 +108,7 @@ $$;
 revoke all on function private.free_benefits_allowed(uuid) from public, anon, authenticated;
 grant execute on function private.free_benefits_allowed(uuid) to service_role;
 
-create or replace function public.register_device(p_device_id text)
+create or replace function private.register_device_for_user(p_device_id text)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare u uuid := auth.uid(); eligible boolean;
 begin
@@ -120,6 +120,11 @@ begin
   end;
   return jsonb_build_object('freeBenefitEligible', eligible);
 end $$;
+revoke all on function private.register_device_for_user(text) from public, anon;
+grant execute on function private.register_device_for_user(text) to authenticated;
+-- Public entry point is SECURITY INVOKER; the privileged body lives in the unexposed private schema.
+create or replace function public.register_device(p_device_id text) returns jsonb
+language sql security invoker set search_path = '' as $$ select private.register_device_for_user(p_device_id) $$;
 revoke all on function public.register_device(text) from public, anon;
 grant execute on function public.register_device(text) to authenticated;
 
@@ -342,7 +347,7 @@ end $$;
 revoke all on function public.award_milestone(uuid, text) from public, anon, authenticated;
 grant execute on function public.award_milestone(uuid, text) to service_role;
 
-create or replace function public.submit_product_feedback(p_rating integer default null, p_feedback text default null)
+create or replace function private.submit_feedback_for_user(p_rating integer default null, p_feedback text default null)
 returns integer language plpgsql security definer set search_path = '' as $$
 declare u uuid := auth.uid(); a integer; inserted_rows integer;
 begin
@@ -364,6 +369,11 @@ begin
   on conflict do nothing;
   return a;
 end $$;
+revoke all on function private.submit_feedback_for_user(integer, text) from public, anon;
+grant execute on function private.submit_feedback_for_user(integer, text) to authenticated;
+-- Public entry point is SECURITY INVOKER; the privileged body lives in the unexposed private schema.
+create or replace function public.submit_product_feedback(p_rating integer default null, p_feedback text default null) returns integer
+language sql security invoker set search_path = '' as $$ select private.submit_feedback_for_user(p_rating, p_feedback) $$;
 revoke all on function public.submit_product_feedback(integer, text) from public, anon;
 grant execute on function public.submit_product_feedback(integer, text) to authenticated;
 
@@ -372,7 +382,7 @@ alter table public.referrals drop constraint if exists referrals_referral_code_k
 drop index if exists public.referrals_referral_code_key;
 create index if not exists referrals_code_idx on public.referrals(referral_code);
 
-create or replace function public.claim_referral_device(p_code text, p_device_id text)
+create or replace function private.claim_referral_for_user(p_code text, p_device_id text)
 returns void language plpgsql security definer set search_path = '' as $$
 declare u uuid := auth.uid(); sender uuid; h text;
 begin
@@ -391,6 +401,11 @@ begin
   insert into public.referrals(referrer_id, referred_user_id, referral_code, status)
   values (sender, u, p_code, 'signed_up') on conflict (referred_user_id) do nothing;
 end $$;
+revoke all on function private.claim_referral_for_user(text, text) from public, anon;
+grant execute on function private.claim_referral_for_user(text, text) to authenticated;
+-- Public entry point is SECURITY INVOKER; the privileged body lives in the unexposed private schema.
+create or replace function public.claim_referral_device(p_code text, p_device_id text) returns void
+language sql security invoker set search_path = '' as $$ select private.claim_referral_for_user(p_code, p_device_id) $$;
 revoke all on function public.claim_referral_device(text, text) from public, anon;
 grant execute on function public.claim_referral_device(text, text) to authenticated;
 
