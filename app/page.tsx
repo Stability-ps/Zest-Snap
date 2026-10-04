@@ -28,9 +28,9 @@ export default function Home() {
     <main>
       <div className="wrap">
         <nav className="nav">
-          <div className="brand">
+          <a className="brand" href="https://zestsnap.app" aria-label="Zest Snap home">
             Zest <span>Snap</span>
-          </div>
+          </a>
           <div className="navlinks">
             <a href="#how">How it works</a>
             <a href="#pricing">Pricing</a>
