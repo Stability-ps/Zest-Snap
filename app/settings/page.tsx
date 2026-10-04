@@ -32,7 +32,8 @@ export default function Settings() {
     [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|"support"|"report"|"pro"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
     [accountEmail, setAccountEmail] = useState(""),
-    [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email?: string | null }>({ connected: false });
+    [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email?: string | null }>({ connected: false }),
+    [googleCalendarLoading, setGoogleCalendarLoading] = useState(true);
   const displayNameInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     getDataProvider()
@@ -48,10 +49,13 @@ export default function Settings() {
           fetch("/api/calendar/google/status", { cache: "no-store" })
             .then(async (r) => (r.ok ? r.json() : { connected: false }))
             .then((v) => setGoogleCalendar(v))
-            .catch(() => undefined);
+            .catch(() => undefined)
+            .finally(() => setGoogleCalendarLoading(false));
+        } else {
+          setGoogleCalendarLoading(false);
         }
       })
-      .catch(() => setMessage("Account unavailable. Reconnect and try again."));
+      .catch(() => { setGoogleCalendarLoading(false); setMessage("Account unavailable. Reconnect and try again."); });
   }, []);
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -265,7 +269,7 @@ export default function Settings() {
         <h2 className="settingsSectionTitle">Calendar & history</h2>
         <section className="settingsGroup">
           {isPro ? <a className="settingsRow" href="/app?view=history"><span className="settingsIcon"><History /></span><span className="settingsRowCopy"><b>History</b><small>View and search your previous scans</small></span><ChevronRight /></a> : <button type="button" className="settingsRow proLockedRow" onClick={()=>setSheet("pro")}><span className="settingsIcon"><History /></span><span className="settingsRowCopy"><b>History <span className="proBadge">PRO</span></b><small>Search and revisit all your scans</small><small className="upgradeHint">Upgrade to unlock</small></span><Lock className="proLock" /></button>}
-          <button type="button" className="settingsRow" onClick={()=>setSheet("calendar")}><span className="settingsIcon"><CalendarDays /></span><span className="settingsRowCopy"><b>Calendar</b><small>{googleCalendar.connected ? `Google Calendar connected${googleCalendar.email ? ` · ${googleCalendar.email}` : ""}` : "Connect Google Calendar for one-tap adding"}</small></span><ChevronRight /></button>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("calendar")}><span className="settingsIcon"><CalendarDays /></span><span className="settingsRowCopy"><b>Calendar</b><small>{googleCalendarLoading ? "Checking Google Calendar connection…" : googleCalendar.connected ? `Google Calendar connected${googleCalendar.email ? ` · ${googleCalendar.email}` : ""}` : "Connect Google Calendar for one-tap adding"}</small></span><ChevronRight /></button>
           {isPro ? <button type="button" className="settingsRow" onClick={()=>setSheet("retention")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history</b><small>How long scan history is kept</small></span><span className="settingsValue">{retentionLabel}</span><ChevronRight /></button> : <button type="button" className="settingsRow proLockedRow" onClick={()=>setSheet("pro")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history <span className="proBadge">PRO</span></b><small>Keep and access your scan history for longer</small><small className="upgradeHint">Upgrade to unlock</small></span><Lock className="proLock" /></button>}
         </section>
 
@@ -300,7 +304,7 @@ export default function Settings() {
                 {sheet==="account"&&<p>You’re signed in. Manage this account without signing in again.</p>}
                 {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
-                {sheet==="calendar"&&<p>{googleCalendar.connected ? "Google Calendar is connected. Zest can add confirmed scan events directly — no file download or manual import." : "Connect Google Calendar once to add confirmed scan events directly. Until then, Zest opens a pre-filled Google Calendar event for you to save; it does not download a calendar file."}</p>}
+                {sheet==="calendar"&&<p>{googleCalendarLoading ? "Checking your Google Calendar connection…" : googleCalendar.connected ? "Google Calendar is connected. Zest can add confirmed scan events directly — no file download or manual import." : "Connect Google Calendar once to add confirmed scan events directly. Until then, Zest opens a pre-filled Google Calendar event for you to save; it does not download a calendar file."}</p>}
                 {sheet==="export"&&<p>Choose a readable PDF for normal use, or JSON if you need the complete machine-readable copy of your Zest data.</p>}
                 {sheet==="clear"&&<p>{provider?.mode==="cloud"?"This removes cached scans, Planner, reminders and preferences from this device and signs you out. Your account and cloud data are not deleted.":"This permanently clears Zest scans, Planner, reminders and preferences stored on this device. It can’t be undone."}</p>}
                 {sheet==="support"&&<p>We usually reply within one working day. You can also email {productConfig.supportEmail}.</p>}
@@ -340,7 +344,7 @@ export default function Settings() {
             {sheet==="region"&&<div className="settingsChoiceList">{localeOptions.map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,locale:value});setSheet(null);}}><span>{label}</span>{profile.locale===value&&<Check/>}</button>)}</div>}
             {sheet==="retention"&&<div className="settingsChoiceList">{([[30,"30 days"],[90,"90 days"],[365,"1 year"],[0,"Until deleted"]] as const).map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,retentionDays:value});setSheet(null);}}><span>{label}</span>{profile.retentionDays===value&&<Check/>}</button>)}</div>}
             {sheet==="calendar"&&<div className="settingsSheetActions">
-              {provider?.mode!=="cloud" ? <a className="button" href="/login?next=%2Fsettings">Sign in to connect Google Calendar</a> : googleCalendar.connected ? <>
+              {provider?.mode!=="cloud" ? <a className="button" href="/login?next=%2Fsettings">Sign in to connect Google Calendar</a> : googleCalendarLoading ? <button className="button" disabled>Checking connection…</button> : googleCalendar.connected ? <>
                 <button className="button alt" disabled={busy} onClick={()=>run(async()=>{const r=await fetch("/api/calendar/google/disconnect",{method:"POST"});if(!r.ok)throw new Error("Could not disconnect Google Calendar.");setGoogleCalendar({connected:false});setMessage("Google Calendar disconnected");})}>Disconnect Google Calendar</button>
                 <a className="button" href="/app">Go to scans</a>
               </> : <a className="button" href="/api/calendar/google/connect">Connect Google Calendar</a>}
