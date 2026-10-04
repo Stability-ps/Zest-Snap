@@ -38,24 +38,21 @@ function RemindersPage({reminders,items,locale,timezone,filter,setFilter,notific
 }
 function formatOffset(minutes:number){if(minutes%10080===0)return `${minutes/10080} week${minutes===10080?"":"s"}`;if(minutes%1440===0)return `${minutes/1440} day${minutes===1440?"":"s"}`;if(minutes%60===0)return `${minutes/60} hour${minutes===60?"":"s"}`;return `${minutes} min`;}
 function Editor({item,busy,onClose,onSave}:{item:PlannerItem;busy:boolean;onClose:()=>void;onSave:(i:PlannerItem,d?:ReminderDraft)=>void}){
- const[d,setD]=useState(item),[reminder,setReminder]=useState<"none"|ReminderPreset>(item.title?"none":item.allDay?"none":"at_time"),task=d.type==="task"||d.type==="deadline",patch=(p:Partial<PlannerItem>)=>setD({...d,...p,updatedAt:new Date().toISOString()});
- const time=task?d.dueTime:d.startTime;
- const setTime=(v:string)=>patch(task?{dueTime:v}:{startTime:v});
- const tzLabel=d.timezone==="UTC"?"UTC":d.timezone.replace(/_/g," ");
- const save=()=>onSave(d,reminder==="none"?undefined:{preset:reminder});
- return <div className="plannerOverlay"><section className="plannerSheet plannerEditorCompact" role="dialog" aria-modal="true">
-  <div className="sheetTop"><div><h2>{item.title?"Edit item":"Add to Planner"}</h2><span className="sheetHint">Keep the essentials here. You can edit the rest later.</span></div><button className="iconButton" onClick={onClose}><X/></button></div>
-  <div className="plannerKinds">{(["event","task","deadline"] as PlannerItemType[]).map(t=><button key={t} className={d.type===t?"active":""} onClick={()=>patch({type:t,startDate:t==="task"||t==="deadline"?"":d.startDate||d.dueDate,dueDate:t==="task"||t==="deadline"?d.dueDate||d.startDate:""})}>{t}</button>)}</div>
-  <label><span>Title</span><input value={d.title} onChange={e=>patch({title:e.target.value})} placeholder={task?"What needs to be done?":"What are you planning?"}/></label>
-  <div className="fieldGrid compactFields"><label><span>{task?"Due date":"Start date"}</span><input type="date" value={task?d.dueDate:d.startDate} onChange={e=>patch(task?{dueDate:e.target.value}:{startDate:e.target.value,endDate:d.endDate||e.target.value})}/></label>{!d.allDay&&<label><span>Time</span><input className="timeTextInput" inputMode="numeric" maxLength={5} placeholder="08:30" value={time} onChange={e=>setTime(e.target.value.replace(/[^0-9:]/g,"").slice(0,5))}/></label>}</div>
-  <label className="checkLabel"><input type="checkbox" checked={d.allDay} onChange={e=>{const allDay=e.target.checked;patch({allDay});if(!allDay&&reminder==="none")setReminder("at_time");if(allDay&&reminder==="at_time")setReminder("none");}}/> All day</label>
-  <div className="plannerTimezoneRow"><div><span>Timezone</span><b>{tzLabel}</b></div><small>Uses your device/profile timezone automatically</small></div>
-  <label><span>Location <small>(optional)</small></span><input value={d.location} onChange={e=>patch({location:e.target.value})} placeholder="Add a place"/></label>
-  <div className="plannerReminderSelect"><div><span>Reminder</span><small>{d.allDay?"Optional alert for this date":"Get a phone notification"}</small></div><select value={reminder} onChange={e=>setReminder(e.target.value as "none"|ReminderPreset)}>
-    <option value="none">None</option><option value="at_time">At time</option><option value="5m">5 min before</option><option value="15m">15 min before</option><option value="30m">30 min before</option><option value="1h">1 hour before</option><option value="1d">1 day before</option>
-  </select></div>
-  <label><span>Notes <small>(optional)</small></span><textarea rows={3} value={d.description} onChange={e=>patch({description:e.target.value})} placeholder="Add useful details"/></label>
-  <button className="button sheetSave" disabled={busy||!d.title.trim()||(!d.allDay&&!time)} onClick={save}>{busy?"Saving…":reminder==="none"?"Save to Planner":"Save with reminder"}</button>
+ const[d,setD]=useState(item),[reminder,setReminder]=useState<"none"|ReminderPreset>("none"),[reminderOpen,setReminderOpen]=useState(false),[notesOpen,setNotesOpen]=useState(Boolean(item.description)),task=d.type==="task"||d.type==="deadline",patch=(p:Partial<PlannerItem>)=>setD({...d,...p,updatedAt:new Date().toISOString()});
+ const time=task?d.dueTime:d.startTime,setTime=(v:string)=>patch(task?{dueTime:v}:{startTime:v});
+ const tz=(d.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC").replace(/_/g," ");
+ const reminderLabels:Record<string,string>={none:"None",at_time:"At time","5m":"5 min before","15m":"15 min before","30m":"30 min before","1h":"1 hour before","1d":"1 day before"};
+ return <div className="plannerOverlay"><section className="plannerSheet plannerEditorV2" role="dialog" aria-modal="true">
+  <div className="sheetTop"><h2>{item.title?"Edit item":"Add to Planner"}</h2><button className="iconButton compactClose" onClick={onClose} aria-label="Close"><X/></button></div>
+  <div className="plannerKinds compactKinds">{(["event","task","deadline"] as PlannerItemType[]).map(t=><button key={t} className={d.type===t?"active":""} onClick={()=>patch({type:t,startDate:t==="task"||t==="deadline"?"":d.startDate||d.dueDate,dueDate:t==="task"||t==="deadline"?d.dueDate||d.startDate:""})}>{t}</button>)}</div>
+  <label className="compactLabel"><span>Title</span><input value={d.title} onChange={e=>patch({title:e.target.value})} placeholder={task?"What needs to be done?":"What are you planning?"}/></label>
+  <div className="dateTimeRow"><label><span>{task?"Due date":"Date"}</span><input type="date" value={task?d.dueDate:d.startDate} onChange={e=>patch(task?{dueDate:e.target.value}:{startDate:e.target.value,endDate:d.endDate||e.target.value})}/></label>{!d.allDay&&<label className="timeField"><span>Time</span><input type="time" value={time} onChange={e=>setTime(e.target.value)}/></label>}</div>
+  <div className="plannerInlineMeta"><label className="switchRow"><input type="checkbox" checked={d.allDay} onChange={e=>patch({allDay:e.target.checked})}/><span>All day</span></label><span className="localTime">Local time · {tz}</span></div>
+  <label className="compactLabel"><span>Location <small>optional</small></span><input value={d.location} onChange={e=>patch({location:e.target.value})} placeholder="Add a place"/></label>
+  <button type="button" className="plannerChoiceRow" onClick={()=>setReminderOpen(true)}><span><Bell size={20}/><span><b>Reminder</b><small>Phone notification</small></span></span><strong>{reminderLabels[reminder]} <ChevronRight size={18}/></strong></button>
+  {!notesOpen?<button type="button" className="addNotes" onClick={()=>setNotesOpen(true)}>+ Add notes</button>:<label className="compactLabel"><span>Notes <small>optional</small></span><textarea rows={3} autoFocus={!item.description} value={d.description} onChange={e=>patch({description:e.target.value})}/></label>}
+  <button className="button sheetSave stickySave" disabled={busy||!d.title.trim()||(!d.allDay&&!time)} onClick={()=>onSave(d,reminder==="none"?undefined:{preset:reminder})}>{busy?"Saving…":reminder==="none"?"Save to Planner":"Save with reminder"}</button>
+  {reminderOpen&&<div className="nestedSheetBackdrop" onClick={()=>setReminderOpen(false)}><div className="nestedSheet" onClick={e=>e.stopPropagation()}><div className="nestedSheetHandle"/><h3>Remind me</h3>{(["none","at_time","5m","15m","30m","1h","1d"] as const).map(v=><button key={v} className={reminder===v?"selected":""} onClick={()=>{setReminder(v);setReminderOpen(false)}}><span>{reminderLabels[v]}</span>{reminder===v&&<Check size={20}/>}</button>)}</div></div>}
  </section></div>;
 }
 function Reminder({item,busy,onClose,onSave}:{item:PlannerItem;busy:boolean;onClose:()=>void;onSave:(d:ReminderDraft)=>void}){
