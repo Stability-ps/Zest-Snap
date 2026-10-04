@@ -2731,3 +2731,23 @@ button.rewardBalance{gap:10px}
 .supportMessages p small { display: block; color: var(--muted); font-size: 11.5px; margin-bottom: 3px; }
 .supportMessages form { display: grid; gap: 8px; }
 .supportMessages textarea { width: 100%; font: inherit; font-size: 15px; border: 1px solid #d7dee8; border-radius: 10px; padding: 9px 11px; resize: vertical; }
+
+
+/* To-do closed date control: secondary, compact and neutral. */
+.todoQuickAdd .todoDateButton{
+  min-height:54px;
+  border:1px solid #dce5ed;
+  border-radius:14px;
+  background:#fff;
+  color:var(--ink);
+  box-shadow:none;
+}
+.todoQuickAdd .todoDateButton:hover{background:#f9fbfc}
+.todoQuickAdd .todoDateButton>svg:first-child{color:#7c8d9e}
+.todoQuickAdd .todoDateButton>svg:last-child{color:#9aaaba}
+.todoQuickAdd .todoDateButton small{color:var(--muted)}
+.todoQuickAdd .todoDateButton b{color:var(--ink);font-size:13px}
+@media(max-width:600px){
+  .todoQuickAdd{padding:10px}
+  .todoQuickAdd .todoDateButton{min-height:52px}
+}
