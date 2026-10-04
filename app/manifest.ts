@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: "/",
+    id: "/app",
     name: "Zest Snap",
     short_name: "Zest Snap",
     description:
       "Turn photos, screenshots and PDFs into actionable calendar events, reminders and deadlines.",
     start_url: "/app",
-    scope: "/",
+    scope: "/app",
     display: "standalone",
     // Matches the icon plate so the Android splash screen has no white flash around the icon.
     background_color: "#0B1F3B",
