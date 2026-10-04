@@ -252,3 +252,90 @@ export async function createGoogleCalendarEvent(userId: string, event: Extracted
   }
   return (await res.json()) as { id: string; htmlLink?: string };
 }
+
+
+type GoogleEventListItem = {
+  id?: string;
+  status?: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  htmlLink?: string;
+  start?: { date?: string; dateTime?: string; timeZone?: string };
+  end?: { date?: string; dateTime?: string; timeZone?: string };
+};
+
+function datePart(value?: string) {
+  return value ? value.slice(0, 10) : "";
+}
+function timePart(value?: string) {
+  return value && value.includes("T") ? value.slice(11, 16) : "";
+}
+function previousDate(value: string) {
+  return addDays(value, -1);
+}
+
+export async function listGoogleCalendarEvents(
+  userId: string,
+  opts: { timeMin: string; timeMax: string; fallbackTimezone?: string },
+) {
+  const { token, connection } = await googleAccessToken(userId);
+  const calendarId = encodeURIComponent(connection.calendar_id || "primary");
+  const items: GoogleEventListItem[] = [];
+  let pageToken = "";
+
+  do {
+    const params = new URLSearchParams({
+      timeMin: opts.timeMin,
+      timeMax: opts.timeMax,
+      singleEvents: "true",
+      orderBy: "startTime",
+      showDeleted: "false",
+      maxResults: "2500",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) throw new Error("google_calendar_reconnect_required");
+      throw new Error("google_calendar_list_failed");
+    }
+    const body = (await res.json()) as { items?: GoogleEventListItem[]; nextPageToken?: string };
+    items.push(...(body.items || []));
+    pageToken = body.nextPageToken || "";
+  } while (pageToken);
+
+  const fallbackTimezone = opts.fallbackTimezone || "UTC";
+  return items
+    .filter((event) => event.id && event.status !== "cancelled" && (event.start?.date || event.start?.dateTime))
+    .map((event) => {
+      const allDay = Boolean(event.start?.date);
+      const startDate = allDay ? event.start!.date! : datePart(event.start?.dateTime);
+      const googleEndDate = allDay ? event.end?.date || startDate : datePart(event.end?.dateTime) || startDate;
+      const endDate = allDay ? previousDate(googleEndDate) : googleEndDate;
+      return {
+        id: `google:${event.id}`,
+        type: "event" as const,
+        title: event.summary?.trim() || "Google Calendar event",
+        description: event.description || "",
+        startDate,
+        endDate: endDate >= startDate ? endDate : startDate,
+        startTime: allDay ? "" : timePart(event.start?.dateTime),
+        endTime: allDay ? "" : timePart(event.end?.dateTime),
+        dueDate: startDate,
+        dueTime: "",
+        allDay,
+        timezone: event.start?.timeZone || event.end?.timeZone || fallbackTimezone,
+        location: event.location || "",
+        status: "open" as const,
+        source: "import" as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        externalProvider: "google" as const,
+        externalId: event.id!,
+        externalUrl: event.htmlLink || null,
+      };
+    });
+}
