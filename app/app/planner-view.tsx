@@ -315,13 +315,26 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
             const time = plannerReferenceTime(item);
             const itemReminders = activeReminders.filter((r) => r.plannerItemId === item.id).length;
             return (
-              <article className={`plannerCard ${status}`} key={item.id}>
+              <article
+                className={`plannerCard ${status}`}
+                key={item.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open ${item.title}`}
+                onClick={() => setEditing(item)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setEditing(item);
+                  }
+                }}
+              >
                 {(item.type === "task" || item.type === "deadline") && (
                   <button
                     className="completeButton"
                     aria-pressed={item.status === "completed"}
                     aria-label={item.status === "completed" ? `Mark ${item.title} as not done` : `Mark ${item.title} as done`}
-                    onClick={() => act(() => store!.setCompleted(item.id, item.status !== "completed").then(() => undefined))}
+                    onClick={(e) => { e.stopPropagation(); act(() => store!.setCompleted(item.id, item.status !== "completed").then(() => undefined)); }}
                   >
                     {item.status === "completed" ? <CheckCircle2 /> : <Check />}
                   </button>
@@ -339,14 +352,14 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
                   </p>
                   <div className="plannerCardActions">
                     {item.type !== "reminder" && (
-                      <button onClick={() => setReminderItem(item)} aria-label={`Add reminder for ${item.title}`}>
+                      <button onClick={(e) => { e.stopPropagation(); setReminderItem(item); }} aria-label={`Add reminder for ${item.title}`}>
                         <Bell /> {itemReminders ? `Reminder · ${itemReminders}` : "Reminder"}
                       </button>
                     )}
-                    <button onClick={() => setEditing(item)} aria-label={`Edit ${item.title}`}>
+                    <button onClick={(e) => { e.stopPropagation(); setEditing(item); }} aria-label={`Edit ${item.title}`}>
                       <Pencil /> Edit
                     </button>
-                    <button onClick={() => act(() => store!.remove(item.id))} aria-label={`Delete ${item.title}`}>
+                    <button onClick={(e) => { e.stopPropagation(); act(() => store!.remove(item.id)); }} aria-label={`Delete ${item.title}`}>
                       <Trash2 /> Delete
                     </button>
                   </div>

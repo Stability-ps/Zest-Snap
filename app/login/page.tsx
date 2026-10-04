@@ -11,7 +11,7 @@ type Mode = "login" | "signup" | "forgot";
 
 const copy: Record<Mode, { eyebrow: string; title: string; text: string }> = {
   login: {
-    eyebrow: "WELCOME BACK",
+    eyebrow: "",
     title: "Your dates, organised.",
     text: "Sign in to keep your scans, planner, rewards and calendar connections together across devices.",
   },
@@ -183,7 +183,7 @@ export default function LoginPage() {
           <Link href="/" className="brand">
             Zest <span>Snap</span>
           </Link>
-          <div className="eyebrow">{current.eyebrow}</div>
+          {current.eyebrow && <div className="eyebrow">{current.eyebrow}</div>}
         </div>
 
         {signedInAs === undefined ? (
