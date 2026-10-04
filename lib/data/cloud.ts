@@ -239,17 +239,15 @@ export class SupabaseDataProvider implements DataProvider {
     this.check(error);
     return data || [];
   }
+  /** Calendar connections hold OAuth tokens and are server-only; only the connection status is exposed. */
   async loadCalendarConnections() {
-    const { data, error } = await this.db
-      .from("calendar_connections")
-      .select("id,provider,connected_at")
-      .eq("user_id", this.userId);
-    this.check(error);
-    return (data || []).map((c) => ({
-      id: c.id,
-      provider: c.provider,
-      connectedAt: c.connected_at,
-    }));
+    try {
+      const res = await fetch("/api/calendar/google/status", { cache: "no-store" });
+      const body = res.ok ? ((await res.json()) as { connected?: boolean; email?: string | null }) : null;
+      return body?.connected ? [{ id: "google", provider: "google", connectedAt: "" }] : [];
+    } catch {
+      return [];
+    }
   }
   async exportData() {
     const rows = async (table: string, columns: string, owner = "user_id") => {

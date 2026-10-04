@@ -358,3 +358,34 @@ test("content, limits and reward rules are editable only through audited functio
   assert.deepEqual(actions, ["content.save", "content.delete", "limit.update", "reward_rule.update"]);
   await db.close();
 });
+
+test("native platform analytics: activity carries platform and version; admins see the breakdown", async () => {
+  const db = await seed();
+  await one(db, USER, `select public.record_activity('ios', 'ios 1.0.0 (1) · web abc1234') r`);
+  await one(db, USER2, `select public.record_activity('android', 'android 1.0.0 (1)') r`);
+  await one(db, USER2, `select public.record_activity() r`);
+  await one(db, USER, `select public.record_activity('toaster', 'x') r`);
+  const rows = (await db.query<Row>(`select user_id, platform, app_version from public.user_activity_daily order by platform`)).rows;
+  assert.deepEqual(rows.map((r) => r.platform), ["android", "ios"], "unknown platforms never overwrite a recorded one");
+  const out = await call(db, ANALYST, "admin_platforms", [FROM, TO]);
+  assert.deepEqual(out.active_by_platform, { android: 1, ios: 1 });
+  await assert.rejects(() => call(db, USER, "admin_platforms", [FROM, TO]), /forbidden/);
+  await db.close();
+});
+
+test("admin user detail works with the OAuth-token calendar table and never exposes tokens", async () => {
+  const db = await seed();
+  await db.exec(`drop table public.calendar_connections cascade;
+    create table public.calendar_connections (user_id uuid not null references auth.users(id) on delete cascade, provider text not null,
+      access_token text not null, refresh_token text, expires_at timestamptz, scope text, calendar_id text default 'primary', calendar_email text,
+      created_at timestamptz not null default now(), updated_at timestamptz not null default now(), primary key (user_id, provider));
+    insert into public.calendar_connections(user_id, provider, access_token, refresh_token) values ('${USER}', 'google', 'SECRET-ACCESS', 'SECRET-REFRESH');`);
+  const detail = await call(db, OWNER, "admin_user_detail", [USER]);
+  assert.equal(detail.calendar.length, 1);
+  assert.equal(detail.calendar[0].provider, "google");
+  assert.ok(detail.calendar[0].connected_at);
+  assert.doesNotMatch(JSON.stringify(detail), /SECRET-/);
+  for (const fn of ["admin_overview", "admin_usage"]) await call(db, OWNER, fn, [FROM, TO]);
+  await call(db, OWNER, "admin_users", [null, "calendar", "created_desc", 25, 0]);
+  await db.close();
+});
