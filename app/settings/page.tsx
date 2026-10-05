@@ -19,6 +19,9 @@ import PlansSheet from "./plans-sheet";
 import { billingAvailability } from "@/lib/native/billing";
 import NativeAppSettings from "./native-app-settings";
 import { shareFileNatively } from "@/lib/native/share";
+import { prefersShareSheet } from "@/lib/native/runtime";
+import { deliverFile } from "@/lib/export/deliver-file";
+import { buildExportPdf } from "@/lib/export/export-pdf";
 /** Removes Zest data from this browser only. Keeps the anonymous device id so free-trial limits still apply. */
 function clearDeviceData() {
   clearAccountCaches();
@@ -35,10 +38,14 @@ export default function Settings() {
     [busy, setBusy] = useState(false),
     [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|"support"|"report"|"pro"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
+    [exportStatus, setExportStatus] = useState<{ ok: boolean; text: string } | null>(null),
     [accountEmail, setAccountEmail] = useState(""),
     [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email?: string | null }>({ connected: false }),
     [googleCalendarLoading, setGoogleCalendarLoading] = useState(true);
   const displayNameInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (sheet !== "export") setExportStatus(null);
+  }, [sheet]);
   // Deep link into a sheet, e.g. /settings?sheet=plans from the scan-limit message.
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("sheet");
@@ -78,6 +85,22 @@ export default function Settings() {
       setBusy(false);
     }
   }
+  /** Export actions report success or the real error inside the export sheet (the page message sits behind it). */
+  async function runExport(action: () => Promise<string | null>) {
+    setBusy(true);
+    setExportStatus(null);
+    try {
+      const done = await action();
+      if (done) {
+        setMessage(done);
+        setExportStatus({ ok: true, text: done });
+      }
+    } catch (e) {
+      setExportStatus({ ok: false, text: e instanceof Error && e.message ? e.message : "The export didn’t complete. Please try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
   async function collectExportData() {
     if (!provider) throw new Error("Your data is still loading.");
     return provider.mode === "cloud"
@@ -88,134 +111,39 @@ export default function Settings() {
           reminders: JSON.parse(localStorage.getItem("zest-reminders-v1") || "[]"),
         };
   }
-  async function downloadBlob(blob: Blob, fileName: string, title: string) {
-    // iOS/Android apps: native share sheet (preview, Save to Files/Drive, send) — never a hidden download.
-    const native = await shareFileNatively(blob, fileName, title);
-    if (native) return native === "cancelled" ? ("cancelled" as const) : ("shared" as const);
-    const file = new File([blob], fileName, { type: blob.type || "application/octet-stream" });
-    // Installed Android PWAs are more reliable when the native share/save sheet handles generated files.
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title });
-        return "shared" as const;
-      } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") return "cancelled" as const;
-      }
-    }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
-    return "downloaded" as const;
+  /** Native/PWA/touch: share sheet; desktop: real download; share errors fall back to download. */
+  function downloadBlob(blob: Blob, fileName: string, title: string) {
+    return deliverFile(blob, fileName, title, {
+      shareNatively: shareFileNatively,
+      navigator,
+      document,
+      createObjectURL: (b) => URL.createObjectURL(b),
+      revokeObjectURL: (u) => URL.revokeObjectURL(u),
+      prefersShareSheet: prefersShareSheet(),
+    });
   }
-  async function downloadJsonExport() {
+  async function downloadJsonExport(): Promise<string | null> {
     const data = await collectExportData();
     const result = await downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" }), "zest-snap-data.json", "Zest Snap data export");
-    if (result !== "cancelled") setMessage(result === "shared" ? "Data export ready to save or share" : "JSON export downloaded");
+    return result === "cancelled" ? null : result === "shared" ? "Data export ready to save or share" : "JSON export downloaded";
   }
-  async function downloadPdfExport() {
+  async function downloadPdfExport(): Promise<string | null> {
     const data = await collectExportData();
-    const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
-    const pdf = await PDFDocument.create();
-    const font = await pdf.embedFont(StandardFonts.Helvetica);
-    const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-    const pageSize: [number, number] = [595.28, 841.89];
-    const margin = 48;
-    const maxWidth = pageSize[0] - margin * 2;
-    let page = pdf.addPage(pageSize);
-    let y = pageSize[1] - margin;
-
-    const clean = (value: unknown) => String(value ?? "").replace(/[\u0000-\u001f]+/g, " ").trim();
-    const wrap = (text: string, size = 10) => {
-      const words = clean(text).split(/\s+/).filter(Boolean);
-      const lines: string[] = [];
-      let line = "";
-      for (const word of words) {
-        const next = line ? line + " " + word : word;
-        if (font.widthOfTextAtSize(next, size) <= maxWidth) line = next;
-        else {
-          if (line) lines.push(line);
-          line = word;
-        }
-      }
-      if (line) lines.push(line);
-      return lines.length ? lines : [""];
-    };
-    const ensure = (height: number) => {
-      if (y - height >= margin) return;
-      page = pdf.addPage(pageSize);
-      y = pageSize[1] - margin;
-    };
-    const heading = (text: string, size = 16) => {
-      ensure(size + 18);
-      page.drawText(clean(text), { x: margin, y, size, font: bold, color: rgb(0.04, 0.12, 0.23) });
-      y -= size + 10;
-    };
-    const line = (label: string, value: unknown) => {
-      const text = label + ": " + clean(value || "—");
-      const lines = wrap(text, 10);
-      ensure(lines.length * 14 + 4);
-      for (const row of lines) {
-        page.drawText(row, { x: margin, y, size: 10, font, color: rgb(0.22, 0.29, 0.36) });
-        y -= 14;
-      }
-      y -= 2;
-    };
-    const list = (title: string, items: unknown[]) => {
-      heading(title, 13);
-      if (!items.length) {
-        line("Status", "None");
-        return;
-      }
-      items.slice(0, 100).forEach((item, index) => {
-        const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
-        const primary = record.title || record.summary || record.fileName || record.name || ("Item " + (index + 1));
-        const secondary = record.dueDate || record.startDate || record.scannedAt || record.createdAt || "";
-        line(String(index + 1), secondary ? clean(primary) + " — " + clean(secondary) : primary);
+    let pdfBytes: Uint8Array;
+    try {
+      pdfBytes = await buildExportPdf(data, {
+        locale: profile.locale,
+        displayName: profile.displayName,
+        timezone: profile.timezone,
+        retentionLabel,
+        usage,
       });
-      if (items.length > 100) line("More", (items.length - 100) + " additional items are included in the JSON export");
-    };
-
-    const root = data && typeof data === "object" ? data as Record<string, unknown> : {};
-    const exportedProfile = root.profile && typeof root.profile === "object" ? root.profile as Record<string, unknown> : {};
-    const scans = Array.isArray(root.scans) ? root.scans : Array.isArray((root.data as Record<string, unknown> | undefined)?.scans) ? (root.data as Record<string, unknown>).scans as unknown[] : [];
-    const events = Array.isArray(root.events) ? root.events : Array.isArray((root.data as Record<string, unknown> | undefined)?.events) ? (root.data as Record<string, unknown>).events as unknown[] : [];
-    const planner = Array.isArray(root.planner) ? root.planner : [];
-    const reminders = Array.isArray(root.reminders) ? root.reminders : [];
-
-    heading("Zest Snap data export", 22);
-    line("Generated", new Intl.DateTimeFormat(profile.locale || undefined, { dateStyle: "long", timeStyle: "short" }).format(new Date()));
-    line("Display name", exportedProfile.displayName || profile.displayName);
-    line("Timezone", exportedProfile.timezone || profile.timezone);
-    line("Language & region", exportedProfile.locale || profile.locale);
-    line("Scan history retention", retentionLabel);
-    line("Monthly scans", usage ? usage.scans + " of " + usage.allowance : "Unavailable");
-    if ("credits" in root) line("Zest Credits", root.credits);
-    else if (root.data && typeof root.data === "object" && "credits" in (root.data as Record<string, unknown>)) line("Zest Credits", (root.data as Record<string, unknown>).credits);
-
-    y -= 8;
-    list("Scan history", scans);
-    list("Saved calendar events", events);
-    list("Planner", planner);
-    list("Reminders", reminders);
-
-    y -= 8;
-    heading("About this export", 13);
-    for (const row of wrap("This PDF is a readable summary of your Zest Snap data. For the complete machine-readable record, use the JSON export in Settings.", 10)) {
-      ensure(14);
-      page.drawText(row, { x: margin, y, size: 10, font, color: rgb(0.32, 0.39, 0.46) });
-      y -= 14;
+    } catch (e) {
+      console.error("pdf_export_failed", e instanceof Error ? e.message : e);
+      throw new Error("We couldn’t create the PDF. Try again, or use the JSON export.");
     }
-
-    const bytes = await pdf.save();
-    const pdfBytes = Uint8Array.from(bytes);
-    const result = await downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), "zest-snap-data.pdf", "Zest Snap data export");
-    if (result !== "cancelled") setMessage(result === "shared" ? "PDF ready to save or share" : "PDF export downloaded");
+    const result = await downloadBlob(new Blob([pdfBytes as BlobPart], { type: "application/pdf" }), "zest-snap-data.pdf", "Zest Snap data export");
+    return result === "cancelled" ? null : result === "shared" ? "PDF ready to save or share" : "PDF export downloaded";
   }
 
   async function saveProfile(next: Profile) {
@@ -366,9 +294,10 @@ export default function Settings() {
             </div>}
             {sheet==="pro"&&<div className="settingsSheetActions proUpsellSheet"><div className="proBenefitList"><div><Check/> <span>More AI scans every month</span></div><div><Check/> <span>Full searchable scan history</span></div><div><Check/> <span>Longer scan-history access</span></div><div><Check/> <span>Advanced reminders and insights as they become available</span></div></div>{billingAvailability()==="web_not_connected" ? <><a className="button" href="https://zestsnap.app/#pricing">See Pro plans</a><button className="button alt" type="button" onClick={()=>setSheet(null)}>Not now</button></> : <PlansSheet onDone={(m)=>{setSheet(null);setMessage(m);}} />}</div>}
             {sheet==="export"&&<div className="settingsSheetActions">
-              <button className="button" disabled={busy} onClick={()=>run(async()=>{await downloadPdfExport();})}><Download size={18}/> Save or share readable PDF</button>
-              <button className="button alt" disabled={busy} onClick={()=>run(async()=>{await downloadJsonExport();})}><Download size={18}/> Save full data (JSON)</button>
+              <button className="button" disabled={busy} onClick={()=>runExport(downloadPdfExport)}><Download size={18}/> Save or share readable PDF</button>
+              <button className="button alt" disabled={busy} onClick={()=>runExport(downloadJsonExport)}><Download size={18}/> Save full data (JSON)</button>
               <span>PDF is easier to read. JSON is intended for backup, portability or technical use.</span>
+              {exportStatus && <span className={exportStatus.ok ? "exportStatus" : "supportFormError"} role={exportStatus.ok ? "status" : "alert"}>{exportStatus.text}</span>}
             </div>}
             {(sheet==="support"||sheet==="report")&&<SupportForm kind={sheet} onDone={(m)=>{setSheet(null);setMessage(m);}} />}
             {sheet==="clear"&&<div className="settingsSheetActions dangerActions"><button className="button alt" onClick={()=>setSheet(null)}>Cancel</button><button className="button dangerButton" disabled={busy} onClick={()=>run(async()=>{if(provider?.mode==="cloud")await signOut();clearDeviceData();window.location.assign(new URL("/app",window.location.origin).href);})}>Clear device data</button></div>}

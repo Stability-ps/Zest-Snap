@@ -37,3 +37,13 @@ export async function appVersionLabel() {
     return `${runtime()} · web ${webVersion()}`;
   }
 }
+
+/**
+ * Whether saving a generated file should go through the system share sheet: the native apps, the installed
+ * PWA and touch-first devices. Desktop browsers get a normal download.
+ */
+export function prefersShareSheet() {
+  if (typeof window === "undefined") return false;
+  const r = runtime();
+  return r === "ios" || r === "android" || r === "pwa" || !!window.matchMedia?.("(pointer: coarse)").matches;
+}

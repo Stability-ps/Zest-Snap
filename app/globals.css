@@ -2828,3 +2828,4 @@ html.native .offlinePage { padding-top: calc(24px + env(safe-area-inset-top)); }
 @media (display-mode: standalone) and (max-width: 600px) {
   .settingsPage { padding-top: calc(22px + env(safe-area-inset-top)); }
 }
+.exportStatus { color: #087866; font-size: 13px; font-weight: 600; }
