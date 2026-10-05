@@ -4,6 +4,7 @@ import { isNative, runtime } from "./runtime";
 /** Small first-party native plugin (ios/App/App/ZestNativePlugin.swift, android/.../ZestNativePlugin.kt). */
 interface ZestNativePlugin {
   openAppSettings(): Promise<void>;
+  getSystemInsets(): Promise<{ top: number; right: number; bottom: number; left: number }>;
 }
 const ZestNative = registerPlugin<ZestNativePlugin>("ZestNative");
 
@@ -49,5 +50,16 @@ export async function permissionStatus(name: PermissionName): Promise<Permission
     return "granted";
   } catch {
     return "unsupported";
+  }
+}
+
+
+/** Real native system-bar insets. Used on Android when WebView safe-area env vars report zero. */
+export async function nativeSystemInsets() {
+  if (!isNative() || runtime() !== "android") return null;
+  try {
+    return await ZestNative.getSystemInsets();
+  } catch {
+    return null;
   }
 }
