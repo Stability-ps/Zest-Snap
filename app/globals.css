@@ -2797,29 +2797,66 @@ button.rewardBalance{gap:10px}
 .plansNote { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
 .plansNote a { text-decoration: underline; }
 
-/* Native iOS/Android apps: the same safe-area treatment as the installed PWA (html.native is set before first paint). */
+/* Native iOS/Android apps: clear real system bars. Android variables are populated by ZestNative because
+   Samsung WebView can report env(safe-area-inset-*) as zero while three-button navigation still overlaps content. */
+html.native {
+  --zest-safe-top: max(env(safe-area-inset-top), var(--native-safe-top, 0px));
+  --zest-safe-right: max(env(safe-area-inset-right), var(--native-safe-right, 0px));
+  --zest-safe-bottom: max(env(safe-area-inset-bottom), var(--native-safe-bottom, 0px));
+  --zest-safe-left: max(env(safe-area-inset-left), var(--native-safe-left, 0px));
+}
 html.native body {
   overscroll-behavior-y: none;
 }
 html.native .appHeader {
-  padding-top: max(0px, env(safe-area-inset-top));
-  height: calc(70px + env(safe-area-inset-top));
+  padding-top: var(--zest-safe-top);
+  padding-left: max(24px, var(--zest-safe-left));
+  padding-right: max(24px, var(--zest-safe-right));
+  height: calc(70px + var(--zest-safe-top));
 }
 html.native .appShell {
   min-height: 100dvh;
 }
+html.native .appContent {
+  padding-bottom: calc(110px + var(--zest-safe-bottom));
+}
+html.native .bottomNav {
+  padding-bottom: max(12px, var(--zest-safe-bottom));
+  padding-left: max(16px, var(--zest-safe-left));
+  padding-right: max(16px, var(--zest-safe-right));
+}
+html.native .stickyAction {
+  bottom: calc(76px + var(--zest-safe-bottom));
+}
 @media (max-width: 600px) {
   html.native .appHeader {
-    height: calc(62px + env(safe-area-inset-top));
+    padding-left: max(18px, var(--zest-safe-left));
+    padding-right: max(18px, var(--zest-safe-right));
+    height: calc(62px + var(--zest-safe-top));
+  }
+  html.native .stickyAction {
+    bottom: calc(76px + var(--zest-safe-bottom));
   }
 }
-/* Full-screen pages outside the app shell also clear the status bar / notch in the apps and installed PWA. */
-html.native .settingsPage { padding-top: calc(40px + env(safe-area-inset-top)); }
-html.native .legalPage { padding-top: calc(45px + env(safe-area-inset-top)); }
-html.native .onboardingPage { padding-top: calc(28px + env(safe-area-inset-top)); padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
-html.native .offlinePage { padding-top: calc(24px + env(safe-area-inset-top)); }
+/* Full-screen pages outside the app shell also clear the status/navigation bars. */
+html.native .settingsPage {
+  padding-top: calc(40px + var(--zest-safe-top));
+  padding-bottom: calc(40px + var(--zest-safe-bottom));
+  padding-left: max(20px, var(--zest-safe-left));
+  padding-right: max(20px, var(--zest-safe-right));
+}
+html.native .legalPage { padding-top: calc(45px + var(--zest-safe-top)); padding-bottom: calc(45px + var(--zest-safe-bottom)); }
+html.native .onboardingPage { padding-top: calc(28px + var(--zest-safe-top)); padding-bottom: calc(28px + var(--zest-safe-bottom)); }
+html.native .offlinePage { padding-top: calc(24px + var(--zest-safe-top)); padding-bottom: calc(24px + var(--zest-safe-bottom)); }
 @media (max-width: 600px) {
-  html.native .settingsPage { padding-top: calc(22px + env(safe-area-inset-top)); }
+  html.native .settingsPage {
+    padding-top: calc(22px + var(--zest-safe-top));
+    padding-bottom: calc(40px + var(--zest-safe-bottom));
+    padding-left: max(16px, var(--zest-safe-left));
+    padding-right: max(16px, var(--zest-safe-right));
+  }
+  html.native .settingsWrap { padding-bottom: 24px; }
+  html.native .settingsSheet { padding-bottom: calc(20px + var(--zest-safe-bottom)); }
 }
 @media (display-mode: standalone) {
   .settingsPage { padding-top: calc(40px + env(safe-area-inset-top)); }
