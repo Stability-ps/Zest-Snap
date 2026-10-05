@@ -2413,10 +2413,10 @@ dialog::backdrop {
 
 /* Mobile scan review action bar */
 @media(max-width:600px){
- .stickyAction{left:max(14px,var(--native-safe-left,0px));right:max(14px,var(--native-safe-right,0px));bottom:calc(76px + max(env(safe-area-inset-bottom),var(--native-safe-bottom,0px)));padding:12px 14px;border-radius:20px;gap:10px}
- .stickyAction>div:first-child{min-width:0}.stickyAction>div:first-child b{font-size:18px}.stickyAction>div:first-child span{font-size:12px}
- .stickyActions{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;width:100%}
- .stickyActions .button{min-width:0;min-height:48px;padding:10px 7px;font-size:13px;line-height:1.15;white-space:normal;text-align:center;justify-content:center}
+ .stickyAction{left:14px;right:14px;bottom:calc(76px + env(safe-area-inset-bottom));padding:12px 14px;border-radius:20px;gap:10px}
+ .stickyAction>div:first-child b{font-size:18px}.stickyAction>div:first-child span{font-size:12px}
+ .stickyActions{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+ .stickyActions .button{min-width:0;min-height:48px;padding:10px 8px;font-size:14px;line-height:1.15;white-space:nowrap;justify-content:center}
  .stickyActions .button svg{flex:0 0 auto}
 }
 
