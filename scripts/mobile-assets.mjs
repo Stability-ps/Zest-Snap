@@ -33,11 +33,12 @@ const svg = (body, size = 512) => Buffer.from(`<svg xmlns="http://www.w3.org/200
 await sharp(svg(`<rect width="512" height="512" fill="${NAVY}"/>${mark}`), { density: 1200 })
   .resize(1024, 1024).flatten({ background: NAVY }).png().toFile(`${out}/icon-only.png`);
 await sharp(svg(`<rect width="512" height="512" fill="${NAVY}"/>`)).resize(1024, 1024).png().toFile(`${out}/icon-background.png`);
-await sharp(svg(`<g transform="translate(256 256) scale(0.90) translate(-256 -256)">${mark}</g>`), { density: 1200 })
+await sharp(svg(`<g transform="translate(256 256) scale(1.08) translate(-256 -256)">${mark}</g>`), { density: 1200 })
   .resize(1024, 1024).png().toFile(`${out}/icon-foreground.png`);
 
 // Splash keeps the same calendar/page identity but drops the outer scan-frame brackets.
-const splash = svg(`<rect width="2732" height="2732" fill="${NAVY}"/><g transform="translate(1110 1110)">${coreMark}</g>`, 2732);
+const splashCore = coreMark.replace('<rect x="116" y="116" width="280" height="280" rx="72" fill="#FFFFFF"/>', '');
+const splash = svg(`<rect width="2732" height="2732" fill="${NAVY}"/><g transform="translate(1110 1110)">${splashCore}</g>`, 2732);
 await sharp(splash, { density: 300 }).resize(2732, 2732).png().toFile(`${out}/splash.png`);
 await sharp(splash, { density: 300 }).resize(2732, 2732).png().toFile(`${out}/splash-dark.png`);
 
