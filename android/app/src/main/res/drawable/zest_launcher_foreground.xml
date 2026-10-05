@@ -2,14 +2,18 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- Approved Zest Snap Z + lightning mark, kept inside the adaptive-icon safe zone. -->
-    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.18" android:scaleY="0.18"
-        android:translateX="7.92" android:translateY="7.92">
-        <path android:fillColor="#FFFFFF"
-            android:pathData="M148,150h216c12,0 19,14 11,24L232,338h132v48H148c-12,0 -19,-14 -11,-24l143,-164H148v-48Z" />
-        <path android:fillColor="#00C6A7"
-            android:pathData="M315,126h72l-42,58h48l-89,108 25,-78h-48l34,-88Z" />
-    </group>
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- Approved Zest Snap scan/calendar identity. Retired Z/lightning mark removed. -->
+    <path android:fillColor="#FFFFFF" android:pathData="M116,116h280v280H116z" />
+    <path android:fillColor="#F8FAFC" android:pathData="M116,210h280v-34c0,-33 -27,-60 -60,-60H176c-33,0 -60,27 -60,60v34z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M166,174h180v158H166z" />
+    <path android:fillColor="#0B1F3B" android:pathData="M166,174h180v46H166z" />
+    <path android:fillColor="#B8C4D3" android:pathData="M195,154h16v48H195zM301,154h16v48H301z" />
+    <path android:fillColor="#00C6A7" android:pathData="M292,116h44c33,0 60,27 60,60v44L292,116zM292,116v72c0,18 14,32 32,32h72L292,116z" />
+    <path android:fillColor="#CBD5E1" android:pathData="M198,246h32v32H198zM240,246h32v32H240zM198,288h32v32H198zM240,288h32v32H240z" />
+    <path android:fillColor="#0EA5E9" android:pathData="M282,246h32v32H282z" />
+    <path android:fillColor="#0070F3" android:pathData="M282,288h32v32H282z" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF" android:strokeWidth="22"
+        android:strokeLineCap="round" android:pathData="M84,150v-34c0,-18 14,-32 32,-32h34M362,84h34c18,0 32,14 32,32v34M428,362v34c0,18 -14,32 -32,32h-34M150,428h-34c-18,0 -32,-14 -32,-32v-34" />
 </vector>
