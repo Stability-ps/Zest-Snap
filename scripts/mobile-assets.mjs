@@ -8,7 +8,7 @@ const out = "mobile/assets";
 mkdirSync(out, { recursive: true });
 
 // Approved scan/calendar mark, simplified only for rasterisation into native icon layers.
-const mark = `
+const coreMark = `
   <rect x="116" y="116" width="280" height="280" rx="72" fill="#FFFFFF"/>
   <path d="M116 210h280v-34c0-33-27-60-60-60H176c-33 0-60 27-60 60v34Z" fill="#F8FAFC"/>
   <rect x="166" y="174" width="180" height="158" rx="28" fill="#FFFFFF"/>
@@ -23,17 +23,21 @@ const mark = `
   <rect x="198" y="288" width="32" height="32" rx="6" fill="#CBD5E1"/>
   <rect x="240" y="288" width="32" height="32" rx="6" fill="#CBD5E1"/>
   <rect x="282" y="288" width="32" height="32" rx="6" fill="#0070F3"/>
+`;
+const scanFrame = `
   <path d="M84 150v-34c0-18 14-32 32-32h34M362 84h34c18 0 32 14 32 32v34M428 362v34c0 18-14 32-32 32h-34M150 428h-34c-18 0-32-14-32-32v-34" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round"/>
 `;
+const mark = coreMark + scanFrame;
 const svg = (body, size = 512) => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}">${body}</svg>`);
 
 await sharp(svg(`<rect width="512" height="512" fill="${NAVY}"/>${mark}`), { density: 1200 })
   .resize(1024, 1024).flatten({ background: NAVY }).png().toFile(`${out}/icon-only.png`);
 await sharp(svg(`<rect width="512" height="512" fill="${NAVY}"/>`)).resize(1024, 1024).png().toFile(`${out}/icon-background.png`);
-await sharp(svg(`<g transform="translate(256 256) scale(0.76) translate(-256 -256)">${mark}</g>`), { density: 1200 })
+await sharp(svg(`<g transform="translate(256 256) scale(0.90) translate(-256 -256)">${mark}</g>`), { density: 1200 })
   .resize(1024, 1024).png().toFile(`${out}/icon-foreground.png`);
 
-const splash = svg(`<rect width="2732" height="2732" fill="${NAVY}"/><g transform="translate(1110 1110)">${mark}</g>`, 2732);
+// Splash keeps the same calendar/page identity but drops the outer scan-frame brackets.
+const splash = svg(`<rect width="2732" height="2732" fill="${NAVY}"/><g transform="translate(1110 1110)">${coreMark}</g>`, 2732);
 await sharp(splash, { density: 300 }).resize(2732, 2732).png().toFile(`${out}/splash.png`);
 await sharp(splash, { density: 300 }).resize(2732, 2732).png().toFile(`${out}/splash-dark.png`);
 
