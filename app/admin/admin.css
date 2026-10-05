@@ -80,6 +80,17 @@
 .ad-search kbd { font: 600 11px ui-monospace, monospace; color: var(--ad-muted); border: 1px solid var(--ad-line); border-radius: 5px; padding: 1px 5px; }
 .ad-top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .ad-content { padding: 24px; display: grid; gap: 20px; align-content: start; max-width: 1480px; width: 100%; }
+.ad-nav-progress { position: fixed; top: 0; left: var(--ad-side); right: 0; height: 3px; z-index: 70; overflow: hidden; pointer-events: none; }
+.ad-nav-progress span { display: block; width: 38%; height: 100%; background: var(--ad-teal); animation: ad-nav-progress 0.9s ease-in-out infinite; }
+@keyframes ad-nav-progress {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(365%); }
+}
+.ad-nav-link[data-pending="true"] { background: rgba(0, 198, 167, 0.1); color: #fff; }
+.ad-nav-link[data-pending="true"] svg { color: var(--ad-teal); opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .ad-nav-progress span { animation: none; width: 100%; opacity: 0.7; }
+}
 
 /* Buttons and controls */
 .ad-btn {
