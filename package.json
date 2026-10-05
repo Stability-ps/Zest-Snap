@@ -18,7 +18,7 @@
     "mobile:open:ios": "cap open ios",
     "mobile:assets": "node scripts/mobile-assets.mjs && capacitor-assets generate --assetPath mobile/assets --iconBackgroundColor '#0B1F3B' --iconBackgroundColorDark '#0B1F3B' --splashBackgroundColor '#0B1F3B' --splashBackgroundColorDark '#0B1F3B' --ios --android",
     "mobile:version": "node scripts/mobile-version.mjs",
-    "mobile:build:android": "node scripts/mobile-sync.mjs android && cd android && ./gradlew assembleDebug bundleRelease",
+    "mobile:build:android": "npm run mobile:assets && node scripts/mobile-sync.mjs android && cd android && ./gradlew assembleDebug bundleRelease",
     "mobile:build:ios": "node scripts/mobile-sync.mjs ios && cd ios/App && xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphoneos -archivePath ../build/ZestSnap.xcarchive archive"
   },
   "dependencies": {
