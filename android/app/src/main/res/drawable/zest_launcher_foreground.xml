@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Approved Zest Snap Z + lightning mark, kept inside the adaptive-icon safe zone. -->
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.18" android:scaleY="0.18"
+        android:translateX="7.92" android:translateY="7.92">
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M148,150h216c12,0 19,14 11,24L232,338h132v48H148c-12,0 -19,-14 -11,-24l143,-164H148v-48Z" />
+        <path android:fillColor="#00C6A7"
+            android:pathData="M315,126h72l-42,58h48l-89,108 25,-78h-48l34,-88Z" />
+    </group>
+</vector>
