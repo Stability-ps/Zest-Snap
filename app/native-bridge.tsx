@@ -71,9 +71,24 @@ export default function NativeBridge() {
         import("@capacitor/local-notifications"),
       ]);
       if (disposed) return;
-      // Dark status-bar icons over Zest Snap's light screens; content draws edge-to-edge behind the bars.
+      // Dark status-bar icons over Zest Snap's light screens. Android still draws edge-to-edge,
+      // but we publish the OS' real bar sizes as CSS variables because Samsung WebView can report
+      // env(safe-area-inset-*) as zero with three-button navigation.
       StatusBar.setStyle({ style: Style.Light }).catch(() => undefined);
-      if (platform === "android") StatusBar.setOverlaysWebView({ overlay: true }).catch(() => undefined);
+      if (platform === "android") {
+        StatusBar.setOverlaysWebView({ overlay: true }).catch(() => undefined);
+        try {
+          const { nativeSystemInsets } = await import("@/lib/native/permissions");
+          const insets = await nativeSystemInsets();
+          if (insets) {
+            const root = document.documentElement.style;
+            root.setProperty("--native-safe-top", `${Math.max(0, insets.top)}px`);
+            root.setProperty("--native-safe-right", `${Math.max(0, insets.right)}px`);
+            root.setProperty("--native-safe-bottom", `${Math.max(0, insets.bottom)}px`);
+            root.setProperty("--native-safe-left", `${Math.max(0, insets.left)}px`);
+          }
+        } catch {}
+      }
       requestAnimationFrame(() => SplashScreen.hide({ fadeOutDuration: 180 }).catch(() => undefined));
 
       listen(

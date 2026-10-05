@@ -154,3 +154,20 @@ test("no server secrets or service keys can reach the native shell or client bun
   for (const key of ["NSCameraUsageDescription", "NSPhotoLibraryUsageDescription", "NSCalendarsWriteOnlyAccessUsageDescription"]) assert.match(plist, new RegExp(key));
   assert.doesNotMatch(plist, /We need access/i);
 });
+
+
+test("Android release builds regenerate approved branding and publish real system insets", () => {
+  const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+  assert.match(pkg.scripts["mobile:build:android"], /mobile:assets/, "release build must regenerate launcher and splash resources");
+  const brand = readFileSync("scripts/mobile-assets.mjs", "utf8");
+  assert.match(brand, /#0B1F3B/);
+  assert.match(brand, /#00C6A7/);
+  const androidPlugin = readFileSync("android/app/src/main/java/app/zestsnap/ZestNativePlugin.java", "utf8");
+  assert.match(androidPlugin, /getSystemInsets/);
+  assert.match(androidPlugin, /WindowInsetsCompat\.Type\.systemBars/);
+  const bridge = readFileSync("app/native-bridge.tsx", "utf8");
+  assert.match(bridge, /--native-safe-bottom/);
+  const css = readFileSync("app/globals.css", "utf8");
+  assert.match(css, /--zest-safe-bottom/);
+  assert.match(css, /html\.native \.settingsPage/);
+});
