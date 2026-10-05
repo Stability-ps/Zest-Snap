@@ -25,6 +25,20 @@ export default function NativeBridge() {
         else removers.push(() => void h.remove());
       }).catch(() => undefined);
 
+    const syncAndroidInsets = async () => {
+      if (platform !== "android") return;
+      try {
+        const { nativeSystemInsets } = await import("@/lib/native/permissions");
+        const insets = await nativeSystemInsets();
+        if (!insets) return;
+        const root = document.documentElement.style;
+        root.setProperty("--native-safe-top", `${Math.max(0, insets.top)}px`);
+        root.setProperty("--native-safe-right", `${Math.max(0, insets.right)}px`);
+        root.setProperty("--native-safe-bottom", `${Math.max(0, insets.bottom)}px`);
+        root.setProperty("--native-safe-left", `${Math.max(0, insets.left)}px`);
+      } catch {}
+    };
+
     /** Navigate inside the app without a full reload when the page can handle it itself. */
     const open = (path: string) => {
       if (needsFullNavigation(path)) return window.location.assign(path);
@@ -61,6 +75,9 @@ export default function NativeBridge() {
     };
     window.addEventListener("zest-reminders-changed", syncReminders);
     removers.push(() => window.removeEventListener("zest-reminders-changed", syncReminders));
+    const onViewportChange = () => void syncAndroidInsets();
+    window.addEventListener("resize", onViewportChange);
+    removers.push(() => window.removeEventListener("resize", onViewportChange));
 
     (async () => {
       const [{ App }, { SplashScreen }, { StatusBar, Style }, { Keyboard }, { LocalNotifications }] = await Promise.all([
@@ -77,17 +94,7 @@ export default function NativeBridge() {
       StatusBar.setStyle({ style: Style.Light }).catch(() => undefined);
       if (platform === "android") {
         StatusBar.setOverlaysWebView({ overlay: true }).catch(() => undefined);
-        try {
-          const { nativeSystemInsets } = await import("@/lib/native/permissions");
-          const insets = await nativeSystemInsets();
-          if (insets) {
-            const root = document.documentElement.style;
-            root.setProperty("--native-safe-top", `${Math.max(0, insets.top)}px`);
-            root.setProperty("--native-safe-right", `${Math.max(0, insets.right)}px`);
-            root.setProperty("--native-safe-bottom", `${Math.max(0, insets.bottom)}px`);
-            root.setProperty("--native-safe-left", `${Math.max(0, insets.left)}px`);
-          }
-        } catch {}
+        await syncAndroidInsets();
       }
       requestAnimationFrame(() => SplashScreen.hide({ fadeOutDuration: 180 }).catch(() => undefined));
 
@@ -113,6 +120,7 @@ export default function NativeBridge() {
             if (isSupabaseConfigured()) await createClient().auth.getSession();
           } catch {}
           window.dispatchEvent(new Event("zest-app-resume"));
+          await syncAndroidInsets();
           syncReminders();
         }),
       );
