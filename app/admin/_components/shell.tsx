@@ -112,7 +112,7 @@ function Alerts({ attention }: { attention: Attention | null }) {
             {attention === null && <p style={{ padding: "12px 14px", margin: 0, color: "var(--ad-muted)" }}>Alerts are unavailable until the admin database upgrade is applied.</p>}
             {attention && !items.length && <p style={{ padding: "12px 14px", margin: 0, color: "var(--ad-muted)" }}>All clear — nothing needs attention.</p>}
             {items.map((i) => (
-              <Link key={i.label} href={i.href} onClick={() => setOpen(false)}>
+              <Link key={i.label} href={i.href} prefetch={false} onClick={() => setOpen(false)}>
                 <b style={{ minWidth: 26 }}>{i.n}</b><span>{i.label}</span>
               </Link>
             ))}
@@ -189,7 +189,7 @@ export default function AdminShell({ children, admin, attention, buildLabel }: {
     <div className="ad-root" data-collapsed={collapsed} data-drawer={drawer ? "open" : "closed"}>
       <aside className="ad-side" aria-label="Admin navigation">
         <div className="ad-side-head">
-          <Link href="/admin" className="ad-logo">
+          <Link href="/admin" prefetch={false} className="ad-logo">
             <span className="ad-logo-mark" aria-hidden>Z</span>
             <span className="ad-hide-collapsed">Zest Snap<small>Admin</small></span>
           </Link>
@@ -209,7 +209,7 @@ export default function AdminShell({ children, admin, attention, buildLabel }: {
                 const Icon = icons[item.icon] || LayoutDashboard;
                 const count = item.badge ? counts[item.badge] : undefined;
                 return (
-                  <Link key={item.href} href={item.href} className="ad-nav-link" aria-current={active === item.href ? "page" : undefined} title={collapsed ? item.label : undefined}>
+                  <Link key={item.href} href={item.href} prefetch={false} className="ad-nav-link" aria-current={active === item.href ? "page" : undefined} title={collapsed ? item.label : undefined}>
                     <Icon aria-hidden />
                     <span className="ad-hide-collapsed">{item.label}</span>
                     {!!count && <span className="ad-nav-count ad-hide-collapsed">{count}</span>}
