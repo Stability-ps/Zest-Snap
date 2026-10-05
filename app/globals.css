@@ -511,7 +511,7 @@ button {
   justify-content: center;
   z-index: 60;
   pointer-events: auto;
-  padding: 8px 16px max(12px, env(safe-area-inset-bottom));
+  padding: 8px max(16px, var(--native-safe-right, 0px)) max(12px, env(safe-area-inset-bottom), var(--native-safe-bottom, 0px)) max(16px, var(--native-safe-left, 0px));
 }
 .bottomNav button,
 .bottomNav > a {
@@ -2818,6 +2818,8 @@ html.native .appShell {
   min-height: 100dvh;
 }
 html.native .appContent {
+  padding-left: max(22px, var(--zest-safe-left));
+  padding-right: max(22px, var(--zest-safe-right));
   padding-bottom: calc(110px + var(--zest-safe-bottom));
 }
 html.native .bottomNav {
@@ -2833,6 +2835,10 @@ html.native .stickyAction {
     padding-left: max(18px, var(--zest-safe-left));
     padding-right: max(18px, var(--zest-safe-right));
     height: calc(62px + var(--zest-safe-top));
+  }
+  html.native .appContent {
+    padding-left: max(16px, var(--zest-safe-left));
+    padding-right: max(16px, var(--zest-safe-right));
   }
   html.native .stickyAction {
     bottom: calc(76px + var(--zest-safe-bottom));
