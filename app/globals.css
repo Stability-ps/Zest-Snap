@@ -2866,3 +2866,35 @@ html.native .offlinePage { padding-top: calc(24px + var(--zest-safe-top)); paddi
   .settingsPage { padding-top: calc(22px + env(safe-area-inset-top)); }
 }
 .exportStatus { color: #087866; font-size: 13px; font-weight: 600; }
+
+
+/* Narrow scan-review action: keep copy and the primary action inside the phone viewport. */
+@media (max-width: 600px) {
+  .stickyAction {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+  .stickyAction > div:first-child {
+    min-width: 0;
+    flex: 1 1 145px;
+  }
+  .stickyActions {
+    display: flex !important;
+    width: auto;
+    flex: 0 1 auto;
+  }
+  .stickyActions .button {
+    width: 100%;
+    white-space: normal;
+    padding-inline: 14px;
+  }
+}
+@media (max-width: 380px) {
+  .stickyAction {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .stickyActions {
+    width: 100%;
+  }
+}
