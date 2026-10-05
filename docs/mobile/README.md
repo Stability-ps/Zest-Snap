@@ -86,13 +86,16 @@ npm run mobile:build:android
 # → android/app/build/outputs/apk/debug/app-debug.apk        (direct device testing)
 # → android/app/build/outputs/bundle/release/app-release.aab (Play upload; signed when keystore.properties exists)
 ```
-Release signing: create `android/keystore.properties` (git-ignored):
+Release signing: the upload key lives **outside the repository** (e.g. `~/.zest-snap-signing/zest-upload.jks`, owner-only
+permissions) and `android/keystore.properties` (git-ignored) points to it:
 ```
-storeFile=../zest-upload.jks
+storeFile=/Users/<you>/.zest-snap-signing/zest-upload.jks
 storePassword=…
 keyAlias=upload
 keyPassword=…
 ```
+Back up the keystore and its password together in a password manager. Losing the upload key means asking Google
+for an upload-key reset (Play App Signing keeps the app signing key, so the app itself is never lost).
 Use **Play App Signing**; this key is only the upload key. Release builds use R8 (`minifyEnabled`, `shrinkResources`) with
 keep-rules for Capacitor and plugins in `android/app/proguard-rules.pro`.
 

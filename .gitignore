@@ -12,3 +12,10 @@ supabase/.temp/
 test-results/
 playwright-report/
 public/sw.js
+
+# Android/iOS signing material — never commit (keep upload keys outside the repository)
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+keystore.properties
