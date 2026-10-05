@@ -7,6 +7,8 @@ import { hasPlugin } from "./runtime";
  */
 export type NativeNotificationState = "unsupported" | "blocked" | "available" | "enabled";
 type Reminder = { id: string; scheduledAt: string; status: string; label?: string; plannerItemId: string };
+/** A reminder this device has armed, at the exact time it will fire (reported to the server). */
+export type ArmedReminder = { id: string; at: string };
 
 export const REMINDER_CHANNEL = "zest-reminders";
 const ACTION_TYPE = "ZEST_REMINDER";
@@ -87,10 +89,10 @@ export async function enableNativeNotifications() {
  * Makes the OS schedule match the reminder list: arms new/changed reminders, cancels ones that were
  * cancelled, completed, snoozed elsewhere or deleted. Safe to call often (it diffs first).
  */
-export async function syncNativeReminders(reminders: Reminder[]) {
-  if (!nativeNotificationsAvailable()) return;
+export async function syncNativeReminders(reminders: Reminder[]): Promise<ArmedReminder[]> {
+  if (!nativeNotificationsAvailable()) return [];
   const { LocalNotifications } = await load();
-  if ((await LocalNotifications.checkPermissions()).display !== "granted") return;
+  if ((await LocalNotifications.checkPermissions()).display !== "granted") return [];
   await prepare();
   const wanted = remindersToSchedule(reminders);
   const wantedById = new Map(wanted.map((r) => [notificationId(r.id), r]));
@@ -103,7 +105,8 @@ export async function syncNativeReminders(reminders: Reminder[]) {
   if (stale.length) await LocalNotifications.cancel({ notifications: stale.map((p) => ({ id: p.id })) });
   const keep = new Set(pending.filter((p) => !stale.includes(p)).map((p) => p.id));
   const fresh = wanted.filter((r) => !keep.has(notificationId(r.id)));
-  if (!fresh.length) return;
+  const armed = wanted.map((r) => ({ id: r.id, at: r.scheduledAt }));
+  if (!fresh.length) return armed;
   // Exact timing only when Android's "Alarms & reminders" access is already granted; otherwise inexact
   // (never bounce the person into system settings mid-flow). iOS always delivers on time.
   const exact = await preciseTimingEnabled();
@@ -120,6 +123,7 @@ export async function syncNativeReminders(reminders: Reminder[]) {
       extra: { reminderId: r.id, url: reminderUrl(r.id) },
     })),
   });
+  return armed;
 }
 
 /** Android 12+: whether reminders can fire at the exact minute ("Alarms & reminders" special access). */

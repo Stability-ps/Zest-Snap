@@ -122,10 +122,12 @@ or `npm run mobile:build:ios` on a Mac with signing configured. No signing mater
 - Permission is requested only when the person taps **Enable** on a reminder screen. Blocked → “Open Settings”.
 - Android 12+: exact timing needs “Alarms & reminders” access. Zest Snap never forces it; it schedules inexactly
   (may shift a few minutes in deep doze) and offers **Settings › App › Precise reminder timing**.
-- Web Push (PWA) is unchanged. **Server follow-up:** `deliver-reminders` marks a reminder `failed / no_push_subscription` when the
-  account has no web-push device, even though the app delivered it locally. A small change (treat app-only accounts as
-  “delivered on device”) is recommended so Admin's failure counts stay meaningful. Remote push (FCM/APNs) for server-originated
-  alerts can be added later with `@capacitor/push-notifications` + Firebase/APNs credentials.
+- Web Push (PWA) is unchanged. After arming, the app reports `{id, at}` for each armed reminder
+  (`mark_reminders_device_armed`, migration `20261007090000_native_reminder_delivery.sql`). When the delivery job reaches a reminder
+  that this account's device armed for its current time, `complete_push_reminder` records it as `sent` with
+  `delivered_via = 'device'` instead of retrying into `failed / no_push_subscription`; web-push deliveries record `web_push`.
+  A reminder snoozed/rescheduled elsewhere after arming isn't credited until a device re-arms it.
+  Remote push (FCM/APNs) for server-originated alerts can be added later with `@capacitor/push-notifications`.
 
 ## Calendar
 
@@ -237,4 +239,4 @@ Run on one current iPhone (Dynamic Island) and one Android phone (gesture nav), 
 - Google: Play Console app, upload key + Play App Signing, products, RevenueCat, Data safety, testers.
 - Vercel env: `APPLE_TEAM_ID`, `ANDROID_CERT_SHA256`, RevenueCat keys/secrets (see table above).
 - Supabase: confirm `https://app.zestsnap.app/**` is in Auth › URL configuration › Redirect URLs (already used by the web app).
-- Migration `20261006090000_native_platform_analytics.sql` (platform analytics + admin calendar fix) must be applied before deploying.
+- Migrations `20261006090000_native_platform_analytics.sql` (applied) and `20261007090000_native_reminder_delivery.sql` (device delivery status).

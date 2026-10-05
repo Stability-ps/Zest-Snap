@@ -43,7 +43,17 @@ export default function NativeBridge() {
       syncTimer = setTimeout(async () => {
         try {
           const [{ listReminders }, { syncNativeReminders }] = await Promise.all([import("@/lib/reminders"), import("@/lib/native/notifications")]);
-          await syncNativeReminders(await listReminders());
+          const armed = await syncNativeReminders(await listReminders());
+          // Tell the server which reminders this device will deliver itself, so they are recorded as delivered
+          // on the device instead of failing for lack of a web-push subscription. Guests have nothing to report.
+          if (armed.length && navigator.onLine) {
+            const { createClient, isSupabaseConfigured } = await import("@/lib/supabase/client");
+            if (isSupabaseConfigured()) {
+              const db = createClient();
+              const { data } = await db.auth.getSession();
+              if (data.session) await db.rpc("mark_reminders_device_armed" as never, { p_items: armed } as never);
+            }
+          }
         } catch {
           // Offline or signed out: the previous schedule stays armed; next resume retries.
         }

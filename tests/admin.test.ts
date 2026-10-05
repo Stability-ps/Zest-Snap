@@ -389,3 +389,34 @@ test("admin user detail works with the OAuth-token calendar table and never expo
   await call(db, OWNER, "admin_users", [null, "calendar", "created_desc", 25, 0]);
   await db.close();
 });
+
+test("reminders armed on a native device are recorded as delivered on the device, not failed", async () => {
+  const db = await seed();
+  await db.exec(`insert into public.planner_items(id,user_id,type,title,start_date) values ('20000000-0000-0000-0000-000000000001','${USER}','event','Dentist','2030-01-01');
+    insert into public.reminders(id,user_id,planner_item_id,kind,scheduled_at,status) values
+      ('30000000-0000-0000-0000-000000000001','${USER}','20000000-0000-0000-0000-000000000001','event','2026-10-07T09:00:00Z','pending'),
+      ('30000000-0000-0000-0000-000000000002','${USER}','20000000-0000-0000-0000-000000000001','event','2026-10-07T10:00:00Z','pending'),
+      ('30000000-0000-0000-0000-000000000003','${USER}','20000000-0000-0000-0000-000000000001','event','2026-10-07T11:00:00Z','pending');`);
+  const armed = await one(db, USER, `select public.mark_reminders_device_armed($1::jsonb) r`, [JSON.stringify([
+    { id: "30000000-0000-0000-0000-000000000001", at: "2026-10-07T09:00:00Z" },
+    { id: "30000000-0000-0000-0000-000000000002", at: "2026-10-07T09:30:00Z" }, // stale time → not credited
+  ])]);
+  assert.equal(armed.r, 1);
+  // Another account can't arm (or learn about) someone else's reminders.
+  assert.equal((await one(db, USER2, `select public.mark_reminders_device_armed($1::jsonb) r`, [JSON.stringify([{ id: "30000000-0000-0000-0000-000000000003", at: "2026-10-07T11:00:00Z" }])])).r, 0);
+  await assert.rejects(() => as(db, null, `select public.mark_reminders_device_armed('[]'::jsonb)`));
+  await assert.rejects(() => as(db, USER, `select public.complete_push_reminder('30000000-0000-0000-0000-000000000001', true, null)`), "only the delivery job may complete");
+  await db.exec(`update public.reminders set status = 'processing', claimed_at = now()`);
+  await db.exec(`set role service_role;
+    select public.complete_push_reminder('30000000-0000-0000-0000-000000000001', false, 'no_push_subscription');
+    select public.complete_push_reminder('30000000-0000-0000-0000-000000000002', false, 'no_push_subscription');
+    select public.complete_push_reminder('30000000-0000-0000-0000-000000000003', true, null);
+    reset role;`);
+  const rows = (await db.query<Row>(`select id, status, delivered_via, last_error from public.reminders order by id`)).rows;
+  assert.deepEqual(rows.map((r) => [r.status, r.delivered_via, r.last_error]), [
+    ["sent", "device", null],
+    ["pending", null, "no_push_subscription"], // not armed at this time → existing retry path, eventually failed
+    ["sent", "web_push", null],
+  ]);
+  await db.close();
+});
