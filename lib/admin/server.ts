@@ -64,14 +64,17 @@ function errorCode(error: { code?: string; message?: string } | null) {
 export const getAdmin = cache(async (): Promise<AdminContext> => {
   if (!isSupabaseConfigured()) redirect("/app");
   const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-  if (!user) redirect("/login?next=/admin");
+  // The request proxy has already refreshed and verified the session. getClaims() can verify
+  // the JWT locally with cached signing keys, avoiding getUser()'s Auth network round trip.
+  const { data: claimsData, error: claimsError } = await db.auth.getClaims();
+  const claims = claimsData?.claims;
+  const userId = typeof claims?.sub === "string" ? claims.sub : null;
+  if (claimsError || !userId) redirect("/login?next=/admin");
+  const user = { id: userId };
   // After auth, profile and role checks are independent; run them together to avoid another database round trip.
   // Reading one's own profile is allowed by RLS; every admin read/write is authorised again in the database.
   const [{ data: profile }, me] = await Promise.all([
-    db.from("profiles").select("is_admin, display_name").eq("id", user.id).maybeSingle(),
+    db.from("profiles").select("is_admin, display_name").eq("id", userId).maybeSingle(),
     db.rpc("admin_me" as never),
   ]);
   if (adminAccess(user, profile) !== "allowed") redirect("/app");
@@ -79,8 +82,8 @@ export const getAdmin = cache(async (): Promise<AdminContext> => {
   // Before the migration exists, admins keep today's capabilities (the old console had no roles).
   if (me.error && errorCode(me.error) !== "not_ready") redirect("/app");
   return {
-    userId: user.id,
-    email: user.email ?? null,
+    userId,
+    email: typeof claims?.email === "string" ? claims.email : null,
     name: (profile as { display_name?: string | null } | null)?.display_name ?? null,
     role: role ?? "admin",
     schemaReady: !me.error,
