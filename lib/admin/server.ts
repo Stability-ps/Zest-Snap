@@ -68,10 +68,13 @@ export const getAdmin = cache(async (): Promise<AdminContext> => {
     data: { user },
   } = await db.auth.getUser();
   if (!user) redirect("/login?next=/admin");
+  // After auth, profile and role checks are independent; run them together to avoid another database round trip.
   // Reading one's own profile is allowed by RLS; every admin read/write is authorised again in the database.
-  const { data: profile } = await db.from("profiles").select("is_admin, display_name").eq("id", user.id).maybeSingle();
+  const [{ data: profile }, me] = await Promise.all([
+    db.from("profiles").select("is_admin, display_name").eq("id", user.id).maybeSingle(),
+    db.rpc("admin_me" as never),
+  ]);
   if (adminAccess(user, profile) !== "allowed") redirect("/app");
-  const me = await db.rpc("admin_me" as never);
   const role = !me.error && isAdminRole((me.data as { role?: unknown } | null)?.role) ? ((me.data as { role: AdminRole }).role) : null;
   // Before the migration exists, admins keep today's capabilities (the old console had no roles).
   if (me.error && errorCode(me.error) !== "not_ready") redirect("/app");

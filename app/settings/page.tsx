@@ -56,18 +56,25 @@ export default function Settings() {
     getDataProvider()
       .then(async (p) => {
         setProvider(p);
-        setProfile(await p.loadProfile());
-        setUsage(await p.loadUsage());
-        const subscription = await p.loadSubscription();
+        const [loadedProfile, loadedUsage, subscription] = await Promise.all([
+          p.loadProfile(),
+          p.loadUsage(),
+          p.loadSubscription(),
+        ]);
+        setProfile(loadedProfile);
+        setUsage(loadedUsage);
         setSubscriptionPlan(subscription.plan);
         if (p.mode === "cloud" && isSupabaseConfigured()) {
-          const { data } = await createClient().auth.getUser();
-          setAccountEmail(data.user?.email || "");
-          fetch("/api/calendar/google/status", { cache: "no-store" })
-            .then(async (r) => (r.ok ? r.json() : { connected: false }))
-            .then((v) => setGoogleCalendar(v))
-            .catch(() => undefined)
-            .finally(() => setGoogleCalendarLoading(false));
+          const db = createClient();
+          const [userResult, calendarResult] = await Promise.all([
+            db.auth.getUser(),
+            fetch("/api/calendar/google/status", { cache: "no-store" })
+              .then(async (r) => (r.ok ? r.json() : { connected: false }))
+              .catch(() => ({ connected: false })),
+          ]);
+          setAccountEmail(userResult.data.user?.email || "");
+          setGoogleCalendar(calendarResult);
+          setGoogleCalendarLoading(false);
         } else {
           setGoogleCalendarLoading(false);
         }

@@ -11,13 +11,13 @@ export const metadata = { title: "Activity" };
 
 export default async function ActivityPage({ searchParams }: { searchParams: SearchParams }) {
   const range = rangeFrom(await readParams(searchParams));
-  const [ov, ts, recent, health] = await Promise.all([
+  const [ov, ts, recent, health, platforms] = await Promise.all([
     adminRpc<any>("admin_overview", { p_from: iso(range.from), p_to: iso(range.to) }),
     adminRpc<any[]>("admin_timeseries", { p_from: iso(range.from), p_to: iso(range.to), p_bucket: range.bucket }),
     adminRpc<any>("admin_users", { p_search: null, p_filter: "active", p_sort: "active_desc", p_limit: 20, p_offset: 0 }),
     adminRpc<any>("admin_health"),
+    adminRpc<any>("admin_platforms", { p_from: iso(range.from), p_to: iso(range.to) }),
   ]);
-  const platforms = await adminRpc<any>("admin_platforms", { p_from: iso(range.from), p_to: iso(range.to) });
   const head = <PageHeader title="Activity" description={`Who is using Zest Snap · ${range.label}`} actions={<Link className="ad-btn" href="/admin/exports?dataset=activity">Export activity</Link>} />;
   if (ov.error) return <>{head}<Card><LoadError error={ov.error} retryHref="/admin/activity" /></Card></>;
   const o = ov.data;
