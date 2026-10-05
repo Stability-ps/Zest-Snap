@@ -162,13 +162,17 @@ export default function AdminShell({ children, admin, attention, buildLabel }: {
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const active = activeHref(pathname);
 
   useEffect(() => {
     try { setCollapsed(localStorage.getItem("zest-admin-collapsed") === "1"); } catch {}
   }, []);
-  useEffect(() => setDrawer(false), [pathname]);
+  useEffect(() => {
+    setDrawer(false);
+    setPendingHref(null);
+  }, [pathname]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
@@ -189,7 +193,14 @@ export default function AdminShell({ children, admin, attention, buildLabel }: {
     <div className="ad-root" data-collapsed={collapsed} data-drawer={drawer ? "open" : "closed"}>
       <aside className="ad-side" aria-label="Admin navigation">
         <div className="ad-side-head">
-          <Link href="/admin" prefetch={false} className="ad-logo">
+          <Link
+            href="/admin"
+            prefetch={false}
+            className="ad-logo"
+            onMouseEnter={() => router.prefetch("/admin")}
+            onFocus={() => router.prefetch("/admin")}
+            onClick={() => pathname !== "/admin" && setPendingHref("/admin")}
+          >
             <span className="ad-logo-mark" aria-hidden>Z</span>
             <span className="ad-hide-collapsed">Zest Snap<small>Admin</small></span>
           </Link>
@@ -209,7 +220,19 @@ export default function AdminShell({ children, admin, attention, buildLabel }: {
                 const Icon = icons[item.icon] || LayoutDashboard;
                 const count = item.badge ? counts[item.badge] : undefined;
                 return (
-                  <Link key={item.href} href={item.href} prefetch={false} className="ad-nav-link" aria-current={active === item.href ? "page" : undefined} title={collapsed ? item.label : undefined}>
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch={false}
+                    className="ad-nav-link"
+                    aria-current={active === item.href ? "page" : undefined}
+                    aria-busy={pendingHref === item.href ? "true" : undefined}
+                    data-pending={pendingHref === item.href ? "true" : undefined}
+                    title={collapsed ? item.label : undefined}
+                    onMouseEnter={() => router.prefetch(item.href)}
+                    onFocus={() => router.prefetch(item.href)}
+                    onClick={() => active !== item.href && setPendingHref(item.href)}
+                  >
                     <Icon aria-hidden />
                     <span className="ad-hide-collapsed">{item.label}</span>
                     {!!count && <span className="ad-nav-count ad-hide-collapsed">{count}</span>}
@@ -242,7 +265,8 @@ export default function AdminShell({ children, admin, attention, buildLabel }: {
             <ProfileMenu {...admin} />
           </div>
         </header>
-        <main className="ad-content" id="admin-main">{children}</main>
+        {pendingHref && <div className="ad-nav-progress" role="status" aria-label="Loading next admin page"><span /></div>}
+        <main className="ad-content" id="admin-main" aria-busy={pendingHref ? "true" : undefined}>{children}</main>
       </div>
     </div>
   );
