@@ -2,7 +2,8 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="512" android:viewportHeight="512">
-    <!-- Approved Zest Snap scan/calendar mark. -->
+    <!-- Approved Zest Snap scan/calendar mark, enlarged to match Samsung adaptive-icon sizing. -->
+    <group android:pivotX="256" android:pivotY="256" android:scaleX="1.16" android:scaleY="1.16">
     <path android:fillColor="#FFFFFF" android:pathData="M116,116h280v280H116z" />
     <path android:fillColor="#0B1F3B" android:pathData="M166,174h180v46H166z" />
     <path android:fillColor="#00C6A7" android:pathData="M292,116h44c33,0 60,27 60,60v44L292,116zM292,116v72c0,18 14,32 32,32h72L292,116z" />
@@ -11,4 +12,5 @@
     <path android:fillColor="#0070F3" android:pathData="M282,288h32v32H282z" />
     <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF" android:strokeWidth="22" android:strokeLineCap="round"
         android:pathData="M84,150v-34c0,-18 14,-32 32,-32h34M362,84h34c18,0 32,14 32,32v34M428,362v34c0,18 -14,32 -32,32h-34M150,428h-34c-18,0 -32,-14 -32,-32v-34" />
+    </group>
 </vector>
