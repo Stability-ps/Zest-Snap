@@ -29,6 +29,7 @@ import {
   Bell,
   ListChecks,
   Layers,
+  UsersRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ExtractionResult, ExtractedEvent } from "@/lib/extraction-types";
@@ -51,6 +52,7 @@ import { addExtractedEventToDevice, deviceCalendarAvailable } from "@/lib/native
 import { hapticSuccess } from "@/lib/native/haptics";
 import { shareTextNatively } from "@/lib/native/share";
 import PlannerView, { type PlannerRequest } from "./planner-view";
+import SharedView from "./shared-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
@@ -67,8 +69,9 @@ import {
   setActiveUser,
 } from "@/lib/session";
 import { syncPushSubscription } from "@/lib/reminders";
+import { materializeWeeklySchedule, weeklyOccurrences } from "@/lib/schedule";
 
-type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards";
+type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards" | "shared";
 type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
 const deviceTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const REFRESH_INTERVAL = 30_000;
@@ -79,7 +82,7 @@ function viewFromUrl(search: string): { view: View; tab?: PlannerRequest["tab"] 
   const tab = q.get("tab");
   if (v === "calendar" || v === "planner")
     return { view: "calendar", tab: tab === "reminders" || tab === "upcoming" || tab === "calendar" || tab === "today" ? tab : undefined };
-  if (v === "rewards" || v === "history" || v === "todo") return { view: v };
+  if (v === "rewards" || v === "history" || v === "todo" || v === "shared") return { view: v };
   return { view: "home" };
 }
 function greeting(timezone: string) {
@@ -123,6 +126,8 @@ export default function App() {
   const router = useRouter();
   // The static HTML can't know who is signed in, so the greeting stays invisible until identity is known.
   const [greetingReady, setGreetingReady] = useState(false);
+  const [scheduleStart, setScheduleStart] = useState("");
+  const [scheduleEnd, setScheduleEnd] = useState("");
 
   const showError = useCallback((message: string, action: "signup" | "plans" | null = null) => {
     setError(message);
@@ -707,6 +712,122 @@ export default function App() {
     }
   }
 
+  async function saveTimetableToPlanner() {
+    if (!result || !activeScan || !identity) return;
+    if (!scheduleStart || !scheduleEnd || scheduleEnd < scheduleStart) return showError("Choose the timetable start and end dates first.");
+    setBusy(true);
+    try {
+      const planner = await sharedPlannerStore(identity);
+      let saved = 0;
+      for (const raw of result.events) {
+        const event = materializeWeeklySchedule([raw], scheduleStart, scheduleEnd)[0];
+        const dates = event.recurrence === "weekly" ? weeklyOccurrences(event, scheduleStart, scheduleEnd) : event.startDate ? [event.startDate] : [];
+        for (const date of dates) {
+          const occurrence = { ...event, startDate: date, endDate: date, recurrence: "none" as const };
+          await planner.upsert(extractionToPlannerSuggestion(occurrence, activeScan).item);
+          saved++;
+        }
+      }
+      setSuccess(`${saved} timetable entries saved to Planner.`);
+      openView("calendar", { tab: "upcoming" });
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not save this timetable.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createExamStudyPlan() {
+    if (!result || !activeScan || !identity) return;
+    const exams = result.events.filter((e) => e.startDate);
+    if (!exams.length) return showError("Review the exam dates first.");
+    setBusy(true);
+    try {
+      const planner = await sharedPlannerStore(identity);
+      let created = 0;
+      for (const exam of exams) {
+        const examDate = new Date(exam.startDate + "T12:00:00Z");
+        for (const [days, label] of [[14, "Start revision"], [7, "Practice questions"], [2, "Final review"]] as const) {
+          const due = new Date(examDate); due.setUTCDate(due.getUTCDate() - days);
+          if (due.getTime() < Date.now() - 86400000) continue;
+          const now = new Date().toISOString();
+          await planner.upsert({
+            id: crypto.randomUUID(), type: "task", title: `${label}: ${exam.title}`,
+            description: `Study task created from the exam timetable for ${exam.title} on ${exam.startDate}.`,
+            startDate: "", endDate: "", startTime: "", endTime: "", dueDate: due.toISOString().slice(0,10), dueTime: "",
+            allDay: true, timezone: exam.timezone || timezone, location: "", status: "open", source: "scan",
+            sourceScanId: activeScan, createdAt: now, updatedAt: now,
+          });
+          created++;
+        }
+      }
+      setSuccess(`${created} study To-Dos added.`);
+      openView("todo");
+    } catch (e) { showError(e instanceof Error ? e.message : "Could not create the study plan."); }
+    finally { setBusy(false); }
+  }
+
+  async function createSharedPlanFromScan(documentType: ExtractionResult["documentType"]) {
+    if (!result) return;
+    if (mode !== "cloud") return goToSignUp();
+    let usable = result.events;
+    if (documentType === "timetable") {
+      if (!scheduleStart || !scheduleEnd || scheduleEnd < scheduleStart) return showError("Choose the timetable start and end dates first.");
+      usable = materializeWeeklySchedule(result.events, scheduleStart, scheduleEnd);
+    }
+    usable = usable.filter((event) => event.startDate);
+    if (!usable.length) return showError("Review the schedule dates first. Zest will not guess missing dates.");
+    setBusy(true);
+    try {
+      const db = createClient();
+      const kind = documentType === "meal_schedule" ? "meals" : "timetable";
+      const name = documentType === "exam_timetable" ? "Exam timetable" : documentType === "meal_schedule" ? "Meal plan" : "Timetable";
+      const { data: planId, error: planError } = await db.rpc("create_shared_plan", { p_name: name, p_kind: kind });
+      if (planError) throw planError;
+      const { data: { user } } = await db.auth.getUser();
+      if (!user) throw new Error("Sign in to save a shared plan.");
+      const rows = usable.map((event) => ({
+        plan_id: planId,
+        creator_id: user.id,
+        item_type: documentType === "meal_schedule" ? "meal" : "event",
+        title: event.title,
+        description: event.description || "",
+        start_date: event.startDate || null,
+        end_date: event.endDate || event.startDate || null,
+        start_time: event.startTime || null,
+        end_time: event.endTime || null,
+        all_day: event.allDay,
+        timezone: event.timezone || timezone,
+        location: event.location || "",
+        recurrence: event.recurrence === "weekly" ? { frequency: "weekly", dayOfWeek: event.dayOfWeek || "", until: scheduleEnd || null } : {},
+        source: "scan",
+      }));
+      const { error: itemError } = await db.from("shared_plan_items").insert(rows);
+      if (itemError) throw itemError;
+      window.location.assign(`/shared/${planId}`);
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not create the shared plan.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function shareExtractedEvent(event: ExtractedEvent) {
+    if (mode !== "cloud") return goToSignUp();
+    try {
+      const db = createClient();
+      const { data, error } = await db.rpc("create_public_event_share", { p_event: event });
+      if (error) throw error;
+      const url = `${window.location.origin}/share/${data}`;
+      const text = `${event.title}\n${event.startDate}${event.startTime ? " · " + event.startTime : ""}\n${url}`;
+      if (await shareTextNatively({ title: event.title, text, url })) return;
+      await navigator.clipboard.writeText(url);
+      setSuccess("Share link copied.");
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not share this event.");
+    }
+  }
+
   const goToSignUp = () => router.push("/login?mode=signup&next=" + encodeURIComponent(window.location.pathname + window.location.search));
 
   return (
@@ -967,12 +1088,40 @@ export default function App() {
                           <CalendarDays size={16} />
                           {duplicate ? "In your agenda" : "Add to calendar"}
                         </button>
+                        <button
+                          className="button alt small"
+                          onClick={() => shareExtractedEvent(event)}
+                        >
+                          <UsersRound size={16} />
+                          Share
+                        </button>
                       </div>
                     </div>
                   </article>
                 );
               })}
             </div>
+
+            {(result.documentType === "timetable" || result.documentType === "exam_timetable" || result.documentType === "meal_schedule") && (
+              <div className="detectedPlanBanner">
+                <div className="detectedPlanCopy">
+                  <span className="eyebrow">{result.documentType === "exam_timetable" ? "EXAM TIMETABLE" : result.documentType === "meal_schedule" ? "MEAL SCHEDULE" : "TIMETABLE"} DETECTED</span>
+                  <b>{result.events.length} {result.documentType === "exam_timetable" ? "exams" : result.documentType === "meal_schedule" ? "meal items" : "schedule items"} found</b>
+                  <small>{result.documentType === "timetable" ? "Set the term or semester dates once, then Zest builds the recurring schedule." : "Review the dates before adding anything."}</small>
+                  {result.documentType === "timetable" && <div className="scheduleRangeFields">
+                    <label><span>Starts</span><input type="date" value={scheduleStart} onChange={e=>setScheduleStart(e.target.value)} /></label>
+                    <label><span>Ends</span><input type="date" value={scheduleEnd} min={scheduleStart||undefined} onChange={e=>setScheduleEnd(e.target.value)} /></label>
+                  </div>}
+                </div>
+                <div className="detectedPlanActions">
+                  {result.documentType === "timetable" && <button className="button alt small" disabled={busy||!scheduleStart||!scheduleEnd} onClick={saveTimetableToPlanner}><CalendarDays size={16}/> Add schedule to Planner</button>}
+                  {result.documentType === "exam_timetable" && <button className="button alt small" disabled={busy} onClick={createExamStudyPlan}><ListChecks size={16}/> Create study To-Dos</button>}
+                  <button className="button alt small" disabled={busy||(result.documentType==="timetable"&&(!scheduleStart||!scheduleEnd))} onClick={() => createSharedPlanFromScan(result.documentType)}>
+                    <UsersRound size={16} /> Save as shared plan
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="stickyAction">
               <div>
@@ -1048,6 +1197,19 @@ export default function App() {
             }}
           />
         )}
+        {view === "shared" && (
+          <SharedView
+            signedIn={mode === "cloud"}
+            onSignIn={goToSignUp}
+            onNotice={(kind, message) => {
+              if (kind === "success") {
+                setError("");
+                setSuccess(message);
+                window.setTimeout(() => setSuccess(""), 2200);
+              } else showError(message);
+            }}
+          />
+        )}
         {view === "rewards" && (
           <RewardsView
             ready={ready}
@@ -1098,7 +1260,7 @@ export default function App() {
             }}
           />
         )}
-        {view === "rewards" && success && (
+        {(view === "rewards" || view === "shared") && success && (
           <div className="successBox standalone" role="status">
             <CheckCircle2 size={18} />
             {success}
@@ -1249,7 +1411,7 @@ export default function App() {
         <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
         <NavButton active={view === "calendar"} label="Planner" onClick={() => openView("calendar")} icon={<CalendarDays />} />
         <NavButton active={view === "todo"} label="To-do" onClick={() => openView("todo")} icon={<span className="todoNavGlyph"><Check /></span>} />
-        <NavButton active={view === "rewards"} label="Rewards" onClick={() => openView("rewards")} icon={<Gift />} />
+        <NavButton active={view === "shared"} label="Shared" onClick={() => openView("shared")} icon={<UsersRound />} />
       </nav>
     </main>
   );
