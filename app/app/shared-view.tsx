@@ -28,6 +28,8 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
   const [creating,setCreating]=useState(false);
   const [name,setName]=useState("");
   const [kind,setKind]=useState("family");
+  const [email,setEmail]=useState("");
+  const [invitePlan,setInvitePlan]=useState<SharedPlan|null>(null);
 
   const load=useCallback(async()=>{
     if(!signedIn){setPlans([]);setInvites([]);return;}
@@ -63,6 +65,16 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
     finally{setLoading(false);}
   }
 
+  async function inviteByEmail(){
+    if(!invitePlan||!email.trim())return;
+    try{
+      const db=createClient();
+      const {error}=await db.rpc("create_shared_invite",{p_plan:invitePlan.id,p_email:email.trim(),p_role:"editor"});
+      if(error)throw error;
+      setEmail("");setInvitePlan(null);onNotice("success","Invitation created for "+email.trim()+".");
+    }catch(e){onNotice("error",e instanceof Error?e.message:"Could not create the invitation.");}
+  }
+
   async function sharePlan(plan:SharedPlan){
     try{
       const db=createClient();
@@ -82,7 +94,8 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
     <div className="sharedHero"><div><h1>Shared</h1><p>Events, plans and To-Dos you organise together.</p></div><button className="plannerFab" onClick={()=>setCreating(true)} aria-label="Create shared plan"><Plus/></button></div>
     {invites.length>0&&<><h2 className="sharedSectionTitle">Invitations</h2><div className="sharedList">{invites.map(i=><a className="sharedCard" key={i.id} href={`/share/${i.token}`}><span className="sharedIcon"><Link2/></span><span><b>{i.shared_plans?.name||"Shared plan"}</b><small>Invitation · {i.role}</small></span><ChevronRight/></a>)}</div></>}
     <h2 className="sharedSectionTitle">My groups</h2>
-    {loading&&!plans.length?<div className="sharedEmpty compact"><p>Loading shared plans…</p></div>:plans.length?<div className="sharedList">{plans.map(plan=>{const meta=kinds.find(k=>k.value===plan.kind);const Icon=meta?.icon||Users;return <div className="sharedCard" key={plan.id}><span className="sharedIcon"><Icon/></span><a className="sharedCardMain" href={`/shared/${plan.id}`}><b>{plan.name}</b><small>{meta?.label||"Shared"} plan</small></a><button className="iconButton" onClick={()=>sharePlan(plan)} aria-label={`Invite people to ${plan.name}`}><Share2/></button></div>})}</div>:<div className="sharedEmpty compact"><Users/><h2>No shared plans yet</h2><p>Create one for family, a class, team, trip, timetable or meals.</p><button className="button alt" onClick={()=>setCreating(true)}><Plus/> Create group</button></div>}
+    {loading&&!plans.length?<div className="sharedEmpty compact"><p>Loading shared plans…</p></div>:plans.length?<div className="sharedList">{plans.map(plan=>{const meta=kinds.find(k=>k.value===plan.kind);const Icon=meta?.icon||Users;return <div className="sharedCard" key={plan.id}><span className="sharedIcon"><Icon/></span><a className="sharedCardMain" href={`/shared/${plan.id}`}><b>{plan.name}</b><small>{meta?.label||"Shared"} plan</small></a><button className="iconButton" onClick={()=>setInvitePlan(plan)} aria-label={`Invite people to ${plan.name}`}><Share2/></button></div>})}</div>:<div className="sharedEmpty compact"><Users/><h2>No shared plans yet</h2><p>Create one for family, a class, team, trip, timetable or meals.</p><button className="button alt" onClick={()=>setCreating(true)}><Plus/> Create group</button></div>}
+    {invitePlan&&<div className="sharedModal" onClick={()=>setInvitePlan(null)}><section className="sharedSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}><div className="sheetHandle"/><h2>Invite to {invitePlan.name}</h2><p>Send a link anywhere, or restrict an invitation to one email address.</p><button className="button" onClick={()=>sharePlan(invitePlan)}><Share2/> Share invite link</button><label><span>Email invitation</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/></label><button className="button alt" disabled={!email.trim()} onClick={inviteByEmail}>Create email-specific invite</button></section></div>}
     {creating&&<div className="sharedModal" onClick={()=>setCreating(false)}><section className="sharedSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}><div className="sheetHandle"/><h2>Create a shared plan</h2><p>Keep it focused. You can invite people after creating it.</p><label><span>Name</span><input autoFocus maxLength={160} value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Sibande family"/></label><div className="sharedKindGrid">{kinds.map(k=>{const Icon=k.icon;return <button key={k.value} className={kind===k.value?"active":""} onClick={()=>setKind(k.value)}><Icon/><span>{k.label}</span></button>})}</div><button className="button" disabled={loading||!name.trim()} onClick={createPlan}>Create plan</button></section></div>}
   </section>;
 }
