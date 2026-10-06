@@ -29,6 +29,7 @@ import {
   Bell,
   ListChecks,
   Layers,
+  UsersRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ExtractionResult, ExtractedEvent } from "@/lib/extraction-types";
@@ -51,6 +52,7 @@ import { addExtractedEventToDevice, deviceCalendarAvailable } from "@/lib/native
 import { hapticSuccess } from "@/lib/native/haptics";
 import { shareTextNatively } from "@/lib/native/share";
 import PlannerView, { type PlannerRequest } from "./planner-view";
+import SharedView from "./shared-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
@@ -68,7 +70,7 @@ import {
 } from "@/lib/session";
 import { syncPushSubscription } from "@/lib/reminders";
 
-type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards";
+type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards" | "shared";
 type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
 const deviceTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const REFRESH_INTERVAL = 30_000;
@@ -79,7 +81,7 @@ function viewFromUrl(search: string): { view: View; tab?: PlannerRequest["tab"] 
   const tab = q.get("tab");
   if (v === "calendar" || v === "planner")
     return { view: "calendar", tab: tab === "reminders" || tab === "upcoming" || tab === "calendar" || tab === "today" ? tab : undefined };
-  if (v === "rewards" || v === "history" || v === "todo") return { view: v };
+  if (v === "rewards" || v === "history" || v === "todo" || v === "shared") return { view: v };
   return { view: "home" };
 }
 function greeting(timezone: string) {
@@ -1048,6 +1050,19 @@ export default function App() {
             }}
           />
         )}
+        {view === "shared" && (
+          <SharedView
+            signedIn={mode === "cloud"}
+            onSignIn={goToSignUp}
+            onNotice={(kind, message) => {
+              if (kind === "success") {
+                setError("");
+                setSuccess(message);
+                window.setTimeout(() => setSuccess(""), 2200);
+              } else showError(message);
+            }}
+          />
+        )}
         {view === "rewards" && (
           <RewardsView
             ready={ready}
@@ -1098,7 +1113,7 @@ export default function App() {
             }}
           />
         )}
-        {view === "rewards" && success && (
+        {(view === "rewards" || view === "shared") && success && (
           <div className="successBox standalone" role="status">
             <CheckCircle2 size={18} />
             {success}
@@ -1249,7 +1264,7 @@ export default function App() {
         <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
         <NavButton active={view === "calendar"} label="Planner" onClick={() => openView("calendar")} icon={<CalendarDays />} />
         <NavButton active={view === "todo"} label="To-do" onClick={() => openView("todo")} icon={<span className="todoNavGlyph"><Check /></span>} />
-        <NavButton active={view === "rewards"} label="Rewards" onClick={() => openView("rewards")} icon={<Gift />} />
+        <NavButton active={view === "shared"} label="Shared" onClick={() => openView("shared")} icon={<UsersRound />} />
       </nav>
     </main>
   );
