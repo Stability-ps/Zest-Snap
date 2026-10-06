@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search, History, Lock } from "lucide-react";
+import { UserRound, SlidersHorizontal, Bell, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search, History, Lock, Gift } from "lucide-react";
 import {
   getDataProvider,
   LocalDataProvider,
@@ -224,7 +224,7 @@ export default function Settings() {
         <h2 className="settingsSectionTitle">Plan & usage</h2>
         <section className="settingsGroup">
           <button type="button" className="settingsRow planUsageRow" onClick={()=>setSheet("pro")}><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Monthly scans <span className={isPro ? "planBadge pro" : "planBadge"}>{isPro ? "PRO" : "FREE"}</span></b><small>{usage ? `${usage.scans} of ${usage.allowance} ${isPro ? "" : "free "}scans used this month` : "Loading usage…"}</small>{!isPro&&<small className="upgradeHint">Upgrade for more scans</small>}</span><ChevronRight /></button>
-          <a className="settingsRow" href="/app?view=rewards"><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Zest Credits</b><small>View rewards and earned credits</small></span><ChevronRight /></a>
+          <a className="settingsRow" href="/app?view=rewards"><span className="settingsIcon"><Gift /></span><span className="settingsRowCopy"><b>Rewards & referrals</b><small>Credits, milestones and invite rewards</small></span><ChevronRight /></a>
         </section>
         <NativeAppSettings />
 
