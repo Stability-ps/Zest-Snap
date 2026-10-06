@@ -81,5 +81,47 @@ Deno.serve(async (req: Request) => {
     if (delivered) sent++; else { failed++; log("reminder_delivery_failed", { reminderId: reminder.id, reason: lastError }); }
   }
   if (due?.length) log("reminder_run", { claimed: due.length, sent, failed });
-  return Response.json({ ok: true, claimed: due?.length || 0, sent, failed });
+
+  // Daily briefing reuses the same push channel so there is no second notification service to operate.
+  let briefingsSent = 0, briefingsFailed = 0;
+  const { data: briefings, error: briefingClaimError } = await db.rpc("claim_due_daily_briefings", { p_limit: 100 });
+  if (briefingClaimError) log("briefing_claim_failed", { code: briefingClaimError.code });
+  for (const briefing of briefings || []) {
+    try {
+      const day = briefing.local_date as string;
+      const [plannerRes, sharedRes, subsRes] = await Promise.all([
+        db.from("planner_items").select("title,type,start_date,start_time,due_date,due_time,status")
+          .eq("user_id", briefing.user_id).eq("status","open")
+          .or(`start_date.eq.${day},due_date.eq.${day}`).limit(12),
+        briefing.include_shared
+          ? db.from("shared_plan_items").select("title,item_type,start_date,start_time,due_date,due_time,plan_id,shared_plans!inner(name),shared_plan_members!inner(user_id,status)")
+              .eq("shared_plan_members.user_id",briefing.user_id).eq("shared_plan_members.status","active").neq("status","cancelled")
+              .or(`start_date.eq.${day},due_date.eq.${day}`).limit(12)
+          : Promise.resolve({ data: [] as unknown[], error: null }),
+        db.from("push_subscriptions").select("id,endpoint,keys,failure_count").eq("user_id",briefing.user_id),
+      ]);
+      const personal = (plannerRes.data || []).filter((x:any)=>briefing.include_todos || x.type==="event");
+      const shared = (sharedRes.data || []).filter((x:any)=>briefing.include_meals || x.item_type!=="meal");
+      const all = [...personal,...shared] as any[];
+      if (!all.length) { await db.rpc("complete_daily_briefing",{p_user:briefing.user_id,p_ok:true}); continue; }
+      const names = all.slice(0,3).map(x=>x.title).filter(Boolean);
+      const body = names.join(" · ") + (all.length>3 ? ` · +${all.length-3} more` : "");
+      let delivered = false;
+      for (const sub of (subsRes.data || []) as Sub[]) {
+        try {
+          await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys },JSON.stringify({
+            title: `Today · ${all.length} ${all.length===1?"item":"items"}`, body, url:"/app?view=calendar&tab=upcoming", tag:"zest-daily-briefing-"+day,
+          }),{TTL:21600,urgency:"normal"});
+          delivered=true;
+        } catch { /* regular reminder delivery will clean dead subscriptions */ }
+      }
+      await db.rpc("complete_daily_briefing",{p_user:briefing.user_id,p_ok:delivered});
+      if(delivered)briefingsSent++;else briefingsFailed++;
+    } catch(e) {
+      briefingsFailed++; await db.rpc("complete_daily_briefing",{p_user:briefing.user_id,p_ok:false});
+      log("briefing_delivery_failed",{userId:briefing.user_id});
+    }
+  }
+  if (briefings?.length) log("briefing_run",{claimed:briefings.length,sent:briefingsSent,failed:briefingsFailed});
+  return Response.json({ ok: true, claimed: due?.length || 0, sent, failed, briefingsClaimed: briefings?.length || 0, briefingsSent, briefingsFailed });
 });
