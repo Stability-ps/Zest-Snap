@@ -1,9 +1,9 @@
-import type { ExtractedEvent } from "../extraction-types";
+import type { ExtractedEvent, ExtractionResult } from "../extraction-types";
 export type StoredScan = {
   id: string;
   fileName: string;
   scannedAt: string;
-  documentType: string;
+  documentType: ExtractionResult["documentType"];
   summary: string;
   events: ExtractedEvent[];
   warnings?: string[];
