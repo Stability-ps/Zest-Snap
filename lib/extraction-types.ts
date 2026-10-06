@@ -11,8 +11,8 @@ export type ExtractedEvent = {
   confidence: number;
   confidenceReason: string;
   sourceText: string;
-  dayOfWeek: string;
-  recurrence: "none" | "weekly";
+  dayOfWeek?: string;
+  recurrence?: "none" | "weekly";
   category:
     | "appointment"
     | "meeting"
@@ -25,7 +25,7 @@ export type ExtractedEvent = {
 };
 
 export type ExtractionResult = {
-  documentType: "event" | "schedule" | "timetable" | "exam_timetable" | "task_list" | "school_notice" | "meal_schedule" | "travel" | "other";
+  documentType: string;
   summary: string;
   events: ExtractedEvent[];
   warnings: string[];
