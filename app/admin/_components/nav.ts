@@ -22,6 +22,7 @@ export const adminNav: NavGroup[] = [
   { label: "Product", items: [
     { href: "/admin/scans", label: "Scans", icon: "ScanLine" },
     { href: "/admin/planner", label: "Planner & Tasks", icon: "ListChecks" },
+    { href: "/admin/shared", label: "Shared", icon: "Share2" },
     { href: "/admin/reminders", label: "Reminders", icon: "BellRing" },
     { href: "/admin/calendar", label: "Calendar", icon: "CalendarDays" },
     { href: "/admin/ai", label: "AI Usage", icon: "Sparkles" },
