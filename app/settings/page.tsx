@@ -36,12 +36,13 @@ export default function Settings() {
     [message, setMessage] = useState(""),
     [editingDisplayName, setEditingDisplayName] = useState(false),
     [busy, setBusy] = useState(false),
-    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|"support"|"report"|"pro"|null>(null),
+    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|"support"|"report"|"pro"|"briefing"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
     [exportStatus, setExportStatus] = useState<{ ok: boolean; text: string } | null>(null),
     [accountEmail, setAccountEmail] = useState(""),
     [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email?: string | null }>({ connected: false }),
-    [googleCalendarLoading, setGoogleCalendarLoading] = useState(true);
+    [googleCalendarLoading, setGoogleCalendarLoading] = useState(true),
+    [dailyBriefing, setDailyBriefing] = useState({enabled:false,localTime:"07:00",includeTodos:true,includeShared:true,includeMeals:true});
   const displayNameInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (sheet !== "export") setExportStatus(null);
@@ -74,6 +75,9 @@ export default function Settings() {
           ]);
           setAccountEmail(userResult.data.user?.email || "");
           setGoogleCalendar(calendarResult);
+          const { data: briefingRows } = await db.rpc("get_daily_briefing_settings");
+          const briefing = briefingRows?.[0];
+          if (briefing) setDailyBriefing({enabled:Boolean(briefing.enabled),localTime:String(briefing.local_time||"07:00").slice(0,5),includeTodos:Boolean(briefing.include_todos),includeShared:Boolean(briefing.include_shared),includeMeals:Boolean(briefing.include_meals)});
           setGoogleCalendarLoading(false);
         } else {
           setGoogleCalendarLoading(false);
@@ -194,6 +198,14 @@ export default function Settings() {
   const isPro = subscriptionPlan !== "free";
   const q = sheetSearch.trim().toLowerCase();
   const filteredTimezones = (q ? timezones.filter(([value, label]) => label.toLowerCase().includes(q) || value.toLowerCase().includes(q.replaceAll(" ", "_"))) : timezones).slice(0, 200);
+  async function saveDailyBriefing(next= dailyBriefing) {
+    if (provider?.mode !== "cloud") { setMessage("Sign in to use the Daily Briefing."); return; }
+    setDailyBriefing(next);
+    const db=createClient();
+    const {error}=await db.rpc("save_daily_briefing_settings",{p_enabled:next.enabled,p_local_time:next.localTime+":00",p_include_todos:next.includeTodos,p_include_shared:next.includeShared,p_include_meals:next.includeMeals});
+    setMessage(error ? "Could not update Daily Briefing." : next.enabled ? "Daily Briefing updated." : "Daily Briefing turned off.");
+  }
+
   return (
     <main className="settingsPage">
       <div className="settingsWrap settingsNative">
@@ -212,6 +224,7 @@ export default function Settings() {
           <button type="button" className="settingsRow" onClick={()=>{setSheetSearch("");setSheet("timezone");}}><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Timezone</b></span><span className="settingsValue">{timezoneLabel}</span><ChevronRight /></button>
           <button type="button" className="settingsRow" onClick={()=>setSheet("region")}><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Language & region</b><small>Interface is currently English</small></span><span className="settingsValue">{localeLabel}</span><ChevronRight /></button>
           <label className="settingsRow"><span className="settingsIcon"><Bell /></span><span className="settingsRowCopy"><b>Upcoming insights</b><small>Helpful reminders inside Zest</small></span><input className="settingsToggle" type="checkbox" checked={profile.reminders} onChange={e=>saveProfile({...profile,reminders:e.target.checked})} /></label>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("briefing")}><span className="settingsIcon"><Bell /></span><span className="settingsRowCopy"><b>Daily Briefing</b><small>{provider?.mode!=="cloud"?"Sign in to get a morning agenda":dailyBriefing.enabled?`Every day at ${dailyBriefing.localTime}`:"Off · get your day in one notification"}</small></span><ChevronRight /></button>
         </section>
 
         <h2 className="settingsSectionTitle">Calendar & history</h2>
@@ -249,10 +262,11 @@ export default function Settings() {
           <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
             <div className="settingsSheetTop">
               <div>
-                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="export"?"Export my data":sheet==="delete"?"Delete your account?":sheet==="support"?"Contact support":sheet==="report"?"Report a problem":sheet==="pro"?"Unlock more with Zest Snap Pro":"Clear device data?"}</h2>
+                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="briefing"?"Daily Briefing":sheet==="export"?"Export my data":sheet==="delete"?"Delete your account?":sheet==="support"?"Contact support":sheet==="report"?"Report a problem":sheet==="pro"?"Unlock more with Zest Snap Pro":"Clear device data?"}</h2>
                 {sheet==="account"&&<p>You’re signed in. Manage this account without signing in again.</p>}
                 {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
+                {sheet==="briefing"&&<p>Choose when Zest should send one compact summary of today’s events, To-Dos and shared plans.</p>}
                 {sheet==="calendar"&&<p>{googleCalendarLoading ? "Checking your Google Calendar connection…" : googleCalendar.connected ? "Google Calendar is connected. Zest can add confirmed scan events directly — no file download or manual import." : "Connect Google Calendar once to add confirmed scan events directly. Until then, Zest opens a pre-filled Google Calendar event for you to save; it does not download a calendar file."}</p>}
                 {sheet==="export"&&<p>Choose a readable PDF for normal use, or JSON if you need the complete machine-readable copy of your Zest data.</p>}
                 {sheet==="clear"&&<p>{provider?.mode==="cloud"?"This removes cached scans, Planner, reminders and preferences from this device and signs you out. Your account and cloud data are not deleted.":"This permanently clears Zest scans, Planner, reminders and preferences stored on this device. It can’t be undone."}</p>}
@@ -292,6 +306,7 @@ export default function Settings() {
             </>}
             {sheet==="region"&&<div className="settingsChoiceList">{localeOptions.map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,locale:value});setSheet(null);}}><span>{label}</span>{profile.locale===value&&<Check/>}</button>)}</div>}
             {sheet==="retention"&&<div className="settingsChoiceList">{([[30,"30 days"],[90,"90 days"],[365,"1 year"],[0,"Until deleted"]] as const).map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,retentionDays:value});setSheet(null);}}><span>{label}</span>{profile.retentionDays===value&&<Check/>}</button>)}</div>}
+            {sheet==="briefing"&&<div className="settingsSheetActions"><label className="settingsRow"><span className="settingsRowCopy"><b>Daily Briefing</b><small>One useful notification, not another screen.</small></span><input className="settingsToggle" type="checkbox" checked={dailyBriefing.enabled} onChange={e=>saveDailyBriefing({...dailyBriefing,enabled:e.target.checked})}/></label><label className="settingsRow"><span className="settingsRowCopy"><b>Time</b><small>Uses your Zest timezone</small></span><input type="time" value={dailyBriefing.localTime} onChange={e=>setDailyBriefing({...dailyBriefing,localTime:e.target.value})} onBlur={()=>saveDailyBriefing()}/></label><label className="settingsRow"><span className="settingsRowCopy"><b>Include To-Dos</b></span><input className="settingsToggle" type="checkbox" checked={dailyBriefing.includeTodos} onChange={e=>saveDailyBriefing({...dailyBriefing,includeTodos:e.target.checked})}/></label><label className="settingsRow"><span className="settingsRowCopy"><b>Include shared plans</b></span><input className="settingsToggle" type="checkbox" checked={dailyBriefing.includeShared} onChange={e=>saveDailyBriefing({...dailyBriefing,includeShared:e.target.checked})}/></label><label className="settingsRow"><span className="settingsRowCopy"><b>Include meals</b></span><input className="settingsToggle" type="checkbox" checked={dailyBriefing.includeMeals} onChange={e=>saveDailyBriefing({...dailyBriefing,includeMeals:e.target.checked})}/></label></div>}
             {sheet==="calendar"&&<div className="settingsSheetActions">
               {provider?.mode!=="cloud" ? <a className="button" href="/login?next=%2Fsettings">Sign in to connect Google Calendar</a> : googleCalendarLoading ? <button className="button" disabled>Checking connection…</button> : googleCalendar.connected ? <>
                 <button className="button alt" disabled={busy} onClick={()=>run(async()=>{const r=await fetch("/api/calendar/google/disconnect",{method:"POST"});if(!r.ok)throw new Error("Could not disconnect Google Calendar.");setGoogleCalendar({connected:false});setMessage("Google Calendar disconnected");})}>Disconnect Google Calendar</button>
