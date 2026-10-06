@@ -71,7 +71,7 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
       const db=createClient();
       const {error}=await db.rpc("create_shared_invite",{p_plan:invitePlan.id,p_email:email.trim(),p_role:"editor"});
       if(error)throw error;
-      setEmail("");setInvitePlan(null);onNotice("success","Invitation created for "+email.trim()+".");
+      const invited=email.trim();setEmail("");setInvitePlan(null);onNotice("success","Invitation created for "+invited+".");
     }catch(e){onNotice("error",e instanceof Error?e.message:"Could not create the invitation.");}
   }
 
