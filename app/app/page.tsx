@@ -69,6 +69,7 @@ import {
   setActiveUser,
 } from "@/lib/session";
 import { syncPushSubscription } from "@/lib/reminders";
+import { materializeWeeklySchedule, weeklyOccurrences } from "@/lib/schedule";
 
 type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards" | "shared";
 type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
@@ -125,6 +126,8 @@ export default function App() {
   const router = useRouter();
   // The static HTML can't know who is signed in, so the greeting stays invisible until identity is known.
   const [greetingReady, setGreetingReady] = useState(false);
+  const [scheduleStart, setScheduleStart] = useState("");
+  const [scheduleEnd, setScheduleEnd] = useState("");
 
   const showError = useCallback((message: string, action: "signup" | "plans" | null = null) => {
     setError(message);
@@ -709,11 +712,71 @@ export default function App() {
     }
   }
 
+  async function saveTimetableToPlanner() {
+    if (!result || !activeScan || !identity) return;
+    if (!scheduleStart || !scheduleEnd || scheduleEnd < scheduleStart) return showError("Choose the timetable start and end dates first.");
+    setBusy(true);
+    try {
+      const planner = await sharedPlannerStore(identity);
+      let saved = 0;
+      for (const raw of result.events) {
+        const event = materializeWeeklySchedule([raw], scheduleStart, scheduleEnd)[0];
+        const dates = event.recurrence === "weekly" ? weeklyOccurrences(event, scheduleStart, scheduleEnd) : event.startDate ? [event.startDate] : [];
+        for (const date of dates) {
+          const occurrence = { ...event, startDate: date, endDate: date, recurrence: "none" as const };
+          await planner.upsert(extractionToPlannerSuggestion(occurrence, activeScan).item);
+          saved++;
+        }
+      }
+      setSuccess(`${saved} timetable entries saved to Planner.`);
+      openView("calendar", { tab: "upcoming" });
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not save this timetable.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createExamStudyPlan() {
+    if (!result || !activeScan || !identity) return;
+    const exams = result.events.filter((e) => e.startDate);
+    if (!exams.length) return showError("Review the exam dates first.");
+    setBusy(true);
+    try {
+      const planner = await sharedPlannerStore(identity);
+      let created = 0;
+      for (const exam of exams) {
+        const examDate = new Date(exam.startDate + "T12:00:00Z");
+        for (const [days, label] of [[14, "Start revision"], [7, "Practice questions"], [2, "Final review"]] as const) {
+          const due = new Date(examDate); due.setUTCDate(due.getUTCDate() - days);
+          if (due.getTime() < Date.now() - 86400000) continue;
+          const now = new Date().toISOString();
+          await planner.upsert({
+            id: crypto.randomUUID(), type: "task", title: `${label}: ${exam.title}`,
+            description: `Study task created from the exam timetable for ${exam.title} on ${exam.startDate}.`,
+            startDate: "", endDate: "", startTime: "", endTime: "", dueDate: due.toISOString().slice(0,10), dueTime: "",
+            allDay: true, timezone: exam.timezone || timezone, location: "", status: "open", source: "scan",
+            sourceScanId: activeScan, createdAt: now, updatedAt: now,
+          });
+          created++;
+        }
+      }
+      setSuccess(`${created} study To-Dos added.`);
+      openView("todo");
+    } catch (e) { showError(e instanceof Error ? e.message : "Could not create the study plan."); }
+    finally { setBusy(false); }
+  }
+
   async function createSharedPlanFromScan(documentType: ExtractionResult["documentType"]) {
     if (!result) return;
     if (mode !== "cloud") return goToSignUp();
-    const usable = result.events.filter((event) => event.startDate);
-    if (!usable.length) return showError("Review the timetable dates first. Zest will not guess missing term or semester dates.");
+    let usable = result.events;
+    if (documentType === "timetable") {
+      if (!scheduleStart || !scheduleEnd || scheduleEnd < scheduleStart) return showError("Choose the timetable start and end dates first.");
+      usable = materializeWeeklySchedule(result.events, scheduleStart, scheduleEnd);
+    }
+    usable = usable.filter((event) => event.startDate);
+    if (!usable.length) return showError("Review the schedule dates first. Zest will not guess missing dates.");
     setBusy(true);
     try {
       const db = createClient();
@@ -736,7 +799,7 @@ export default function App() {
         all_day: event.allDay,
         timezone: event.timezone || timezone,
         location: event.location || "",
-        recurrence: event.recurrence === "weekly" ? { frequency: "weekly", dayOfWeek: event.dayOfWeek || "" } : {},
+        recurrence: event.recurrence === "weekly" ? { frequency: "weekly", dayOfWeek: event.dayOfWeek || "", until: scheduleEnd || null } : {},
         source: "scan",
       }));
       const { error: itemError } = await db.from("shared_plan_items").insert(rows);
@@ -1041,14 +1104,22 @@ export default function App() {
 
             {(result.documentType === "timetable" || result.documentType === "exam_timetable" || result.documentType === "meal_schedule") && (
               <div className="detectedPlanBanner">
-                <div>
+                <div className="detectedPlanCopy">
                   <span className="eyebrow">{result.documentType === "exam_timetable" ? "EXAM TIMETABLE" : result.documentType === "meal_schedule" ? "MEAL SCHEDULE" : "TIMETABLE"} DETECTED</span>
-                  <b>{result.events.length} ${result.documentType === "exam_timetable" ? "exams" : result.documentType === "meal_schedule" ? "meal items" : "schedule items"} found</b>
-                  <small>Review the dates first. Zest never invents missing term or semester dates.</small>
+                  <b>{result.events.length} {result.documentType === "exam_timetable" ? "exams" : result.documentType === "meal_schedule" ? "meal items" : "schedule items"} found</b>
+                  <small>{result.documentType === "timetable" ? "Set the term or semester dates once, then Zest builds the recurring schedule." : "Review the dates before adding anything."}</small>
+                  {result.documentType === "timetable" && <div className="scheduleRangeFields">
+                    <label><span>Starts</span><input type="date" value={scheduleStart} onChange={e=>setScheduleStart(e.target.value)} /></label>
+                    <label><span>Ends</span><input type="date" value={scheduleEnd} min={scheduleStart||undefined} onChange={e=>setScheduleEnd(e.target.value)} /></label>
+                  </div>}
                 </div>
-                <button className="button alt small" onClick={() => createSharedPlanFromScan(result.documentType)}>
-                  <UsersRound size={16} /> Save as shared plan
-                </button>
+                <div className="detectedPlanActions">
+                  {result.documentType === "timetable" && <button className="button alt small" disabled={busy||!scheduleStart||!scheduleEnd} onClick={saveTimetableToPlanner}><CalendarDays size={16}/> Add schedule to Planner</button>}
+                  {result.documentType === "exam_timetable" && <button className="button alt small" disabled={busy} onClick={createExamStudyPlan}><ListChecks size={16}/> Create study To-Dos</button>}
+                  <button className="button alt small" disabled={busy||(result.documentType==="timetable"&&(!scheduleStart||!scheduleEnd))} onClick={() => createSharedPlanFromScan(result.documentType)}>
+                    <UsersRound size={16} /> Save as shared plan
+                  </button>
+                </div>
               </div>
             )}
 
