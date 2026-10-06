@@ -39,7 +39,7 @@ export function validateExtraction(value: unknown): ExtractionResult {
     ] as const)
       if (typeof e[k] !== "string" || e[k].length > 10000)
         throw new Error("invalid_output");
-    if (!["none","weekly"].includes(e.recurrence)) throw new Error("invalid_output");
+    if (e.recurrence !== undefined && !["none","weekly"].includes(e.recurrence)) throw new Error("invalid_output");
     if (e.dayOfWeek && !["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].includes(e.dayOfWeek.toLowerCase())) throw new Error("invalid_output");
     for (const k of ["startDate", "endDate"] as const)
       if (e[k])
