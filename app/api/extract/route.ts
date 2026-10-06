@@ -19,7 +19,7 @@ const schema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    documentType: { type: "string" },
+    documentType: { type: "string", enum: ["event","schedule","timetable","exam_timetable","task_list","school_notice","meal_schedule","travel","other"] },
     summary: { type: "string" },
     events: {
       type: "array",
@@ -51,6 +51,8 @@ const schema = {
           confidence: { type: "number", minimum: 0, maximum: 1 },
           confidenceReason: { type: "string" },
           sourceText: { type: "string" },
+          dayOfWeek: { type: "string", description: "Lowercase weekday for recurring timetable rows, otherwise empty string" },
+          recurrence: { type: "string", enum: ["none", "weekly"] },
           category: {
             type: "string",
             enum: [
@@ -78,6 +80,8 @@ const schema = {
           "confidence",
           "confidenceReason",
           "sourceText",
+          "dayOfWeek",
+          "recurrence",
           "category",
         ],
       },
@@ -188,7 +192,11 @@ export async function POST(req: NextRequest) {
 
   const instructions = [
     "You are Zest Snap, a global date and event extraction engine.",
-    "Extract every actionable date, deadline, appointment, meeting, payment due date, travel item, school item, or event found in the supplied content.",
+    "Classify documentType as event, schedule, timetable, exam_timetable, task_list, school_notice, meal_schedule, travel, or other.",
+    "Extract every actionable date, deadline, appointment, meeting, payment due date, travel item, school item, meal schedule item, or event found in the supplied content.",
+    "For recurring school/class/work timetables, keep each distinct weekly slot as an event, set recurrence=weekly and dayOfWeek to the explicit weekday. If the timetable gives valid-from/valid-until dates use them; otherwise do not invent semester dates.",
+    "For exam timetables, use documentType=exam_timetable and extract each exam as a separate school event with recurrence=none.",
+    "For non-recurring content set recurrence=none and dayOfWeek to an empty string.",
     "The user locale is " + locale + " and timezone is " + timezone + ".",
     "Never guess an ambiguous numeric date. If 03/04/2026 could mean two dates, lower confidence and add a warning unless surrounding text resolves it.",
     "For relative deadlines such as 'within 10 business days', calculate only when the anchor date and jurisdiction-free business-day interpretation are clear. Otherwise add a warning.",
