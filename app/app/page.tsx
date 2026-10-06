@@ -709,6 +709,46 @@ export default function App() {
     }
   }
 
+  async function createSharedPlanFromScan(documentType: ExtractionResult["documentType"]) {
+    if (!result) return;
+    if (mode !== "cloud") return goToSignUp();
+    const usable = result.events.filter((event) => event.startDate);
+    if (!usable.length) return showError("Review the timetable dates first. Zest will not guess missing term or semester dates.");
+    setBusy(true);
+    try {
+      const db = createClient();
+      const kind = documentType === "meal_schedule" ? "meals" : "timetable";
+      const name = documentType === "exam_timetable" ? "Exam timetable" : documentType === "meal_schedule" ? "Meal plan" : "Timetable";
+      const { data: planId, error: planError } = await db.rpc("create_shared_plan", { p_name: name, p_kind: kind });
+      if (planError) throw planError;
+      const { data: { user } } = await db.auth.getUser();
+      if (!user) throw new Error("Sign in to save a shared plan.");
+      const rows = usable.map((event) => ({
+        plan_id: planId,
+        creator_id: user.id,
+        item_type: documentType === "meal_schedule" ? "meal" : "event",
+        title: event.title,
+        description: event.description || "",
+        start_date: event.startDate || null,
+        end_date: event.endDate || event.startDate || null,
+        start_time: event.startTime || null,
+        end_time: event.endTime || null,
+        all_day: event.allDay,
+        timezone: event.timezone || timezone,
+        location: event.location || "",
+        recurrence: event.recurrence === "weekly" ? { frequency: "weekly", dayOfWeek: event.dayOfWeek || "" } : {},
+        source: "scan",
+      }));
+      const { error: itemError } = await db.from("shared_plan_items").insert(rows);
+      if (itemError) throw itemError;
+      window.location.assign(`/shared/${planId}`);
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not create the shared plan.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function shareExtractedEvent(event: ExtractedEvent) {
     if (mode !== "cloud") return goToSignUp();
     try {
@@ -998,6 +1038,19 @@ export default function App() {
                 );
               })}
             </div>
+
+            {(result.documentType === "timetable" || result.documentType === "exam_timetable" || result.documentType === "meal_schedule") && (
+              <div className="detectedPlanBanner">
+                <div>
+                  <span className="eyebrow">{result.documentType === "exam_timetable" ? "EXAM TIMETABLE" : result.documentType === "meal_schedule" ? "MEAL SCHEDULE" : "TIMETABLE"} DETECTED</span>
+                  <b>{result.events.length} ${result.documentType === "exam_timetable" ? "exams" : result.documentType === "meal_schedule" ? "meal items" : "schedule items"} found</b>
+                  <small>Review the dates first. Zest never invents missing term or semester dates.</small>
+                </div>
+                <button className="button alt small" onClick={() => createSharedPlanFromScan(result.documentType)}>
+                  <UsersRound size={16} /> Save as shared plan
+                </button>
+              </div>
+            )}
 
             <div className="stickyAction">
               <div>
