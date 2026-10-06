@@ -25,7 +25,7 @@ export type ExtractedEvent = {
 };
 
 export type ExtractionResult = {
-  documentType: string;
+  documentType: "event" | "schedule" | "timetable" | "exam_timetable" | "task_list" | "school_notice" | "meal_schedule" | "travel" | "other";
   summary: string;
   events: ExtractedEvent[];
   warnings: string[];
