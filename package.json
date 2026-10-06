@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test tests/*.test.ts lib/*.test.ts",
     "prebuild": "node scripts/prepare-sw.mjs",
     "predev": "node scripts/prepare-sw.mjs",
     "mobile:sync": "node scripts/mobile-sync.mjs",
