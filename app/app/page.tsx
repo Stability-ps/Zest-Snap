@@ -709,6 +709,22 @@ export default function App() {
     }
   }
 
+  async function shareExtractedEvent(event: ExtractedEvent) {
+    if (mode !== "cloud") return goToSignUp();
+    try {
+      const db = createClient();
+      const { data, error } = await db.rpc("create_public_event_share", { p_event: event });
+      if (error) throw error;
+      const url = `${window.location.origin}/share/${data}`;
+      const text = `${event.title}\n${event.startDate}${event.startTime ? " · " + event.startTime : ""}\n${url}`;
+      if (await shareTextNatively({ title: event.title, text, url })) return;
+      await navigator.clipboard.writeText(url);
+      setSuccess("Share link copied.");
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not share this event.");
+    }
+  }
+
   const goToSignUp = () => router.push("/login?mode=signup&next=" + encodeURIComponent(window.location.pathname + window.location.search));
 
   return (
@@ -968,6 +984,13 @@ export default function App() {
                         >
                           <CalendarDays size={16} />
                           {duplicate ? "In your agenda" : "Add to calendar"}
+                        </button>
+                        <button
+                          className="button alt small"
+                          onClick={() => shareExtractedEvent(event)}
+                        >
+                          <UsersRound size={16} />
+                          Share
                         </button>
                       </div>
                     </div>
