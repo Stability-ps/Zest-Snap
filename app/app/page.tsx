@@ -48,6 +48,8 @@ import {
 import { eventFingerprint, validateEvent } from "@/lib/events";
 import { googleCalendarUrl } from "@/lib/google-calendar";
 import { isNative } from "@/lib/native/runtime";
+import { hasNativeSpeech, startNativeSpeech, stopNativeSpeech } from "@/lib/native/speech";
+import { blockedPermissionHelp } from "@/lib/native/permissions";
 import { CaptureCancelled, capturePhoto, nativeCameraAvailable } from "@/lib/native/camera";
 import { addExtractedEventToDevice, deviceCalendarAvailable } from "@/lib/native/calendar";
 import { hapticSuccess } from "@/lib/native/haptics";
@@ -837,14 +839,23 @@ export default function App() {
   }
 
   function closeVoicePlanner() {
+    stopNativeSpeech().catch(() => undefined);
     try { voiceRecognition.current?.stop?.(); } catch {}
     voiceRecognition.current = null;
     setVoiceListening(false);
     setVoiceOpen(false);
   }
 
-  function toggleVoiceListening() {
-    if (voiceListening) { try { voiceRecognition.current?.stop?.(); } catch {} return; }
+  async function toggleVoiceListening() {
+    if (voiceListening) { stopNativeSpeech().catch(() => undefined); try { voiceRecognition.current?.stop?.(); } catch {} return; }
+    if (hasNativeSpeech()) {
+      const committed = voiceText.trim();
+      setVoiceListening(true);
+      const started = await startNativeSpeech(locale || navigator.language || "en", (heard) => setVoiceText((committed + " " + heard).trim()), () => setVoiceListening(false));
+      if (started === "started") return;
+      setVoiceListening(false);
+      return showError(started === "denied" ? blockedPermissionHelp("microphone") + " You can still type your plan." : "Voice input isn't available on this device. You can still type your plan.");
+    }
     const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!Recognition) return showError("Voice input is not available in this browser. You can still type your plan.");
     const recognition = new Recognition();
@@ -862,7 +873,10 @@ export default function App() {
       }
       setVoiceText((committed + " " + interim).trim());
     };
-    recognition.onerror = (event: any) => { if (event?.error !== "aborted" && event?.error !== "no-speech") showError("I couldn’t hear that clearly. Try again or type your plan."); };
+    recognition.onerror = (event: any) => {
+      if (event?.error === "not-allowed" || event?.error === "service-not-allowed") return showError("Microphone access is blocked for this site. Allow it in your browser settings, or type your plan.");
+      if (event?.error !== "aborted" && event?.error !== "no-speech") showError("I couldn’t hear that clearly. Try again or type your plan.");
+    };
     recognition.onend = () => { voiceRecognition.current = null; setVoiceListening(false); };
     voiceRecognition.current = recognition;
     setVoiceListening(true);
@@ -873,6 +887,7 @@ export default function App() {
     const text = voiceText.trim();
     if (!text) return showError("Say or type what you want to plan first.");
     if (mode !== "cloud") return goToSignUp();
+    stopNativeSpeech().catch(() => undefined);
     try { voiceRecognition.current?.stop?.(); } catch {}
     setVoiceBusy(true); setError(""); setSuccess("");
     try {
