@@ -92,7 +92,7 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
       const {data,error}=await db.rpc("create_shared_invite",{p_plan:invitePlan.id,p_email:invited,p_role:"editor"});
       if(error)throw error;
       // Zest does not send email itself, so hand the personal link to the share sheet (or clipboard).
-      const url=`${window.location.origin}/share/${data}`;
+      const url=`https://app.zestsnap.app/share/${data}`;
       const text=`Join “${invitePlan.name}” on Zest Snap (sign in as ${invited}): ${url}`;
       setEmail("");setInvitePlan(null);
       if(await shareTextNatively({title:invitePlan.name,text,url}))return onNotice("success","Invitation for "+invited+" is ready to send.");
@@ -106,7 +106,7 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
       const db=createClient();
       const {data,error}=await db.rpc("create_shared_invite",{p_plan:plan.id,p_email:null,p_role:"editor"});
       if(error)throw error;
-      const url=`${window.location.origin}/share/${data}`;
+      const url=`https://app.zestsnap.app/share/${data}`;
       const text=`Join “${plan.name}” on Zest Snap: ${url}`;
       if(await shareTextNatively({title:plan.name,text,url})) return;
       await navigator.clipboard.writeText(url);
