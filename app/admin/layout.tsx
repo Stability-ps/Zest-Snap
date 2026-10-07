@@ -20,10 +20,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       buildLabel={sha ? sha.slice(0, 7) : "local"}
     >
       {!admin.schemaReady && (
-        <div className="ad-notice warn" role="status">
+        <div className="zadm-notice warn" role="status">
           <div>
             <b>Admin database upgrade pending</b>
-            Apply migration <span className="ad-mono">20261005090000_admin_console.sql</span> to enable analytics, support, audit logging and roles. Existing data is untouched.
+            Apply migration <span className="zadm-mono">20261005090000_admin_console.sql</span> to enable analytics, support, audit logging and roles. Existing data is untouched.
           </div>
         </div>
       )}

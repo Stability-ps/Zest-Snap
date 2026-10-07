@@ -193,6 +193,8 @@ export default function Settings() {
   const wantsZones = sheet === "timezone";
   const timezones = useMemo(() => (wantsZones ? allTimezones() : []), [wantsZones]);
   const timezoneLabel = zoneLabel(profile.timezone);
+  const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const timezoneMismatch = Boolean(deviceTimezone && profile.timezone && deviceTimezone !== profile.timezone);
   const localeLabel = localeOptions.find(([value])=>value===profile.locale)?.[1] || "Automatic";
   const retentionLabel = profile.retentionDays===0 ? "Until deleted" : profile.retentionDays===365 ? "1 year" : profile.retentionDays+" days";
   const isPro = subscriptionPlan !== "free";
@@ -301,6 +303,7 @@ export default function Settings() {
               {provider?.mode==="cloud"?<button className="button" onClick={()=>setSheet("account")}>Manage account</button>:<a className="button" href="/login?next=%2Fsettings">Sign in to sync</a>}
             </div>}
             {sheet==="timezone"&&<>
+              {timezoneMismatch&&<button className="settingsRow" type="button" onClick={()=>{saveProfile({...profile,timezone:deviceTimezone});setSheet(null);}}><span className="settingsRowCopy"><b>Use this device’s timezone</b><small>{zoneLabel(deviceTimezone)}</small></span><Check/></button>}
               <label className="settingsSheetSearch"><Search/><input autoFocus value={sheetSearch} onChange={e=>setSheetSearch(e.target.value)} placeholder="Search city or timezone" /></label>
               <div className="settingsChoiceList">{filteredTimezones.map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,timezone:value});setSheet(null);}}><span>{label}</span>{profile.timezone===value&&<Check/>}</button>)}</div>
             </>}

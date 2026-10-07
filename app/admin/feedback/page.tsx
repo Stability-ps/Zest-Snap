@@ -16,17 +16,17 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
   const page = pageOf(params);
   const status = statuses.some(([k]) => k && k === params.status) ? params.status : null;
   const res = await adminRpc<any>("admin_feedback", { p_from: iso(range.from), p_to: iso(range.to), p_rating: null, p_status: status, p_plan: null, p_q: params.q || null, p_limit: PAGE, p_offset: page * PAGE });
-  const head = <PageHeader title="Feedback" description={`What people tell us, and what we did about it · ${range.label}`} actions={<Link className="ad-btn" href="/admin/ratings">Ratings overview</Link>} />;
+  const head = <PageHeader title="Feedback" description={`What people tell us, and what we did about it · ${range.label}`} actions={<Link className="zadm-btn" href="/admin/ratings">Ratings overview</Link>} />;
   if (res.error) return <>{head}<Card><LoadError error={res.error} retryHref="/admin/feedback" /></Card></>;
   const byStatus = res.data.by_status || {};
   return (
     <>
       {head}
       <Card flush>
-        <form className="ad-toolbar" action="/admin/feedback">
-          <input className="ad-input" type="search" name="q" defaultValue={params.q || ""} placeholder="Search feedback text" aria-label="Search feedback" />
+        <form className="zadm-toolbar" action="/admin/feedback">
+          <input className="zadm-input" type="search" name="q" defaultValue={params.q || ""} placeholder="Search feedback text" aria-label="Search feedback" />
           {status && <input type="hidden" name="status" value={status} />}
-          <button className="ad-btn">Search</button>
+          <button className="zadm-btn">Search</button>
         </form>
         <div style={{ padding: "12px 18px" }}>
           <Chips current={status || ""} items={statuses.map(([k, l]) => ({ key: k, label: l, href: linkWith("/admin/feedback", params, { status: k || null }), count: k ? Number(byStatus[k] || 0) : undefined }))} />

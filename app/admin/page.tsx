@@ -25,7 +25,7 @@ export default async function Overview({ searchParams }: { searchParams: SearchP
     <PageHeader
       title={`Good ${new Date().getUTCHours() < 12 ? "morning" : new Date().getUTCHours() < 18 ? "afternoon" : "evening"}${admin.name ? `, ${admin.name.split(" ")[0]}` : ""}`}
       description={`Zest Snap at a glance · ${range.label}. Changes compare with the previous ${range.key === "today" ? "day" : "period of the same length"}.`}
-      actions={<Link className="ad-btn" href="/admin/exports">Export data</Link>}
+      actions={<Link className="zadm-btn" href="/admin/exports">Export data</Link>}
     />
   );
   if (!admin.schemaReady) return <>{header}<Card><LoadError error={{ code: "not_ready", message: "" }} /></Card></>;
@@ -63,20 +63,20 @@ export default async function Overview({ searchParams }: { searchParams: SearchP
       {header}
 
       <Card title="What needs attention today" description="Live — not affected by the date range."
-        actions={<Link className="ad-btn ad-btn-sm" href="/admin/health">System health</Link>}>
+        actions={<Link className="zadm-btn zadm-btn-sm" href="/admin/health">System health</Link>}>
         {attention.length ? (
-          <div className="ad-list" style={{ margin: "-6px -18px -10px" }}>
+          <div className="zadm-list" style={{ margin: "-6px -18px -10px" }}>
             {attention.map((i) => (
-              <Link key={i.label} href={i.href} className="ad-list-row">
-                <AlertTriangle size={16} color={i.tone === "bad" ? "var(--ad-bad)" : i.tone === "warn" ? "var(--ad-warn)" : "var(--ad-info)"} aria-hidden />
+              <Link key={i.label} href={i.href} className="zadm-list-row">
+                <AlertTriangle size={16} color={i.tone === "bad" ? "var(--zadm-bad)" : i.tone === "warn" ? "var(--zadm-warn)" : "var(--zadm-info)"} aria-hidden />
                 <b style={{ minWidth: 28, fontVariantNumeric: "tabular-nums" }}>{fmtNumber(i.n)}</b>
                 <span className="grow">{i.label}</span>
-                <span className="ad-sub">Open →</span>
+                <span className="zadm-sub">Open →</span>
               </Link>
             ))}
           </div>
         ) : (
-          <div style={{ display: "flex", gap: 10, alignItems: "center", color: "var(--ad-good)", fontWeight: 650 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", color: "var(--zadm-good)", fontWeight: 650 }}>
             <CheckCircle2 size={18} aria-hidden /> All clear — no open tickets, new reports or delivery failures.
           </div>
         )}
@@ -120,20 +120,20 @@ export default async function Overview({ searchParams }: { searchParams: SearchP
         <Notice>Daily app-open tracking began {fmtDate(o.activity_tracking_since)}. No historical app-open data is available before that date; scans, Planner and feedback activity are counted from the start.</Notice>
       )}
 
-      <div className="ad-grid ad-grid-2">
-        <Card title="User growth" description={`New registrations per ${range.bucket}`} actions={<Link className="ad-btn ad-btn-sm" href={`/admin/analytics/growth${rq ? "?" + rq : ""}`}>Details</Link>}>
+      <div className="zadm-grid zadm-grid-2">
+        <Card title="User growth" description={`New registrations per ${range.bucket}`} actions={<Link className="zadm-btn zadm-btn-sm" href={`/admin/analytics/growth${rq ? "?" + rq : ""}`}>Details</Link>}>
           {ts.error ? <LoadError error={ts.error} /> : <BarChart data={series} series={[{ key: "signups", label: "Sign-ups", color: SERIES_COLORS[0] }]} />}
         </Card>
-        <Card title="Active users" description={`Distinct active people per ${range.bucket}`} actions={<Link className="ad-btn ad-btn-sm" href={`/admin/activity${rq ? "?" + rq : ""}`}>Details</Link>}>
+        <Card title="Active users" description={`Distinct active people per ${range.bucket}`} actions={<Link className="zadm-btn zadm-btn-sm" href={`/admin/activity${rq ? "?" + rq : ""}`}>Details</Link>}>
           {ts.error ? <LoadError error={ts.error} /> : <LineChart data={series} series={[{ key: "active", label: "Active users", color: SERIES_COLORS[1] }]} />}
           <div style={{ marginTop: 12 }}><Stats items={[{ label: "DAU (today)", value: Number(o.active_today) }, { label: "WAU (7d)", value: Number(o.active_7d) }, { label: "MAU (30d)", value: Number(o.active_30d) }]} /></div>
         </Card>
-        <Card title="Scan activity" description="Successful and failed AI scans (signed-in and guest)" actions={<Link className="ad-btn ad-btn-sm" href={`/admin/scans${rq ? "?" + rq : ""}`}>Scans</Link>}>
+        <Card title="Scan activity" description="Successful and failed AI scans (signed-in and guest)" actions={<Link className="zadm-btn zadm-btn-sm" href={`/admin/scans${rq ? "?" + rq : ""}`}>Scans</Link>}>
           {ts.error ? <LoadError error={ts.error} /> : (
             <BarChart data={series} series={[{ key: "scans_ok", label: "Successful", color: SERIES_COLORS[0] }, { key: "scans_failed", label: "Failed", color: SERIES_COLORS[2] }]} />
           )}
         </Card>
-        <Card title="Revenue" description="MRR, new subscriptions and cancellations" actions={<Link className="ad-btn ad-btn-sm" href="/admin/revenue">Revenue</Link>}>
+        <Card title="Revenue" description="MRR, new subscriptions and cancellations" actions={<Link className="zadm-btn zadm-btn-sm" href="/admin/revenue">Revenue</Link>}>
           {connected ? (
             <>
               <LineChart data={series} series={[{ key: "revenue", label: "Net revenue", color: SERIES_COLORS[0] }]} format={(n) => fmtMoney(n)} />
@@ -147,24 +147,24 @@ export default async function Overview({ searchParams }: { searchParams: SearchP
         </Card>
         <Card title="Plan distribution" description="Accounts by current plan">
           <BarList data={["free", "plus", "business"].map((p) => ({ key: p, label: p === "plus" ? "Plus" : p[0].toUpperCase() + p.slice(1), value: Number(o.plan_distribution?.[p] || 0) }))} empty="No accounts yet." />
-          {!connected && Number(o.paid_profiles) > 0 && <p className="ad-sub" style={{ marginTop: 10 }}>Paid-plan accounts were assigned by an admin; no payment provider is connected.</p>}
+          {!connected && Number(o.paid_profiles) > 0 && <p className="zadm-sub" style={{ marginTop: 10 }}>Paid-plan accounts were assigned by an admin; no payment provider is connected.</p>}
         </Card>
-        <Card title="Retention & engagement" description={`Within ${range.label.toLowerCase()}`} actions={<Link className="ad-btn ad-btn-sm" href={`/admin/analytics/retention${rq ? "?" + rq : ""}`}>Retention</Link>}>
+        <Card title="Retention & engagement" description={`Within ${range.label.toLowerCase()}`} actions={<Link className="zadm-btn zadm-btn-sm" href={`/admin/analytics/retention${rq ? "?" + rq : ""}`}>Retention</Link>}>
           <Stats items={[
             { label: "Returning users", value: Number(o.returning_users) },
             { label: "Repeat scanners (2+)", value: Number(o.repeat_scanners) },
             { label: "Planner users", value: Number(o.planner_users) },
             { label: "Reminder users", value: Number(o.reminder_users) },
           ]} />
-          <p className="ad-sub" style={{ marginTop: 10 }}>Returning = active in the period and registered before it began.</p>
+          <p className="zadm-sub" style={{ marginTop: 10 }}>Returning = active in the period and registered before it began.</p>
         </Card>
-        <Card title="Calendar" description="Connected providers and calendar saves" actions={<Link className="ad-btn ad-btn-sm" href={`/admin/calendar${rq ? "?" + rq : ""}`}>Calendar</Link>}>
+        <Card title="Calendar" description="Connected providers and calendar saves" actions={<Link className="zadm-btn zadm-btn-sm" href={`/admin/calendar${rq ? "?" + rq : ""}`}>Calendar</Link>}>
           <BarList data={Object.entries(o.calendar_providers || {}).map(([k, v]) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), value: Number(v) }))} empty="No direct calendar connections yet." />
           <div style={{ marginTop: 14 }}>
             {ts.error ? null : <BarChart height={140} data={series} series={[{ key: "calendar_saves", label: "Calendar saves", color: SERIES_COLORS[1] }]} emptyText="No calendar saves in this period." />}
           </div>
         </Card>
-        <Card title="Product usage" description={`Created per ${range.bucket}`} actions={<Link className="ad-btn ad-btn-sm" href={`/admin/analytics${rq ? "?" + rq : ""}`}>Analytics</Link>}>
+        <Card title="Product usage" description={`Created per ${range.bucket}`} actions={<Link className="zadm-btn zadm-btn-sm" href={`/admin/analytics${rq ? "?" + rq : ""}`}>Analytics</Link>}>
           {ts.error ? <LoadError error={ts.error} /> : (
             <LineChart data={series} series={[
               { key: "planner", label: "Planner items", color: SERIES_COLORS[0] },

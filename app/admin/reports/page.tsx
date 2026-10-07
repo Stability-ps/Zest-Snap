@@ -28,22 +28,22 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     adminRpc<any[]>("admin_admins"),
   ]);
   const canAct = can(admin.role, "support");
-  const head = <PageHeader title="Reports & Issues" description="Problems people report from Settings → Report a problem." actions={<Link className="ad-btn" href="/admin/exports?dataset=reports">Export reports</Link>} />;
+  const head = <PageHeader title="Reports & Issues" description="Problems people report from Settings → Report a problem." actions={<Link className="zadm-btn" href="/admin/exports?dataset=reports">Export reports</Link>} />;
   if (list.error) return <>{head}<Card><LoadError error={list.error} retryHref="/admin/reports" /></Card></>;
   const r = detail?.data?.report;
   const counts = list.data.counts || {};
   return (
     <>
       {head}
-      <div className="ad-grid ad-grid-21">
+      <div className="zadm-grid zadm-grid-21">
         <Card flush>
-          <form className="ad-toolbar" action="/admin/reports">
-            <input className="ad-input" type="search" name="q" defaultValue={params.q || ""} placeholder="Description, #number or request ID" aria-label="Search reports" />
+          <form className="zadm-toolbar" action="/admin/reports">
+            <input className="zadm-input" type="search" name="q" defaultValue={params.q || ""} placeholder="Description, #number or request ID" aria-label="Search reports" />
             <input type="hidden" name="status" value={status} />
-            <select className="ad-select" name="kind" defaultValue={kind || ""} aria-label="Type">
+            <select className="zadm-select" name="kind" defaultValue={kind || ""} aria-label="Type">
               <option value="">All types</option>{kinds.map((k) => <option key={k} value={k}>{humanize(k)}</option>)}
             </select>
-            <button className="ad-btn">Filter</button>
+            <button className="zadm-btn">Filter</button>
           </form>
           <div style={{ padding: "12px 18px" }}>
             <Chips current={status!} items={statuses.map(([k, l]) => ({ key: k, label: l, href: linkWith("/admin/reports", params, { status: k === "active" ? null : k, r: null }),
@@ -51,14 +51,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           </div>
           {!list.data.rows.length ? <Empty title="No reports" icon={<Bug aria-hidden />}>Nothing matches these filters.</Empty> : (
             <>
-              <div className="ad-table-wrap"><table className="ad-table">
+              <div className="zadm-table-wrap"><table className="zadm-table">
                 <thead><tr><th>#</th><th>Reported</th><th>Type</th><th>Description</th><th>Priority</th><th>Status</th></tr></thead>
                 <tbody>{list.data.rows.map((x: any) => (
-                  <tr key={x.id} style={x.id === selected ? { background: "var(--ad-teal-soft)" } : undefined}>
-                    <td><Link className="ad-row-link" href={linkWith("/admin/reports", params, { r: x.id, page: page || null })}>#{x.number}</Link></td>
-                    <td className="nowrap">{fmtRelative(x.created_at)}<span className="ad-sub">{x.email || "Deleted user"}</span></td>
+                  <tr key={x.id} style={x.id === selected ? { background: "var(--zadm-teal-soft)" } : undefined}>
+                    <td><Link className="zadm-row-link" href={linkWith("/admin/reports", params, { r: x.id, page: page || null })}>#{x.number}</Link></td>
+                    <td className="nowrap">{fmtRelative(x.created_at)}<span className="zadm-sub">{x.email || "Deleted user"}</span></td>
                     <td>{humanize(x.kind)}</td>
-                    <td><Link href={linkWith("/admin/reports", params, { r: x.id, page: page || null })} className="ad-trunc" style={{ maxWidth: 300 }}>{x.description}</Link></td>
+                    <td><Link href={linkWith("/admin/reports", params, { r: x.id, page: page || null })} className="zadm-trunc" style={{ maxWidth: 300 }}>{x.description}</Link></td>
                     <td><StatusBadge status={x.priority} /></td><td><StatusBadge status={x.status} /></td>
                   </tr>
                 ))}</tbody>
@@ -67,45 +67,45 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
             </>
           )}
         </Card>
-        <div className="ad-grid" style={{ alignContent: "start" }}>
+        <div className="zadm-grid" style={{ alignContent: "start" }}>
           {r ? (
             <Card title={`Report #${r.number}`} description={`${humanize(r.kind)} · ${fmtDateTime(r.created_at)}`}>
               <p style={{ whiteSpace: "pre-wrap", marginTop: 0 }}>{r.description}</p>
-              <dl className="ad-kv">
-                <dt>From</dt><dd>{r.user_id ? <Link className="ad-row-link" href={`/admin/users/${r.user_id}`}>{r.email}</Link> : "Deleted user"}</dd>
-                <dt>Page</dt><dd className="ad-mono">{r.route || "—"}</dd>
-                <dt>App version</dt><dd className="ad-mono">{r.app_version || "—"}</dd>
+              <dl className="zadm-kv">
+                <dt>From</dt><dd>{r.user_id ? <Link className="zadm-row-link" href={`/admin/users/${r.user_id}`}>{r.email}</Link> : "Deleted user"}</dd>
+                <dt>Page</dt><dd className="zadm-mono">{r.route || "—"}</dd>
+                <dt>App version</dt><dd className="zadm-mono">{r.app_version || "—"}</dd>
                 <dt>Device</dt><dd style={{ fontSize: 12, fontWeight: 500 }}>{r.user_agent || "—"}</dd>
-                <dt>Request ID</dt><dd>{r.request_id ? <Link className="ad-mono" href={`/admin/scans?request=${r.request_id}`}>{r.request_id}</Link> : "—"}</dd>
+                <dt>Request ID</dt><dd>{r.request_id ? <Link className="zadm-mono" href={`/admin/scans?request=${r.request_id}`}>{r.request_id}</Link> : "—"}</dd>
                 {detail?.data?.scan && <><dt>Scan</dt><dd><StatusBadge status={detail.data.scan.status} /> {detail.data.scan.error_code ? <Badge tone="bad">{humanize(detail.data.scan.error_code)}</Badge> : null} {fmtDuration(detail.data.scan.duration_ms)}</dd></>}
-                <dt>Screenshot</dt><dd className="ad-sub" style={{ display: "inline" }}>Not collected (privacy)</dd>
+                <dt>Screenshot</dt><dd className="zadm-sub" style={{ display: "inline" }}>Not collected (privacy)</dd>
               </dl>
-              <ActionForm key={`${r.id}:${r.updated_at}`} action={updateReport} className="ad-form-grid" inline>
+              <ActionForm key={`${r.id}:${r.updated_at}`} action={updateReport} className="zadm-form-grid" inline>
                 <input type="hidden" name="id" value={r.id} />
-                <label className="ad-field">Status
-                  <select className="ad-select" name="status" defaultValue={r.status} disabled={!canAct}>{statuses.filter(([k]) => !["active", "all"].includes(k)).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+                <label className="zadm-field">Status
+                  <select className="zadm-select" name="status" defaultValue={r.status} disabled={!canAct}>{statuses.filter(([k]) => !["active", "all"].includes(k)).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
                 </label>
-                <label className="ad-field">Priority
-                  <select className="ad-select" name="priority" defaultValue={r.priority} disabled={!canAct}>{priorities.map((p) => <option key={p} value={p}>{humanize(p)}</option>)}</select>
+                <label className="zadm-field">Priority
+                  <select className="zadm-select" name="priority" defaultValue={r.priority} disabled={!canAct}>{priorities.map((p) => <option key={p} value={p}>{humanize(p)}</option>)}</select>
                 </label>
-                <label className="ad-field full">Assignee
-                  <select className="ad-select" name="assignee_id" defaultValue={r.assignee_id || ""} disabled={!canAct}>
+                <label className="zadm-field full">Assignee
+                  <select className="zadm-select" name="assignee_id" defaultValue={r.assignee_id || ""} disabled={!canAct}>
                     <option value="">Unassigned</option>{(admins.data || []).map((a: any) => <option key={a.id} value={a.id}>{a.name || a.email}</option>)}
                   </select>
                 </label>
-                <div className="full"><SubmitButton className="ad-btn" disabled={!canAct}>Update report</SubmitButton></div>
+                <div className="full"><SubmitButton className="zadm-btn" disabled={!canAct}>Update report</SubmitButton></div>
               </ActionForm>
               <h3 style={{ fontSize: 13, margin: "18px 0 8px" }}>Internal notes</h3>
-              <div className="ad-thread" style={{ padding: 0, maxHeight: 260 }}>
+              <div className="zadm-thread" style={{ padding: 0, maxHeight: 260 }}>
                 {detail.data.notes.length ? detail.data.notes.map((n: any) => (
-                  <div className="ad-msg internal" key={n.id} style={{ maxWidth: "100%", justifySelf: "stretch" }}><small>{n.author_email} · {fmtDateTime(n.created_at)}</small>{n.body}</div>
-                )) : <p className="ad-sub">No notes yet.</p>}
+                  <div className="zadm-msg internal" key={n.id} style={{ maxWidth: "100%", justifySelf: "stretch" }}><small>{n.author_email} · {fmtDateTime(n.created_at)}</small>{n.body}</div>
+                )) : <p className="zadm-sub">No notes yet.</p>}
               </div>
               {canAct && (
-                <ActionForm action={addReportNote} className="ad-grid" resetOnSuccess>
+                <ActionForm action={addReportNote} className="zadm-grid" resetOnSuccess>
                   <input type="hidden" name="id" value={r.id} />
-                  <textarea className="ad-textarea" name="body" required maxLength={4000} placeholder="Add an internal note (not visible to the user)" aria-label="Internal note" style={{ marginTop: 10 }} />
-                  <SubmitButton className="ad-btn">Add note</SubmitButton>
+                  <textarea className="zadm-textarea" name="body" required maxLength={4000} placeholder="Add an internal note (not visible to the user)" aria-label="Internal note" style={{ marginTop: 10 }} />
+                  <SubmitButton className="zadm-btn">Add note</SubmitButton>
                 </ActionForm>
               )}
               <DevDetails data={r} />
@@ -113,7 +113,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           ) : (
             <Card title="Open reports by type">
               <BarList data={Object.entries(list.data.by_kind || {}).map(([k, v]) => ({ key: k, label: humanize(k), value: Number(v) }))} empty="No open reports." />
-              <p className="ad-sub" style={{ marginTop: 14 }}>Select a report to triage it.</p>
+              <p className="zadm-sub" style={{ marginTop: 14 }}>Select a report to triage it.</p>
             </Card>
           )}
         </div>

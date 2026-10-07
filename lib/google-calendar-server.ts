@@ -396,34 +396,79 @@ export async function listGoogleCalendarEvents(
 }
 
 
-export async function upsertPlannerGoogleEvent(userId: string, plannerItemId: string, event: ExtractedEvent, fallbackTimezone: string, reminders?: number[]) {
-  const db = serviceClient();
-  const { data: planner, error } = await db.from("planner_items").select("google_event_id").eq("id", plannerItemId).eq("user_id", userId).single();
-  if (error) throw new Error("planner_item_not_found");
-  const { token, connection } = await googleAccessToken(userId);
-  const calendarId = encodeURIComponent(connection.calendar_id || "primary");
-  const googleId = planner.google_event_id as string | null;
-  const body: Record<string, unknown> = googleEventBody(event, fallbackTimezone);
-  body.extendedProperties = { private: { zestPlannerItemId: plannerItemId } };
-  if (reminders?.length) body.reminders = { useDefault: false, overrides: [...new Set(reminders)].slice(0, 5).map((minutes) => ({ method: "popup", minutes: Math.max(0, Math.round(minutes)) })) };
-  const url = googleId
-    ? `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(googleId)}`
-    : `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`;
-  const res = await fetch(url, {
-    method: googleId ? "PATCH" : "POST",
+export function googlePlannerEventId(plannerItemId: string) {
+  const compact = plannerItemId.toLowerCase().replaceAll("-", "");
+  if (!/^[0-9a-f]{32}$/.test(compact)) throw new Error("planner_item_not_found");
+  // Google Calendar custom event IDs accept base32hex characters (0-9, a-v).
+  // A UUID contains only 0-9/a-f, so this is stable and safe across retries/races.
+  return `a${compact}`;
+}
+
+async function patchGoogleEvent(token: string, calendarId: string, googleId: string, body: Record<string, unknown>) {
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(googleId)}`, {
+    method: "PATCH",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
     cache: "no-store",
   });
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) throw new Error("google_calendar_reconnect_required");
-    if (res.status === 404 && googleId) {
+    throw new Error("google_calendar_sync_failed");
+  }
+  return (await res.json()) as { id: string; htmlLink?: string };
+}
+
+export async function upsertPlannerGoogleEvent(userId: string, plannerItemId: string, event: ExtractedEvent, fallbackTimezone: string, reminders?: number[]) {
+  const db = serviceClient();
+  const { data: planner, error } = await db.from("planner_items").select("google_event_id").eq("id", plannerItemId).eq("user_id", userId).single();
+  if (error) throw new Error("planner_item_not_found");
+  const { token, connection } = await googleAccessToken(userId);
+  const calendarId = encodeURIComponent(connection.calendar_id || "primary");
+  const storedGoogleId = planner.google_event_id as string | null;
+  const stableGoogleId = googlePlannerEventId(plannerItemId);
+  const googleId = storedGoogleId || stableGoogleId;
+  const body: Record<string, unknown> = googleEventBody(event, fallbackTimezone);
+  body.extendedProperties = { private: { zestPlannerItemId: plannerItemId } };
+  if (reminders?.length) body.reminders = { useDefault: false, overrides: [...new Set(reminders)].slice(0, 5).map((minutes) => ({ method: "popup", minutes: Math.max(0, Math.round(minutes)) })) };
+
+  let saved: { id: string; htmlLink?: string };
+  if (storedGoogleId) {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(storedGoogleId)}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+    if (res.status === 404) {
+      // The user may have deleted the Google event manually. Recreate using the stable ID so retries stay idempotent.
       await db.from("planner_items").update({ google_event_id: null }).eq("id", plannerItemId).eq("user_id", userId);
       return upsertPlannerGoogleEvent(userId, plannerItemId, event, fallbackTimezone, reminders);
     }
-    throw new Error("google_calendar_sync_failed");
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) throw new Error("google_calendar_reconnect_required");
+      throw new Error("google_calendar_sync_failed");
+    }
+    saved = (await res.json()) as { id: string; htmlLink?: string };
+  } else {
+    // Use a deterministic Google event ID. If two sync requests race, Google accepts only one insert.
+    const insertBody = { ...body, id: stableGoogleId };
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(insertBody),
+      cache: "no-store",
+    });
+    if (res.ok) {
+      saved = (await res.json()) as { id: string; htmlLink?: string };
+    } else if (res.status === 409) {
+      // Another request inserted the same stable ID first. Patch that event instead of creating a duplicate.
+      saved = await patchGoogleEvent(token, calendarId, stableGoogleId, body);
+    } else {
+      if (res.status === 401 || res.status === 403) throw new Error("google_calendar_reconnect_required");
+      throw new Error("google_calendar_sync_failed");
+    }
   }
-  const saved = (await res.json()) as { id: string; htmlLink?: string };
+
   await db.from("planner_items").update({ google_event_id: saved.id, google_synced_at: new Date().toISOString() }).eq("id", plannerItemId).eq("user_id", userId);
   return saved;
 }

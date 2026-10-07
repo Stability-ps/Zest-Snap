@@ -37,11 +37,11 @@ export default async function AiPage({ searchParams }: { searchParams: SearchPar
       </Kpis>
       {!costKnown && (
         <Notice title="Cost isn't estimated">
-          Set <span className="ad-mono">OPENAI_INPUT_USD_PER_MILLION</span> and <span className="ad-mono">OPENAI_OUTPUT_USD_PER_MILLION</span> in Vercel to the model&apos;s published rates.
+          Set <span className="zadm-mono">OPENAI_INPUT_USD_PER_MILLION</span> and <span className="zadm-mono">OPENAI_OUTPUT_USD_PER_MILLION</span> in Vercel to the model&apos;s published rates.
           Zest Snap never guesses prices; token counts are recorded either way.
         </Notice>
       )}
-      <div className="ad-grid ad-grid-2">
+      <div className="zadm-grid zadm-grid-2">
         <Card title="Requests over time">
           {ts.error ? <LoadError error={ts.error} /> : <LineChart data={ts.data!} series={[{ key: "ai_requests", label: "AI requests", color: SERIES_COLORS[0] }]} />}
         </Card>
@@ -53,8 +53,8 @@ export default async function AiPage({ searchParams }: { searchParams: SearchPar
         <Card title="Models"><BarList data={Object.entries(d.by_model || {}).map(([k, v]) => ({ key: k, label: k, value: Number(v) }))} /></Card>
         <Card title="Heaviest users" flush>
           {d.top_users.length ? (
-            <div className="ad-list">{d.top_users.map((u: any) => (
-              <Link key={u.user_id} className="ad-list-row" href={`/admin/users/${u.user_id}`}><span className="grow ad-trunc">{u.email}</span><span className="ad-sub">{fmtNumber(u.tokens)} tokens</span><b>{fmtNumber(u.requests)}</b></Link>
+            <div className="zadm-list">{d.top_users.map((u: any) => (
+              <Link key={u.user_id} className="zadm-list-row" href={`/admin/users/${u.user_id}`}><span className="grow zadm-trunc">{u.email}</span><span className="zadm-sub">{fmtNumber(u.tokens)} tokens</span><b>{fmtNumber(u.requests)}</b></Link>
             ))}</div>
           ) : <Empty title="No AI requests in this period" />}
         </Card>

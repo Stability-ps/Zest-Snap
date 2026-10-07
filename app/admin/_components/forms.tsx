@@ -26,26 +26,26 @@ function Dialog({ title, description, children, footer, onClose }: {
     };
   }, [onClose]);
   return createPortal(
-    <div className="ad-root-portal">
-      <div className="ad-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-        <div className="ad-dialog" role="dialog" aria-modal="true" aria-labelledby={id} ref={ref}>
+    <div className="zadm-root-portal">
+      <div className="zadm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="zadm-dialog" role="dialog" aria-modal="true" aria-labelledby={id} ref={ref}>
           <header>
             <div>
               <h2 id={id}>{title}</h2>
               {description && <p>{description}</p>}
             </div>
-            <button type="button" className="ad-btn ad-btn-ghost ad-icon-btn" onClick={onClose} aria-label="Close" data-close><X aria-hidden /></button>
+            <button type="button" className="zadm-btn zadm-btn-ghost zadm-icon-btn" onClick={onClose} aria-label="Close" data-close><X aria-hidden /></button>
           </header>
           {children}
           {footer}
         </div>
       </div>
     </div>,
-    document.querySelector(".ad-root") || document.body,
+    document.querySelector(".zadm-root") || document.body,
   );
 }
 
-export function SubmitButton({ children, className = "ad-btn ad-btn-primary", pendingLabel = "Saving…", disabled }: {
+export function SubmitButton({ children, className = "zadm-btn zadm-btn-primary", pendingLabel = "Saving…", disabled }: {
   children: ReactNode; className?: string; pendingLabel?: string; disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
@@ -62,8 +62,8 @@ function Toast({ state }: { state: ActionState }) {
   }, [state]);
   if (!state || !visible) return null;
   return createPortal(
-    <div className={`ad-toast${state.ok ? "" : " bad"}`} role="status" aria-live="polite">{state.message}</div>,
-    document.querySelector(".ad-root") || document.body,
+    <div className={`zadm-toast${state.ok ? "" : " bad"}`} role="status" aria-live="polite">{state.message}</div>,
+    document.querySelector(".zadm-root") || document.body,
   );
 }
 
@@ -105,7 +105,7 @@ export function ActionForm({ action, children, className, confirm, onSuccess, to
         }}
       >
         {children}
-        {inline && state && <span className={`ad-form-msg ${state.ok ? "good" : "bad"}`} role="status">{state.message}</span>}
+        {inline && state && <span className={`zadm-form-msg ${state.ok ? "good" : "bad"}`} role="status">{state.message}</span>}
       </form>
       {toast && !inline && <Toast state={state} />}
       {asking && confirm && (
@@ -115,10 +115,10 @@ export function ActionForm({ action, children, className, confirm, onSuccess, to
           onClose={() => setAsking(false)}
           footer={
             <footer>
-              <button type="button" className="ad-btn" onClick={() => setAsking(false)}>Cancel</button>
+              <button type="button" className="zadm-btn" onClick={() => setAsking(false)}>Cancel</button>
               <button
                 type="button"
-                className={`ad-btn ${confirm.danger ? "ad-btn-danger" : "ad-btn-primary"}`}
+                className={`zadm-btn ${confirm.danger ? "zadm-btn-danger" : "zadm-btn-primary"}`}
                 onClick={() => {
                   confirmed.current = true;
                   setAsking(false);
@@ -136,7 +136,7 @@ export function ActionForm({ action, children, className, confirm, onSuccess, to
 }
 
 /** Button that opens a dialog containing a server-action form. Closes on success. */
-export function ModalForm({ trigger, triggerClassName = "ad-btn", title, description, action, children, submitLabel = "Save", danger, disabled }: {
+export function ModalForm({ trigger, triggerClassName = "zadm-btn", title, description, action, children, submitLabel = "Save", danger, disabled }: {
   trigger: ReactNode;
   triggerClassName?: string;
   title: string;
@@ -163,13 +163,13 @@ export function ModalForm({ trigger, triggerClassName = "ad-btn", title, descrip
       {open && (
         <Dialog title={title} description={description} onClose={() => setOpen(false)}>
           <form action={formAction}>
-            <div className="ad-dialog-body">
+            <div className="zadm-dialog-body">
               {children}
-              {state && !state.ok && <p className="ad-form-msg bad" role="alert" style={{ margin: 0 }}>{state.message}</p>}
+              {state && !state.ok && <p className="zadm-form-msg bad" role="alert" style={{ margin: 0 }}>{state.message}</p>}
             </div>
             <footer>
-              <button type="button" className="ad-btn" onClick={() => setOpen(false)}>Cancel</button>
-              <SubmitButton className={`ad-btn ${danger ? "ad-btn-danger" : "ad-btn-primary"}`}>{submitLabel}</SubmitButton>
+              <button type="button" className="zadm-btn" onClick={() => setOpen(false)}>Cancel</button>
+              <SubmitButton className={`zadm-btn ${danger ? "zadm-btn-danger" : "zadm-btn-primary"}`}>{submitLabel}</SubmitButton>
             </footer>
           </form>
         </Dialog>
@@ -200,5 +200,5 @@ export function SwitchForm({ action, name, value, checked, label, confirm, disab
 
 function SwitchButton({ checked, label, disabled }: { checked: boolean; label: string; disabled?: boolean }) {
   const { pending } = useFormStatus();
-  return <button className="ad-switch" role="switch" aria-checked={checked} aria-label={label} disabled={disabled || pending} />;
+  return <button className="zadm-switch" role="switch" aria-checked={checked} aria-label={label} disabled={disabled || pending} />;
 }

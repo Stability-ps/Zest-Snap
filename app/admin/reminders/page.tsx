@@ -27,7 +27,7 @@ export default async function RemindersPage({ searchParams }: { searchParams: Se
         <Kpi label="Delivery failed" icon={<XCircle aria-hidden />} value={Number(r.failed)} invert />
         <Kpi label="Pending" icon={<AlarmClock aria-hidden />} value={Number(r.pending)} />
       </Kpis>
-      <div className="ad-grid ad-grid-21">
+      <div className="zadm-grid zadm-grid-21">
         <Card title="Reminders created">
           {ts.error ? <LoadError error={ts.error} /> : <LineChart data={ts.data!} series={[{ key: "reminders", label: "Reminders", color: SERIES_COLORS[0] }]} />}
         </Card>

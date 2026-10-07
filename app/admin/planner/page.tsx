@@ -30,7 +30,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Sear
         <Kpi label="Open · upcoming" icon={<Clock aria-hidden />} value={Number(p.upcoming)} foot="Right now" />
         <Kpi label="Open · overdue" icon={<Clock aria-hidden />} value={Number(p.overdue)} foot="Right now" invert />
       </Kpis>
-      <div className="ad-grid ad-grid-21">
+      <div className="zadm-grid zadm-grid-21">
         <Card title="Created and completed">
           {ts.error ? <LoadError error={ts.error} /> : <LineChart data={ts.data!} series={[
             { key: "planner", label: "Items created", color: SERIES_COLORS[0] },

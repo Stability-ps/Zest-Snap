@@ -17,7 +17,7 @@ export default async function FlagsPage() {
       <PageHeader title="Feature Flags" description="Switch product capabilities on or off for everyone. Changes take effect immediately and are recorded in the audit log." />
       <Notice tone="warn" title="Live switches">High-impact flags ask for confirmation. AI scanning and cloud persistence can only be changed by an Owner.</Notice>
       {res.error ? <Card><LoadError error={res.error} retryHref="/admin/flags" /></Card> : (
-        <div className="ad-grid ad-grid-2">
+        <div className="zadm-grid zadm-grid-2">
           {flagGroups.map((group) => {
             const items = flags.filter((f) => metaFor(f.key, f.description).group === group);
             if (!items.length) return null;
@@ -28,7 +28,7 @@ export default async function FlagsPage() {
                     const m = metaFor(f.key, f.description);
                     const allowed = can(admin.role, m.ownerOnly ? "owner" : "operate");
                     return (
-                      <div className="ad-flag" key={f.key}>
+                      <div className="zadm-flag" key={f.key}>
                         <div className="grow">
                           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                             <b>{m.label}</b>
@@ -36,8 +36,8 @@ export default async function FlagsPage() {
                             {m.highImpact && <Badge tone="warn">High impact</Badge>}
                             {m.ownerOnly && <Badge>Owner only</Badge>}
                           </div>
-                          <span className="ad-sub">{m.description || f.description}</span>
-                          <span className="ad-sub"><span className="ad-mono">{f.key}</span> · updated {fmtDateTime(f.updated_at)}{f.public_visible ? " · visible to signed-out visitors" : ""}</span>
+                          <span className="zadm-sub">{m.description || f.description}</span>
+                          <span className="zadm-sub"><span className="zadm-mono">{f.key}</span> · updated {fmtDateTime(f.updated_at)}{f.public_visible ? " · visible to signed-out visitors" : ""}</span>
                         </div>
                         <SwitchForm action={setFlag} name="key" value={f.key} checked={!!f.enabled} label={`${m.label}: ${f.enabled ? "on" : "off"}`}
                           hidden={{ enabled: String(!f.enabled) }} disabled={!allowed}

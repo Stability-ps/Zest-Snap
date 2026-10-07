@@ -15,7 +15,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Se
   const page = pageOf(params);
   const status = statuses.includes(params.status || "") ? params.status || "" : "";
   const res = await adminRpc<any>("admin_referrals", { p_from: iso(range.from), p_to: iso(range.to), p_status: status || null, p_limit: PAGE, p_offset: page * PAGE });
-  const head = <PageHeader title="Referrals" description={`Invites and qualified referrals · ${range.label}`} actions={<Link className="ad-btn" href="/admin/exports?dataset=referrals">Export referrals</Link>} />;
+  const head = <PageHeader title="Referrals" description={`Invites and qualified referrals · ${range.label}`} actions={<Link className="zadm-btn" href="/admin/exports?dataset=referrals">Export referrals</Link>} />;
   if (res.error) return <>{head}<Card><LoadError error={res.error} retryHref="/admin/referrals" /></Card></>;
   const d = res.data;
   const pending = Number(d.by_status?.signed_up || 0) + Number(d.by_status?.invited || 0);
@@ -36,18 +36,18 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Se
           Nothing has been blocked automatically; device and monthly caps already limit rewards.
         </Notice>
       )}
-      <div className="ad-grid ad-grid-2">
+      <div className="zadm-grid zadm-grid-2">
         <Card title="Top referrers" flush>
           {d.top.length ? (
-            <div className="ad-list">{d.top.map((t: any) => (
-              <Link key={t.user_id} className="ad-list-row" href={`/admin/users/${t.user_id}`}><span className="grow ad-trunc">{t.email}</span><span className="ad-sub">{fmtNumber(t.qualified)} qualified</span><b>{fmtNumber(t.total)}</b></Link>
+            <div className="zadm-list">{d.top.map((t: any) => (
+              <Link key={t.user_id} className="zadm-list-row" href={`/admin/users/${t.user_id}`}><span className="grow zadm-trunc">{t.email}</span><span className="zadm-sub">{fmtNumber(t.qualified)} qualified</span><b>{fmtNumber(t.total)}</b></Link>
             ))}</div>
           ) : <Empty title="No referrals in this period" />}
         </Card>
         <Card title="Signals" description="Heuristics only. Legitimate families often share a device." flush>
           {d.signals.length ? (
-            <div className="ad-list">{d.signals.map((s: any, i: number) => (
-              <Link key={i} className="ad-list-row" href={`/admin/users/${s.user_id}`}><AlertTriangle size={16} color="var(--ad-warn)" aria-hidden /><span className="grow ad-trunc">{s.email}</span>
+            <div className="zadm-list">{d.signals.map((s: any, i: number) => (
+              <Link key={i} className="zadm-list-row" href={`/admin/users/${s.user_id}`}><AlertTriangle size={16} color="var(--zadm-warn)" aria-hidden /><span className="grow zadm-trunc">{s.email}</span>
                 <Badge tone="warn">{s.signal === "shared_device" ? "Shared device" : "Burst in 24h"}</Badge><b>{fmtNumber(s.n)}</b></Link>
             ))}</div>
           ) : <Empty title="No signals">No shared-device or burst patterns found.</Empty>}
@@ -60,14 +60,14 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Se
         <div style={{ marginTop: 12 }}>
           {!d.rows.length ? <Empty title="No referrals match" /> : (
             <>
-              <div className="ad-table-wrap"><table className="ad-table">
+              <div className="zadm-table-wrap"><table className="zadm-table">
                 <thead><tr><th>Date</th><th>Referrer</th><th>Invitee</th><th>Code</th><th>Status</th><th>Qualified</th></tr></thead>
                 <tbody>{d.rows.map((r: any) => (
                   <tr key={r.id}>
                     <td className="nowrap">{fmtDateTime(r.created_at)}</td>
-                    <td><Link className="ad-row-link" href={`/admin/users/${r.referrer_id}`}>{r.referrer_email}</Link></td>
-                    <td>{r.referred_user_id ? <Link className="ad-row-link" href={`/admin/users/${r.referred_user_id}`}>{r.referred_email}</Link> : "—"}</td>
-                    <td className="ad-mono">{r.code}</td><td><StatusBadge status={r.status} /></td><td className="nowrap">{fmtDateTime(r.qualified_at)}</td>
+                    <td><Link className="zadm-row-link" href={`/admin/users/${r.referrer_id}`}>{r.referrer_email}</Link></td>
+                    <td>{r.referred_user_id ? <Link className="zadm-row-link" href={`/admin/users/${r.referred_user_id}`}>{r.referred_email}</Link> : "—"}</td>
+                    <td className="zadm-mono">{r.code}</td><td><StatusBadge status={r.status} /></td><td className="nowrap">{fmtDateTime(r.qualified_at)}</td>
                   </tr>
                 ))}</tbody>
               </table></div>

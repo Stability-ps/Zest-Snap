@@ -32,7 +32,7 @@ export default async function ProductAnalytics({ searchParams }: { searchParams:
           { label: "Signed-in scans", value: Number(s.account) },
           { label: "Guest-trial scans", value: Number(s.guest) },
         ]} />
-        <div className="ad-grid ad-grid-21" style={{ marginTop: 16 }}>
+        <div className="zadm-grid zadm-grid-21" style={{ marginTop: 16 }}>
           {ts.error ? <LoadError error={ts.error} /> : <BarChart data={ts.data!} series={[{ key: "scans_ok", label: "Successful", color: SERIES_COLORS[0] }, { key: "scans_failed", label: "Failed", color: SERIES_COLORS[2] }]} />}
           <div style={{ display: "grid", gap: 18, alignContent: "start" }}>
             <div><h3 style={{ fontSize: 13, marginBottom: 10 }}>By file type</h3><BarList data={Object.entries(s.by_type || {}).map(([k, v]) => ({ key: k, label: k === "application/pdf" ? "PDF" : k, value: Number(v) }))} /></div>
@@ -40,7 +40,7 @@ export default async function ProductAnalytics({ searchParams }: { searchParams:
           </div>
         </div>
       </Card>
-      <div className="ad-grid ad-grid-2">
+      <div className="zadm-grid zadm-grid-2">
         <Card title="Planner">
           <Stats items={[
             { label: "Entries created", value: Number(p.created) }, { label: "Events", value: Number(p.events) }, { label: "Tasks", value: Number(p.tasks) },
