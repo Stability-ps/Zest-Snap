@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback,useEffect,useMemo,useRef,useState } from "react";
-import { CornerUpLeft,Edit3,Link2,MessageCircle,MoreHorizontal,Send,Smile,Trash2,X } from "lucide-react";
+import { CornerUpLeft,Edit3,Link2,MessageCircle,Paperclip,Send,Smile,Trash2,X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./shared-chat.module.css";
 
@@ -16,7 +16,7 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
  const [messages,setMessages]=useState<Message[]>([]),[reactions,setReactions]=useState<Reaction[]>([]);
  const [text,setText]=useState(""),[reply,setReply]=useState<Message|null>(null),[linkedItem,setLinkedItem]=useState<Item|null>(null);
  const [typing,setTyping]=useState<Record<string,string>>({}),[online,setOnline]=useState<Record<string,string>>({});
- const [busy,setBusy]=useState(false),[error,setError]=useState(""),[emojiFor,setEmojiFor]=useState<string|null>(null);
+ const [busy,setBusy]=useState(false),[error,setError]=useState(""),[emojiFor,setEmojiFor]=useState<string|null>(null),[showItems,setShowItems]=useState(false);
  const endRef=useRef<HTMLDivElement|null>(null),typingTimer=useRef<number|null>(null),channelRef=useRef<ReturnType<typeof db.channel>|null>(null);
  const memberName=useCallback((id:string)=>members.find(m=>m.user_id===id)?.display_name||"Member",[members]);
  const load=useCallback(async()=>{
@@ -112,8 +112,8 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
    <div className={styles.typing}>{typingNames.length?typingNames.slice(0,2).join(" & ")+" typing…":""}</div>
    <div className={styles.composer}>
     {(reply||linkedItem)&&<div className={styles.context}><span>{reply?`Replying to ${memberName(reply.sender_id)}`:`Discussing ${linkedItem?.title}`}</span><button onClick={()=>{setReply(null);setLinkedItem(null)}} aria-label="Clear context"><X/></button></div>}
-    <div className={styles.composerRow}><textarea className={styles.input} rows={1} maxLength={4000} value={text} onChange={e=>{setText(e.target.value);sendTyping(!!e.target.value)}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}}} placeholder="Message the group…"/><button className={styles.send} disabled={busy||!text.trim()} onClick={send} aria-label="Send message"><Send/></button></div>
-    {items.length>0&&!reply&&!linkedItem&&<button className={styles.actions} style={{opacity:1,marginTop:6}} onClick={()=>setLinkedItem(items[0])}><MoreHorizontal/> Discuss a plan item</button>}
+    <div className={styles.composerRow}>{items.length>0&&<button className={styles.attach} onClick={()=>setShowItems(v=>!v)} aria-label="Discuss a plan item" aria-expanded={showItems}><Paperclip/></button>}<textarea className={styles.input} rows={1} maxLength={4000} value={text} onChange={e=>{setText(e.target.value);sendTyping(!!e.target.value)}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}}} placeholder="Message the group…"/><button className={styles.send} disabled={busy||!text.trim()} onClick={send} aria-label="Send message"><Send/></button></div>
+    {showItems&&!reply&&!linkedItem&&<div className={styles.itemPicker} role="menu" aria-label="Choose a plan item">{items.map(item=><button key={item.id} onClick={()=>{setLinkedItem(item);setShowItems(false)}}><Link2/><span>{item.title}</span></button>)}</div>}
     {error&&<small role="alert">{error}</small>}
    </div>
   </section>
