@@ -2975,3 +2975,29 @@ html:has(.sharedPlanPage),body:has(.sharedPlanPage){max-width:100%;overflow-x:hi
   .sharedPlanPage{width:100vw;max-width:100vw}
   .sharedPlanWrap{width:100%}
 }
+
+
+/* Keep Shared bottom sheets stable when the iOS keyboard opens.
+   16px inputs prevent Safari/PWA focus zoom; dvh keeps the sheet inside the visual viewport. */
+@media (max-width:640px){
+  .sharedModal{
+    padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));
+    overflow:hidden;
+  }
+  .sharedSheet{
+    width:100%;
+    max-width:620px;
+    max-height:calc(100dvh - 24px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  .sharedSheet input,
+  .sharedComposer input,
+  .sharedComposer select{
+    font-size:16px;
+  }
+  .sharedSheet input:focus{
+    font-size:16px;
+  }
+}
