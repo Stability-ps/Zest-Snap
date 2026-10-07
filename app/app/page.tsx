@@ -1312,10 +1312,11 @@ export default function App() {
               try {
                 const code = await provider.current?.createReferral();
                 if (!code) return goToSignUp();
-                const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
-                const nativeShare = await shareTextNatively({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url });
+                const url = `https://zestsnap.app/?ref=${encodeURIComponent(code)}`;
+                const shareText = "Turn photos, screenshots and documents into plans with Zest Snap 📅\n\nTry Zest Snap:";
+                const nativeShare = await shareTextNatively({ title: "Zest Snap", text: shareText, url });
                 if (nativeShare) return;
-                if (navigator.share) await navigator.share({ title: "Zest Snap", text: "Turn photos and documents into plans with Zest Snap.", url });
+                if (navigator.share) await navigator.share({ title: "Zest Snap", text: shareText, url });
                 else {
                   await navigator.clipboard.writeText(url);
                   setSuccess("Invite link copied.");
