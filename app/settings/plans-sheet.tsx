@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fallbackCatalog, formatPlanPrice, getPublicPlanCatalog, type CatalogPlan } from "@/lib/plan-catalog";
-import { billingAvailability, purchaseOffer, restorePurchases, storeName, storeOffers, type StoreOffer } from "@/lib/native/billing";
+import { billingAvailability, manageSubscriptionUrl, purchaseOffer, restorePurchases, storeName, storeOffers, type StoreOffer } from "@/lib/native/billing";
 import { hapticSuccess } from "@/lib/native/haptics";
 import { runtime } from "@/lib/native/runtime";
 
@@ -98,6 +98,9 @@ export default function PlansSheet({ onDone }: { onDone: (message: string) => vo
       {availability === "store" && userId && (
         <>
           <button className="button alt" disabled={!!busy} onClick={restore}>{busy === "restore" ? "Restoring…" : runtime() === "ios" ? "Restore Purchases" : "Restore purchases"}</button>
+          {current !== "free" && manageSubscriptionUrl() && (
+            <a className="button alt" href={manageSubscriptionUrl()!} target="_blank" rel="noopener noreferrer">Manage subscription</a>
+          )}
           <p className="plansNote">
             Subscriptions renew automatically until cancelled. Payment is charged to your {storeName()} account; manage or cancel any time in your
             {runtime() === "ios" ? " Apple ID subscriptions" : " Google Play subscriptions"}. <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a>
