@@ -138,5 +138,74 @@ Deno.serve(async (req: Request) => {
     }
   }
   if (briefings?.length) log("briefing_run",{claimed:briefings.length,sent:briefingsSent,failed:briefingsFailed});
-  return Response.json({ ok: true, claimed: due?.length || 0, sent, failed, briefingsClaimed: briefings?.length || 0, briefingsSent, briefingsFailed });
+
+  // Shared-plan messages use the same Web Push subscriptions as reminders.
+  // Sender is excluded at enqueue time; each recipient gets at most one queue row per message.
+  let messagePushClaimed = 0, messagePushSent = 0, messagePushFailed = 0;
+  const { data: queuedMessages, error: messageClaimError } = await db.rpc("claim_shared_message_push", { p_limit: 100 });
+  if (messageClaimError) log("shared_message_push_claim_failed", { code: messageClaimError.code });
+  for (const job of queuedMessages || []) {
+    messagePushClaimed++;
+    try {
+      const [{ data: message }, { data: plan }, { data: sender }, { data: subs, error: subsError }] = await Promise.all([
+        db.from("shared_plan_messages").select("id,body,deleted_at").eq("id",job.message_id).single(),
+        db.from("shared_plans").select("id,name").eq("id",job.plan_id).single(),
+        db.from("profiles").select("display_name").eq("id",job.recipient_id).maybeSingle(),
+        db.from("push_subscriptions").select("id,endpoint,keys,failure_count").eq("user_id",job.recipient_id),
+      ]);
+      if (subsError) throw new Error("subscription_query_failed");
+      if (!message || message.deleted_at || !plan) {
+        await db.rpc("complete_shared_message_push",{p_id:job.id,p_ok:true,p_error:null});
+        continue;
+      }
+      if (!subs?.length) {
+        await db.rpc("complete_shared_message_push",{p_id:job.id,p_ok:false,p_error:"no_push_subscription"});
+        messagePushFailed++;
+        continue;
+      }
+      // Resolve the sender name separately from the recipient profile. If unavailable, keep the copy neutral.
+      const { data: messageRow } = await db.from("shared_plan_messages").select("sender_id").eq("id",job.message_id).single();
+      const { data: senderProfile } = messageRow?.sender_id
+        ? await db.from("profiles").select("display_name").eq("id",messageRow.sender_id).maybeSingle()
+        : { data: null };
+      const senderName = senderProfile?.display_name?.trim() || "Someone";
+      const clean = String(message.body || "").replace(/\s+/g," ").trim();
+      const body = clean.length > 140 ? clean.slice(0,137)+"…" : clean || "Sent a message";
+      const url = `/shared/${job.plan_id}?tab=messages`;
+      let delivered = false;
+      let lastError = "push_failed";
+      for (const sub of subs as Sub[]) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: sub.keys },
+            JSON.stringify({
+              title: `${senderName} · ${plan.name}`,
+              body,
+              url,
+              tag: "zest-shared-message-" + job.plan_id,
+              kind: "shared-message",
+              planId: job.plan_id,
+              messageId: job.message_id,
+            }),
+            { TTL: 86400, urgency: "high" },
+          );
+          delivered = true;
+          await db.from("push_subscriptions").update({ last_success_at: new Date().toISOString(), failure_count: 0 }).eq("id", sub.id);
+        } catch (e) {
+          const status = Number((e as { statusCode?: number }).statusCode || 0);
+          lastError = status ? "push_http_" + status : "push_send_failed";
+          if (status === 404 || status === 410) await db.from("push_subscriptions").delete().eq("id", sub.id);
+          else await db.from("push_subscriptions").update({ failure_count: Math.min((sub.failure_count || 0) + 1, 1000) }).eq("id", sub.id);
+        }
+      }
+      await db.rpc("complete_shared_message_push",{p_id:job.id,p_ok:delivered,p_error:delivered?null:lastError});
+      if (delivered) messagePushSent++; else messagePushFailed++;
+    } catch {
+      messagePushFailed++;
+      await db.rpc("complete_shared_message_push",{p_id:job.id,p_ok:false,p_error:"shared_message_push_failed"});
+    }
+  }
+  if (messagePushClaimed) log("shared_message_push_run",{claimed:messagePushClaimed,sent:messagePushSent,failed:messagePushFailed});
+
+  return Response.json({ ok: true, claimed: due?.length || 0, sent, failed, briefingsClaimed: briefings?.length || 0, briefingsSent, briefingsFailed, messagePushClaimed, messagePushSent, messagePushFailed });
 });
