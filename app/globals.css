@@ -2916,3 +2916,21 @@ html.native .offlinePage { padding-top: calc(24px + var(--zest-safe-top)); paddi
 .sharedAssignee{margin-top:6px;max-width:180px;border:1px solid var(--border,#d7dce2);border-radius:9px;padding:5px 7px;background:var(--surface,#fff);color:inherit;font-size:.78rem}
 .sharedPlanNotice{margin:14px 4px 0;color:#087865;font-weight:700;font-size:13px}.sharedPlanFooter{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:28px 0 8px}.sharedPlanFooter svg{width:16px}.todoCheck:disabled{opacity:.4}
 .sharedPlanFooter .dangerButton{color:#a43f36}.button.dangerSolid{background:#a43f36;border-color:#a43f36;color:#fff}.button.dangerSolid:disabled{opacity:.6}
+\n
+/* Plan with Zest — compact secondary capture path. Home's existing scan card/nav stay unchanged. */
+.planWithZest{margin:14px 0 6px}
+.planWithZestButton{width:100%;display:flex;align-items:center;gap:12px;border:1px solid #dce6ee;background:#fff;border-radius:18px;padding:13px 14px;color:var(--ink);text-align:left;box-shadow:0 8px 24px #0b1f3b0a}
+.planWithZestButton>span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:2px}
+.planWithZestButton b{font-size:14px}.planWithZestButton small{color:var(--muted);font-size:12px}
+.planWithZestIcon{width:38px;height:38px;border-radius:13px;background:#e7fbf7;color:#057a68;display:grid;place-items:center}
+.voicePlanBackdrop{position:fixed;inset:0;z-index:120;background:#07182c80;display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.voicePlanSheet{width:min(100%,520px);background:#fff;border-radius:26px 26px 20px 20px;padding:22px;box-shadow:0 28px 80px #07182c40;display:flex;flex-direction:column;gap:15px}
+.voicePlanHead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.voicePlanHead h2{margin:8px 0 0;font-size:24px}
+.voicePlanHint{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+.voicePlanText{width:100%;min-height:118px;resize:vertical;border:1px solid #dce6ee;border-radius:16px;padding:14px;font:inherit;color:var(--ink);background:#f9fbfd;outline:none}
+.voicePlanText:focus{border-color:#00a98f;box-shadow:0 0 0 3px #00c6a71c}
+.voiceRecordButton{display:flex;align-items:center;justify-content:center;gap:9px;min-height:50px;border-radius:16px;border:1px solid #cde9e3;background:#effbf8;color:#057a68;font-weight:750}
+.voiceRecordButton.listening{background:#fff3f2;border-color:#ffd0cb;color:#b42318}
+.voicePlanPrivacy{font-size:12px;line-height:1.45;color:var(--muted);background:#f7fafc;border-radius:12px;padding:10px 12px}
+.voicePlanSubmit{width:100%;min-height:50px}.voicePlanSubmit:disabled{opacity:.5}
+@media(min-width:700px){.voicePlanBackdrop{align-items:center}.voicePlanSheet{border-radius:26px}}
