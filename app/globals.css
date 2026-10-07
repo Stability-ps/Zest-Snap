@@ -2949,3 +2949,19 @@ html.native .offlinePage { padding-top: calc(24px + var(--zest-safe-top)); paddi
 
 /* Shared collaboration messaging */
 .sharedPlanTabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:14px 0;padding:4px;border-radius:15px;background:#f2f4f7}.sharedPlanTabs button{min-height:40px;border:0;border-radius:11px;background:transparent;color:#667085;font:inherit;font-weight:650;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}.sharedPlanTabs button svg{width:16px;height:16px}.sharedPlanTabs button.active{background:#fff;color:#0b1f3b;box-shadow:0 1px 3px rgba(15,23,42,.08)}.sharedCardMain{position:relative}.sharedUnread{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#0b1f3b;color:#fff;font-size:10px;font-weight:800;margin-top:5px;width:max-content}@media(max-width:640px){.sharedPlanTabs{position:sticky;top:max(8px,env(safe-area-inset-top));z-index:5;backdrop-filter:blur(16px)}}
+
+
+/* iOS shared-plan alignment hardening */
+.sharedPlanPage{width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow-x:clip}
+.sharedPlanWrap{width:100%;max-width:760px;min-width:0;box-sizing:border-box}
+.sharedPlanHeader,.sharedPlanHeader>div{min-width:0;max-width:100%}
+.sharedPlanHeader>div{flex:1}
+.sharedPlanHeader h1,.sharedPlanHeader p{max-width:100%;overflow-wrap:anywhere}
+.sharedPlanTabs,.sharedComposer,.sharedPlanItems{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+@media(max-width:640px){
+  .sharedPlanPage{padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
+  .sharedPlanWrap{margin-left:0;margin-right:0}
+  .sharedPlanHeader{width:100%;max-width:100%;min-width:0}
+  .sharedPlanHeader .button{flex:none;max-width:42%}
+  .sharedPlanHeader p{white-space:normal}
+}
