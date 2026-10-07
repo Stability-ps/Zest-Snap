@@ -9,13 +9,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Zest Snap",
-    title: "Zest Snap — Anything with a date becomes actionable",
-    description: "Turn photos, screenshots and PDFs into reviewed events, tasks, deadlines and reminders.",
+    title: "Zest Snap",
+    description: "Turn anything with a date into a plan.",
     images: [{ url: "/icons/zest-snap-512.png", width: 512, height: 512, alt: "Zest Snap" }],
   },
-  title: "Zest Snap — Anything with a date becomes actionable",
+  title: "Zest Snap",
   description:
-    "AI-powered calendar assistant that turns photos, screenshots and PDFs into actionable events, reminders and deadlines.",
+    "Turn anything with a date into a plan.",
   applicationName: "Zest Snap",
   formatDetection: {
     telephone: false,
