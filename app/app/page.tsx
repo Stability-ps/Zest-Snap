@@ -973,7 +973,14 @@ export default function App() {
               )}
             </section>
 
-            <section className="planWithZest">\n              <button className="planWithZestButton" onClick={() => setVoiceOpen(true)} disabled={busy || !ready}>\n                <span className="planWithZestIcon"><Mic size={19} /></span>\n                <span><b>Plan with Zest</b><small>Say what you need to do</small></span>\n                <ChevronRight size={18} />\n              </button>\n            </section>\n            <section className="homeToday">
+            <section className="planWithZest">
+              <button className="planWithZestButton" onClick={() => setVoiceOpen(true)} disabled={busy || !ready}>
+                <span className="planWithZestIcon"><Mic size={19} /></span>
+                <span><b>Plan with Zest</b><small>Say what you need to do</small></span>
+                <ChevronRight size={18} />
+              </button>
+            </section>
+            <section className="homeToday">
               <div className="homeTodayHead">
                 <div className="homeTodayTitle">
                   <span>
@@ -1325,7 +1332,27 @@ export default function App() {
           </div>
         )}
 
-        {voiceOpen && (\n          <div className="voicePlanBackdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && closeVoicePlanner()}>\n            <section className="voicePlanSheet" role="dialog" aria-modal="true" aria-labelledby="voice-plan-title">\n              <div className="voicePlanHead">\n                <div><span className="eyebrow">PLAN WITH ZEST</span><h2 id="voice-plan-title">What’s your plan?</h2></div>\n                <button className="iconButton" onClick={closeVoicePlanner} aria-label="Close"><X size={20} /></button>\n              </div>\n              <p className="voicePlanHint">Speak naturally. For example: “Tomorrow at 9, dentist. At 2, call Sarah. Remind me at 6 to buy groceries.”</p>\n              <textarea className="voicePlanText" value={voiceText} maxLength={2000} onChange={(e) => setVoiceText(e.target.value)} placeholder="Say it or type it here…" />\n              <button className={"voiceRecordButton " + (voiceListening ? "listening" : "")} onClick={toggleVoiceListening} type="button">\n                {voiceListening ? <Square size={20} /> : <Mic size={22} />}\n                <span>{voiceListening ? "Stop listening" : "Start speaking"}</span>\n              </button>\n              <div className="voicePlanPrivacy">Your words are sent only when you choose <b>Organise my plan</b>. Review everything before it is saved.</div>\n              <button className="button voicePlanSubmit" disabled={voiceBusy || !voiceText.trim()} onClick={organiseVoicePlan}>\n                {voiceBusy ? <Loader2 className="spin" size={19} /> : <Sparkles size={19} />} {voiceBusy ? "Organising…" : "Organise my plan"}\n              </button>\n            </section>\n          </div>\n        )}\n        {editingIndex !== null && draft && (
+        {voiceOpen && (
+          <div className="voicePlanBackdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && closeVoicePlanner()}>
+            <section className="voicePlanSheet" role="dialog" aria-modal="true" aria-labelledby="voice-plan-title">
+              <div className="voicePlanHead">
+                <div><span className="eyebrow">PLAN WITH ZEST</span><h2 id="voice-plan-title">What’s your plan?</h2></div>
+                <button className="iconButton" onClick={closeVoicePlanner} aria-label="Close"><X size={20} /></button>
+              </div>
+              <p className="voicePlanHint">Speak naturally. For example: “Tomorrow at 9, dentist. At 2, call Sarah. Remind me at 6 to buy groceries.”</p>
+              <textarea className="voicePlanText" value={voiceText} maxLength={2000} onChange={(e) => setVoiceText(e.target.value)} placeholder="Say it or type it here…" />
+              <button className={"voiceRecordButton " + (voiceListening ? "listening" : "")} onClick={toggleVoiceListening} type="button">
+                {voiceListening ? <Square size={20} /> : <Mic size={22} />}
+                <span>{voiceListening ? "Stop listening" : "Start speaking"}</span>
+              </button>
+              <div className="voicePlanPrivacy">Your words are sent only when you choose <b>Organise my plan</b>. Review everything before it is saved.</div>
+              <button className="button voicePlanSubmit" disabled={voiceBusy || !voiceText.trim()} onClick={organiseVoicePlan}>
+                {voiceBusy ? <Loader2 className="spin" size={19} /> : <Sparkles size={19} />} {voiceBusy ? "Organising…" : "Organise my plan"}
+              </button>
+            </section>
+          </div>
+        )}
+        {editingIndex !== null && draft && (
           <dialog
             ref={dialogRef}
             className="modalBackdrop"
