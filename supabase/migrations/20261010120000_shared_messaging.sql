@@ -34,8 +34,11 @@ create index if not exists shared_messages_plan_created_idx
   on public.shared_plan_messages(plan_id,created_at desc);
 create index if not exists shared_messages_sender_idx
   on public.shared_plan_messages(sender_id,created_at desc);
+create index if not exists shared_messages_reply_idx on public.shared_plan_messages(reply_to) where reply_to is not null;
+create index if not exists shared_messages_item_idx on public.shared_plan_messages(item_id) where item_id is not null;
 create index if not exists shared_message_reactions_plan_idx
   on public.shared_plan_message_reactions(plan_id,message_id);
+create index if not exists shared_message_reactions_user_idx on public.shared_plan_message_reactions(user_id);
 create index if not exists shared_plan_reads_user_idx
   on public.shared_plan_reads(user_id,plan_id);
 
