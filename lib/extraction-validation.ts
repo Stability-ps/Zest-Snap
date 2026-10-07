@@ -8,8 +8,25 @@ const TIMETABLE_FALLBACK_TYPES = new Set(["schedule", "event", "other", "school_
  * weekly class timetable a "schedule" while still returning undated weekly slots. Undated weekly rows can only be
  * placed with term dates, so treat them as a timetable rather than leaving every class as "date needs review".
  */
+const MEAL_SLOT = /^(breakfast|brunch|lunch|dinner|supper|snack|tea|dessert)$/i;
+
+/**
+ * Meal schedules often come back titled only "Breakfast"/"Dinner" with the dish in the description. Shared meal plans
+ * and the Daily Briefing show titles only, so put the dish in the title ("Dinner: Pasta bake").
+ */
+function nameMeals<T extends Pick<ExtractionResult, "documentType" | "events">>(r: T): T {
+  if (r.documentType !== "meal_schedule") return r;
+  return {
+    ...r,
+    events: r.events.map((e) => {
+      const dish = (e.description || "").split("\n")[0].trim();
+      return MEAL_SLOT.test(e.title.trim()) && dish && dish.length <= 200 ? { ...e, title: `${e.title.trim()}: ${dish}` } : e;
+    }),
+  };
+}
+
 export function normalizeDocumentType<T extends Pick<ExtractionResult, "documentType" | "events">>(r: T): T {
-  if (!TIMETABLE_FALLBACK_TYPES.has(r.documentType)) return r;
+  if (!TIMETABLE_FALLBACK_TYPES.has(r.documentType)) return nameMeals(r);
   const undatedWeekly = r.events.filter((e) => e.recurrence === "weekly" && e.dayOfWeek && !e.startDate).length;
   return undatedWeekly > 0 && undatedWeekly * 2 >= r.events.length ? { ...r, documentType: "timetable" } : r;
 }
