@@ -56,6 +56,7 @@ import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planne
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
 import { normalizeDocumentType } from "@/lib/extraction-validation";
+import { MAX_DATE, MIN_DATE, isValidDate } from "@/lib/dates";
 import { monthGrid, plannerFingerprint, plannerReferenceDate, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, mergePlannerWithExternal, type PlannerItem } from "@/lib/planner";
 import {
   STARTUP_STATE_KEY,
@@ -775,7 +776,7 @@ export default function App() {
       if (!scheduleStart || !scheduleEnd || scheduleEnd < scheduleStart) return showError("Choose the timetable start and end dates first.");
       usable = materializeWeeklySchedule(result.events, scheduleStart, scheduleEnd);
     }
-    usable = usable.filter((event) => event.startDate);
+    usable = usable.filter((event) => isValidDate(event.startDate));
     if (!usable.length) return showError("Review the schedule dates first. Zest will not guess missing dates.");
     setBusy(true);
     try {
@@ -1109,8 +1110,8 @@ export default function App() {
                   <b>{result.events.length} {result.documentType === "exam_timetable" ? "exams" : result.documentType === "meal_schedule" ? "meal items" : "schedule items"} found</b>
                   <small>{result.documentType === "timetable" ? "Set the term or semester dates once, then Zest builds the recurring schedule." : "Review the dates before adding anything."}</small>
                   {result.documentType === "timetable" && <div className="scheduleRangeFields">
-                    <label><span>Starts</span><input type="date" value={scheduleStart} onChange={e=>setScheduleStart(e.target.value)} /></label>
-                    <label><span>Ends</span><input type="date" value={scheduleEnd} min={scheduleStart||undefined} onChange={e=>setScheduleEnd(e.target.value)} /></label>
+                    <label><span>Starts</span><input type="date" min={MIN_DATE} max={MAX_DATE} value={scheduleStart} onChange={e=>setScheduleStart(e.target.value)} /></label>
+                    <label><span>Ends</span><input type="date" max={MAX_DATE} value={scheduleEnd} min={scheduleStart||MIN_DATE} onChange={e=>setScheduleEnd(e.target.value)} /></label>
                   </div>}
                 </div>
                 <div className="detectedPlanActions">
@@ -1307,7 +1308,7 @@ export default function App() {
                 <label>
                   <span>Date</span>
                   <input
-                    type="date"
+                    type="date" min={MIN_DATE} max={MAX_DATE}
                     value={draft.startDate}
                     onChange={(e) =>
                       setDraft({
@@ -1337,7 +1338,7 @@ export default function App() {
                 <label>
                   <span>End date</span>
                   <input
-                    type="date"
+                    type="date" min={MIN_DATE} max={MAX_DATE}
                     value={draft.endDate}
                     onChange={(e) =>
                       setDraft({ ...draft, endDate: e.target.value })

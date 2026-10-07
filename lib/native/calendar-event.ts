@@ -1,5 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
 import type { ExtractedEvent } from "../extraction-types";
+import { isValidDate } from "../dates";
 import { plannerReferenceDate, plannerReferenceTime, type PlannerItem } from "../planner";
 
 /** What the system calendar editor needs. Times are epoch milliseconds. */
@@ -14,7 +15,6 @@ export type DeviceCalendarEvent = {
   alerts?: number[];
 };
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^\d{2}:\d{2}$/;
 
 function zone(tz: string | undefined, fallback: string) {
@@ -38,9 +38,9 @@ export function toDeviceEvent(
   deviceTimezone: string,
   alerts?: number[],
 ): DeviceCalendarEvent {
-  if (!DATE.test(input.date)) throw new Error("Check the date before adding this to your calendar.");
+  if (!isValidDate(input.date)) throw new Error("Check the date before adding this to your calendar.");
   const title = input.title.trim() || "Zest Snap event";
-  const endDay = input.endDate && DATE.test(input.endDate) && input.endDate >= input.date ? input.endDate : input.date;
+  const endDay = input.endDate && isValidDate(input.endDate) && input.endDate >= input.date ? input.endDate : input.date;
   const base = { title, location: input.location?.trim() || undefined, description: input.description?.trim() || undefined, alerts };
   if (input.allDay || !input.time || !TIME.test(input.time)) {
     const tz = zone(deviceTimezone, "UTC");

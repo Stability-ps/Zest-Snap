@@ -1,4 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
+import { DATE_RANGE_MESSAGE, isValidDate } from "./dates";
 
 export type PlannerItemType = "event" | "task" | "deadline" | "reminder";
 export type PlannerItemStatus = "open" | "completed" | "cancelled";
@@ -25,14 +26,15 @@ export function plannerInstant(item:Pick<PlannerItem,"type"|"startDate"|"startTi
 }
 export function validatePlannerItem(item:PlannerItem){
  if(!item.title.trim()||item.title.length>500)throw new Error("Enter a title.");
- const date=plannerReferenceDate(item); if(!DATE.test(date))throw new Error("Choose a valid date.");
+ const date=plannerReferenceDate(item); if(!isValidDate(date))throw new Error(DATE_RANGE_MESSAGE);
+ for(const extra of [item.startDate,item.endDate,item.dueDate])if(extra&&!isValidDate(extra))throw new Error(DATE_RANGE_MESSAGE);
  try{Temporal.PlainDate.from(date);new Intl.DateTimeFormat("en",{timeZone:item.timezone||"UTC"});}catch{throw new Error("Choose a valid date and timezone.");}
  if(item.description.length>10000||item.location.length>2000)throw new Error("Planner details are too long.");
  if(!item.allDay&&plannerReferenceTime(item))plannerInstant(item);
  if(item.type==="event"&&item.endDate&&Temporal.PlainDate.compare(Temporal.PlainDate.from(item.endDate),Temporal.PlainDate.from(item.startDate))<0)throw new Error("End date must follow start date.");
 }
 export function reminderMinutes(d:ReminderDraft){const map:Record<string,number>={at_time:0,"5m":5,"15m":15,"30m":30,"1h":60,"1d":1440,"1w":10080};if(d.preset!=="custom")return map[d.preset];const n=Number(d.customMinutes);if(!Number.isFinite(n)||n<0||n>525600)throw new Error("Custom reminder must be between 0 minutes and 1 year.");return Math.round(n);}
-export function calculateReminderAt(item:PlannerItem,draft:ReminderDraft){let instant=plannerInstant(item);if(!instant&&item.allDay){const date=plannerReferenceDate(item),time=draft.allDayTime||"09:00";if(!DATE.test(date)||!TIME.test(time))throw new Error("Choose a valid reminder time.");instant=Temporal.PlainDateTime.from(`${date}T${time}`).toZonedDateTime(item.timezone||"UTC",{disambiguation:"reject"}).toInstant();}if(!instant)throw new Error("Timed reminders need a time. Choose a time first.");return instant.subtract({minutes:reminderMinutes(draft)}).toString();}
+export function calculateReminderAt(item:PlannerItem,draft:ReminderDraft){let instant=plannerInstant(item);if(!instant&&item.allDay){const date=plannerReferenceDate(item),time=draft.allDayTime||"09:00";if(!isValidDate(date)||!TIME.test(time))throw new Error("Choose a valid reminder time.");instant=Temporal.PlainDateTime.from(`${date}T${time}`).toZonedDateTime(item.timezone||"UTC",{disambiguation:"reject"}).toInstant();}if(!instant)throw new Error("Timed reminders need a time. Choose a time first.");return instant.subtract({minutes:reminderMinutes(draft)}).toString();}
 /**
  * Calendar-day comparisons use the user's configured timezone (the same "today" as Home and the
  * Today tab); whether a timed item has passed uses the item's own wall-clock time in its timezone.

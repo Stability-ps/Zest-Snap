@@ -7,3 +7,7 @@ test("shared database error codes become actionable messages and unknown errors 
   assert.match(sharedErrorMessage(new Error("invite_unavailable"), "x"), /expired or was revoked/);
   assert.equal(sharedErrorMessage(new Error('relation "public.secret" does not exist'), "Could not load."), "Could not load.");
 });
+
+test("deletion refusals say only the owner can delete", () => {
+  assert.equal(sharedErrorMessage(new Error("delete_not_allowed"), "x"), "Only the plan owner can delete this plan.");
+});

@@ -108,9 +108,11 @@ or `npm run mobile:build:ios` on a Mac with signing configured. No signing mater
 ## Deep links & auth
 
 - Custom scheme: `zestsnap://app?view=planner`, `zestsnap://settings` (Android + iOS).
-- Universal Links / App Links for `https://app.zestsnap.app/{app,auth/callback,reset-password,login,settings}`:
+- Universal Links / App Links for `https://app.zestsnap.app/{app,auth/callback,reset-password,login,settings,share,shared}`
+  (`/share/<token>` invitations open in the app, where the recipient is signed in):
   - iOS: `App.entitlements` → `applinks:app.zestsnap.app`; the site serves `/.well-known/apple-app-site-association`
-    when **`APPLE_TEAM_ID`** is set in Vercel.
+    when **`APPLE_TEAM_ID`** is set in Vercel. Team: **D64PWXTUJ5** (Stability Group (Pty) Ltd), also the Xcode
+    `DEVELOPMENT_TEAM`. The `app.zestsnap` App ID needs the Associated Domains capability in that team.
   - Android: `autoVerify` intent filter; the site serves `/.well-known/assetlinks.json` when **`ANDROID_CERT_SHA256`**
     (Play App Signing SHA-256, comma-separated) is set.
 - `lib/native/deep-links.ts` only routes Zest Snap URLs; auth callbacks get a full navigation so the server can exchange the code.
@@ -246,3 +248,10 @@ Run on one current iPhone (Dynamic Island) and one Android phone (gesture nav), 
 - Vercel env: `APPLE_TEAM_ID`, `ANDROID_CERT_SHA256`, RevenueCat keys/secrets (see table above).
 - Supabase: confirm `https://app.zestsnap.app/**` is in Auth › URL configuration › Redirect URLs (already used by the web app).
 - Migrations `20261006090000_native_platform_analytics.sql` (applied) and `20261007090000_native_reminder_delivery.sql` (device delivery status).
+
+## Android adaptive icon: known tradeoff
+
+`zest_launcher_foreground_v6` draws the card at scale 1.24 so it reads large inside Samsung's squircle mask. On masks
+that show a centred circle (Pixel), the visible radius is 1/3 of the 108dp canvas, while the card's rounded corners reach
+about 0.41, so the corners are cropped. Fitting the circle needs a scale of about 1.0, which shrinks the mark by ~19%
+everywhere. This is an approved branding choice; change it only after checking real Samsung and Pixel devices.

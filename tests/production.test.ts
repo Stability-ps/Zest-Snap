@@ -162,3 +162,35 @@ test("Today/Past/Upcoming use the user's timezone, around midnight and as timed 
   assert.equal(plannerStatus(allDay, at("2026-10-05T14:00:00Z"), tz), "today");
   assert.equal(plannerStatus(allDay, at("2026-10-05T15:01:00Z"), tz), "past");
 });
+
+test("CSP (report-only) is derived from real dependencies: no wildcards, no eval, server-only APIs absent", async () => {
+  const { contentSecurityPolicy } = await import("../lib/csp");
+  const csp = contentSecurityPolicy("https://rnlqsaaoywqrvokoysei.supabase.co");
+  assert.doesNotMatch(csp, /(^|\s)\*(\s|;|$)|https:\/\/\*|'unsafe-eval'/);
+  assert.match(csp, /connect-src 'self' https:\/\/rnlqsaaoywqrvokoysei\.supabase\.co wss:\/\/rnlqsaaoywqrvokoysei\.supabase\.co/);
+  for (const serverOnly of ["api.openai.com", "googleapis.com", "revenuecat"]) assert.equal(csp.includes(serverOnly), false, serverOnly);
+  for (const d of ["frame-ancestors 'none'", "object-src 'none'", "base-uri 'self'", "report-uri /api/csp-report"]) assert.ok(csp.includes(d), d);
+  const config = (await import("../next.config")).default;
+  const headers = (await config.headers!())[0].headers.map((h: { key: string }) => h.key);
+  assert.ok(headers.includes("Content-Security-Policy-Report-Only"));
+  assert.equal(headers.includes("Content-Security-Policy"), false, "enforce only after violations are reviewed");
+});
+
+test("CSP reports are logged without paths' query strings, tokens or full blocked URLs", async () => {
+  const { POST } = await import("../app/api/csp-report/route");
+  const lines: string[] = [];
+  const info = console.info;
+  console.info = (s: string) => lines.push(s);
+  try {
+    const res = await POST(new Request("https://app.zestsnap.app/api/csp-report", { method: "POST", body: JSON.stringify({ "csp-report": {
+      "document-uri": "https://app.zestsnap.app/share/3f2b8c1e-9a4d-4f6b-8e2a-1c5d7e9f0a3b?email=a@b.c", "effective-directive": "connect-src",
+      "blocked-uri": "https://tracker.example/collect?user=secret" } }) }));
+    assert.equal(res.status, 204);
+  } finally {
+    console.info = info;
+  }
+  assert.equal(lines.length, 1);
+  const logged = JSON.parse(lines[0]);
+  assert.deepEqual(logged, { event: "csp_violation", directive: "connect-src", blocked: "https://tracker.example", page: "/share/:id" });
+  assert.equal(lines[0].includes("secret") || lines[0].includes("a@b.c") || lines[0].includes("3f2b8c1e"), false);
+});

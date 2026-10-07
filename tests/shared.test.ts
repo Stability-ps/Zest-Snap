@@ -142,3 +142,40 @@ test("daily briefings claim one slot per local day, including slots that cross m
   await assert.rejects(as(db, U, `select * from public.claim_due_daily_briefings(10)`));
   await db.close();
 });
+
+test("only the owner can delete a plan; members, invites, items and assignments go with it", async () => {
+  const { db, plan, item } = await setup();
+  await as(db, EDITOR, `select public.assign_shared_item($1,$2)`, [item, VIEWER]);
+  const link = (await as<{ t: string }>(db, OWNER, `select public.create_shared_invite($1,null,'viewer') t`, [plan])).rows[0].t;
+  const personal = (await as<{ t: string }>(db, OWNER, `select public.create_shared_invite($1,'someone@example.com','editor') t`, [plan])).rows[0].t;
+  for (const user of [EDITOR, VIEWER, STRANGER])
+    await assert.rejects(as(db, user, `select public.delete_shared_plan($1)`, [plan]), /not_allowed/, user);
+  await assert.rejects(as(db, null, `select public.delete_shared_plan($1)`, [plan]));
+  // No table-level path around the function.
+  await as(db, OWNER, `delete from public.shared_plans where id=$1`, [plan]).catch(() => undefined);
+  assert.equal((await db.query(`select 1 from public.shared_plans where id=$1`, [plan])).rows.length, 1);
+
+  await as(db, OWNER, `select public.delete_shared_plan($1)`, [plan]);
+  for (const table of ["shared_plans", "shared_plan_members", "shared_plan_items", "shared_plan_invites"])
+    assert.equal((await db.query(`select 1 from public.${table} where ${table === "shared_plans" ? "id" : "plan_id"}=$1`, [plan])).rows.length, 0, `${table} left behind`);
+  for (const user of [OWNER, EDITOR, VIEWER]) {
+    assert.equal((await as(db, user, `select * from public.shared_plans where id=$1`, [plan])).rows.length, 0);
+    assert.equal((await as(db, user, `select * from public.shared_plan_member_directory($1)`, [plan])).rows.length, 0);
+  }
+  for (const token of [link, personal]) {
+    assert.equal((await as(db, null, `select * from public.shared_invite_preview($1)`, [token])).rows.length, 0);
+    await assert.rejects(as(db, STRANGER, `select public.accept_shared_invite($1)`, [token], email(STRANGER)), /invite_unavailable/);
+  }
+  // Deleting again (or a plan that never existed) is refused rather than silently succeeding.
+  await assert.rejects(as(db, OWNER, `select public.delete_shared_plan($1)`, [plan]), /not_allowed/);
+  await db.close();
+});
+
+test("the database refuses Planner and Shared dates outside 1900–2100", async () => {
+  const { db, plan, item } = await setup();
+  await assert.rejects(as(db, EDITOR, `insert into public.shared_plan_items(plan_id,creator_id,item_type,title,due_date) values($1,$2,'task','x','100720-02-06')`, [plan, EDITOR]), /range/);
+  await assert.rejects(as(db, EDITOR, `update public.shared_plan_items set due_date='1899-12-31' where id=$1`, [item]), /range/);
+  await assert.rejects(db.query(`insert into public.planner_items(user_id,type,title,due_date) values($1,'task','x','2101-01-01')`, [OWNER]), /range/);
+  await db.query(`insert into public.planner_items(user_id,type,title,due_date) values($1,'task','ok','2100-12-31')`, [OWNER]);
+  await db.close();
+});

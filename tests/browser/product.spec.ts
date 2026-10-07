@@ -268,3 +268,35 @@ test("Upcoming excludes today's events once their time has passed; greeting neve
   await expect(page.getByText("Already happened")).toHaveCount(0);
   await expect(page.getByText("All day thing")).toBeVisible();
 });
+
+test("Planner refuses dates outside 1900–2100 with a friendly message and saves nothing", async ({ page }) => {
+  await page.goto("/app?view=planner");
+  await page.getByRole("button", { name: "Add to Planner" }).first().click();
+  await page.getByLabel("Title").fill("Typo date check");
+  const date = page.getByLabel("Date");
+  await expect(date).toHaveAttribute("min", "1900-01-01");
+  await expect(date).toHaveAttribute("max", "2100-12-31");
+  await date.fill("2101-01-01");
+  await page.getByRole("button", { name: "Save to Planner" }).click();
+  await expect(page.getByText("Choose a real date between 1900 and 2100.")).toBeVisible();
+  const saved = await page.evaluate(() => JSON.stringify(localStorage).includes("Typo date check"));
+  expect(saved).toBe(false);
+});
+
+test("the report-only CSP raises no violations across the main views", async ({ page }) => {
+  const violations: string[] = [];
+  page.on("console", (m) => { if (/Content Security Policy|Content-Security-Policy/i.test(m.text())) violations.push(m.text()); });
+  const response = await page.goto("/app");
+  expect(response?.headers()["content-security-policy-report-only"]).toContain("frame-ancestors 'none'");
+  for (const view of ["planner", "todo", "shared"]) {
+    await page.goto(`/app?view=${view}`);
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(400);
+  }
+  for (const path of ["/settings", "/login", "/privacy", "/offline", "/share/3f2b8c1e-9a4d-4f6b-8e2a-1c5d7e9f0a3b"]) {
+    await page.goto(path);
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(400);
+  }
+  expect(violations).toEqual([]);
+});

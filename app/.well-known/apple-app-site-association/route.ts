@@ -20,6 +20,8 @@ export function GET() {
               { "/": "/reset-password*" },
               { "/": "/login*" },
               { "/": "/settings*" },
+              { "/": "/share/*", comment: "Shared plan invitations" },
+              { "/": "/shared/*", comment: "Shared plans" },
             ],
           },
         ],

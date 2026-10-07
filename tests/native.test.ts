@@ -27,6 +27,11 @@ test("deep links map only Zest Snap URLs to in-app paths", () => {
   for (const bad of ["https://evil.example/app", "http://app.zestsnap.app/app", "https://app.zestsnap.app/admin", "https://app.zestsnap.app.evil.example/app",
     "javascript:alert(1)", "zestsnap://admin", "not a url", "https://app.zestsnap.app/api/account"])
     assert.equal(inAppPath(bad), null, bad);
+  // Shared invitations open in the app, where the recipient is signed in.
+  const token = "3f2b8c1e-9a4d-4f6b-8e2a-1c5d7e9f0a3b";
+  assert.equal(inAppPath(`https://app.zestsnap.app/share/${token}`), `/share/${token}`);
+  assert.equal(inAppPath(`https://app.zestsnap.app/shared/${token}`), `/shared/${token}`);
+  for (const bad of ["https://app.zestsnap.app/sharedx", "https://app.zestsnap.app/shareholder"]) assert.equal(inAppPath(bad), null, bad);
   assert.equal(needsFullNavigation("/auth/callback?code=1"), true);
   assert.equal(needsFullNavigation("/app?view=planner"), false);
 });
@@ -186,4 +191,27 @@ test("a resumed native WebView moves to the live release only when nothing is in
   assert.equal(shouldReloadForRelease("local", "def", false), false);
   assert.equal(hasWorkInProgress({ querySelector: () => null }), false);
   assert.equal(hasWorkInProgress({ querySelector: (s: string) => (s.includes(".reviewTop") ? ({} as Element) : null) }), true);
+});
+
+test("the Universal Links file stays 404 until a Team ID is set, then names the app and its link routes", async () => {
+  const { GET } = await import("../app/.well-known/apple-app-site-association/route");
+  const previous = process.env.APPLE_TEAM_ID;
+  try {
+    delete process.env.APPLE_TEAM_ID;
+    assert.equal(GET().status, 404);
+    process.env.APPLE_TEAM_ID = "not-a-team";
+    assert.equal(GET().status, 404);
+    process.env.APPLE_TEAM_ID = "D64PWXTUJ5";
+    const res = GET();
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") || "", /application\/json/);
+    const body = await res.json();
+    assert.deepEqual(body.applinks.details[0].appIDs, ["D64PWXTUJ5.app.zestsnap"]);
+    const routes = body.applinks.details[0].components.map((c: { "/": string }) => c["/"]);
+    for (const r of ["/app*", "/auth/callback*", "/reset-password*", "/share/*", "/shared/*"]) assert.ok(routes.includes(r), r);
+    assert.equal(routes.some((r: string) => r.startsWith("/admin") || r.startsWith("/api")), false);
+    assert.deepEqual(body.webcredentials.apps, ["D64PWXTUJ5.app.zestsnap"]);
+  } finally {
+    if (previous === undefined) delete process.env.APPLE_TEAM_ID; else process.env.APPLE_TEAM_ID = previous;
+  }
 });

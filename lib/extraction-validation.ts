@@ -1,5 +1,7 @@
 import type { ExtractionResult, ExtractedEvent } from "./extraction-types";
-import { Temporal } from "@js-temporal/polyfill";
+import { isValidDate } from "./dates";
+export const DATE_REVIEW_WARNING = "A date in this document didn’t look right, so it was left blank. Check it before saving.";
+
 // Labels the model may give a class/work timetable instead of "timetable". Exam and meal schedules keep their own flows.
 const TIMETABLE_FALLBACK_TYPES = new Set(["schedule", "event", "other", "school_notice", "task_list"]);
 
@@ -72,15 +74,13 @@ export function validateExtraction(value: unknown): ExtractionResult {
         throw new Error("invalid_output");
     if (e.recurrence !== undefined && !["none","weekly"].includes(e.recurrence)) throw new Error("invalid_output");
     if (e.dayOfWeek && !["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].includes(e.dayOfWeek.toLowerCase())) throw new Error("invalid_output");
+    // An impossible or out-of-range date is cleared for review, never "fixed" by guessing.
     for (const k of ["startDate", "endDate"] as const)
-      if (e[k])
-        try {
-          Temporal.PlainDate.from(e[k]);
-        } catch {
-          e[k] = "";
-          e.confidence = Math.min(e.confidence, 0.4);
-          r.warnings.push("An invalid date needs correction.");
-        }
+      if (e[k] && !isValidDate(e[k])) {
+        e[k] = "";
+        e.confidence = Math.min(e.confidence, 0.4);
+        if (!r.warnings.includes(DATE_REVIEW_WARNING)) r.warnings.push(DATE_REVIEW_WARNING);
+      }
     if (e.timezone)
       try {
         new Intl.DateTimeFormat("en", { timeZone: e.timezone });

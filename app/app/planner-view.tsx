@@ -1,4 +1,5 @@
 "use client";
+import { MAX_DATE, MIN_DATE } from "@/lib/dates";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
@@ -959,7 +960,7 @@ function Editor({ item, busy, onClose, onSave }: { item: PlannerItem; busy: bool
         <label>
           <span>{task ? "Due date" : "Date"}</span>
           <input
-            type="date"
+            type="date" min={MIN_DATE} max={MAX_DATE}
             value={task ? d.dueDate : d.startDate}
             onChange={(e) =>
               patch(task ? { dueDate: e.target.value } : { startDate: e.target.value, endDate: !d.endDate || d.endDate < e.target.value ? e.target.value : d.endDate })
@@ -1080,7 +1081,7 @@ function NewReminder({
       <div className="customReminder">
         <label className="reminderField">
           <span>Date</span>
-          <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+          <input type="date" min={MIN_DATE} max={MAX_DATE} value={day} onChange={(e) => setDay(e.target.value)} />
         </label>
         <label className="reminderField">
           <span>Time</span>

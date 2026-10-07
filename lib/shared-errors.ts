@@ -3,6 +3,7 @@ const MESSAGES: Record<string, string> = {
   authentication_required: "Sign in to continue.",
   invite_unavailable: "This invitation has expired or was revoked. Ask for a new link.",
   invite_for_another_account: "This invitation was sent to a different email address. Sign in with that address to accept it.",
+  delete_not_allowed: "Only the plan owner can delete this plan.",
   not_allowed: "Only the plan owner or an editor can do that.",
   member_not_found: "Tasks can only be assigned to people in this plan.",
   assignee_can_only_complete: "You can tick off tasks assigned to you, but only editors can change them.",
