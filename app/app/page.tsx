@@ -6,7 +6,6 @@ import {
   Upload,
   CalendarDays,
   Gift,
-  Clock,
   Home as HomeIcon,
   CheckCircle2,
   AlertTriangle,
@@ -804,7 +803,7 @@ export default function App() {
       }));
       const { error: itemError } = await db.from("shared_plan_items").insert(rows);
       if (itemError) throw itemError;
-      window.location.assign(`/shared/${planId}`);
+      router.push(`/shared/${planId}`);
     } catch (e) {
       showError(e instanceof Error ? e.message : "Could not create the shared plan.");
     } finally {

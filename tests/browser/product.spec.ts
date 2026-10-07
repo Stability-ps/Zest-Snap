@@ -59,13 +59,14 @@ test("capture → review → save to Planner → Home Today stays in sync withou
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(page.getByText("1 thing in your day")).toBeVisible();
 
-  // Re-opening the scan marks saved events as already in the agenda.
-  await page.getByRole("button", { name: "History", exact: true }).click();
-  await page.getByRole("button", { name: /notice\.png/ }).first().click();
-  await expect(page.getByText("Already in your Zest agenda")).toHaveCount(2);
-
   // All navigation was client-side: no full reloads.
   expect(await page.evaluate(() => (window as unknown as { __warm?: boolean }).__warm)).toBe(true);
+
+  // History lives in Settings (bottom nav is Home / Planner / To-Do / Shared). Re-opening the scan
+  // marks saved events as already in the agenda.
+  await page.goto("/app?view=history");
+  await page.getByRole("button", { name: /notice\.png/ }).first().click();
+  await expect(page.getByText("Already in your Zest agenda")).toHaveCount(2);
   expect(errors).toEqual([]);
 });
 
@@ -73,7 +74,9 @@ test("Planner navigation: back button, deep links and warm return", async ({ pag
   await page.goto("/app");
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await expect(page).toHaveURL(/view=planner/);
-  await page.getByRole("button", { name: "Rewards", exact: true }).click();
+  await expect(page.getByRole("navigation").getByRole("button")).toHaveText(["Home", "Planner", "To-do", "Shared"]);
+  await page.getByRole("button", { name: /rewards/i }).first().click();
+  await expect(page).toHaveURL(/view=rewards/);
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Your planner" })).toBeVisible();
   await page.goBack();
@@ -129,7 +132,7 @@ test("a previous account's cached name, credits and Planner never appear for som
   await expect(page.getByRole("heading", { name: "What do you want to remember?" })).toBeVisible();
   await expect(page.getByText("Morgan")).toHaveCount(0);
   await expect(page.getByText("42 credits")).toHaveCount(0);
-  await page.getByRole("button", { name: "History", exact: true }).click();
+  await page.goto("/app?view=history");
   await expect(page.getByText("morgan.pdf")).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("zest-cloud-99999999-9999-9999-9999-999999999999"))).toBeNull();
 });
@@ -194,7 +197,8 @@ test("offline: the installed shell opens and private responses are never cached"
   await context.setOffline(true);
   await page.goto("/app");
   await expect(page.getByRole("heading", { name: "What do you want to remember?" })).toBeVisible();
-  await page.goto("/privacy").catch(() => undefined);
+  // The worker is scoped to /app (the marketing pages are not part of the installed app).
+  await page.goto("/app/not-cached").catch(() => undefined);
   await expect(page.getByRole("heading", { name: "You’re offline" })).toBeVisible();
   await context.setOffline(false);
   const paths = await page.evaluate(async () => {

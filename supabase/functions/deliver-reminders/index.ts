@@ -84,6 +84,22 @@ Deno.serve(async (req: Request) => {
 
   // Daily briefing reuses the same push channel so there is no second notification service to operate.
   let briefingsSent = 0, briefingsFailed = 0;
+  // Shared items have no direct relation to members, so resolve the user's active plans first. Weekly
+  // timetable rows are stored once with a recurrence, so match them by weekday inside their date range.
+  const sharedItemsFor = async (userId: string, day: string) => {
+    const plans = await db.from("shared_plan_members").select("plan_id").eq("user_id", userId).eq("status", "active");
+    if (plans.error) return { data: null, error: plans.error };
+    const ids = (plans.data || []).map((p: { plan_id: string }) => p.plan_id);
+    if (!ids.length) return { data: [] as any[], error: null };
+    const weekday = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(day + "T12:00:00Z").getUTCDay()];
+    const res = await db.from("shared_plan_items").select("title,item_type,start_date,start_time,due_date,due_time,recurrence")
+      .in("plan_id", ids).neq("status", "cancelled")
+      .or(`start_date.eq.${day},due_date.eq.${day},and(recurrence->>frequency.eq.weekly,start_date.lte.${day})`).limit(50);
+    if (res.error) return res;
+    const data = (res.data || []).filter((x: any) => x.start_date === day || x.due_date === day ||
+      (x.recurrence?.frequency === "weekly" && String(x.recurrence?.dayOfWeek || "").toLowerCase() === weekday && (!x.recurrence?.until || x.recurrence.until >= day)));
+    return { data: data.slice(0, 12), error: null };
+  };
   const { data: briefings, error: briefingClaimError } = await db.rpc("claim_due_daily_briefings", { p_limit: 100 });
   if (briefingClaimError) log("briefing_claim_failed", { code: briefingClaimError.code });
   for (const briefing of briefings || []) {
@@ -93,13 +109,12 @@ Deno.serve(async (req: Request) => {
         db.from("planner_items").select("title,type,start_date,start_time,due_date,due_time,status")
           .eq("user_id", briefing.user_id).eq("status","open")
           .or(`start_date.eq.${day},due_date.eq.${day}`).limit(12),
-        briefing.include_shared
-          ? db.from("shared_plan_items").select("title,item_type,start_date,start_time,due_date,due_time,plan_id,shared_plans!inner(name),shared_plan_members!inner(user_id,status)")
-              .eq("shared_plan_members.user_id",briefing.user_id).eq("shared_plan_members.status","active").neq("status","cancelled")
-              .or(`start_date.eq.${day},due_date.eq.${day}`).limit(12)
-          : Promise.resolve({ data: [] as unknown[], error: null }),
+        briefing.include_shared ? sharedItemsFor(briefing.user_id, day) : Promise.resolve({ data: [] as any[], error: null }),
         db.from("push_subscriptions").select("id,endpoint,keys,failure_count").eq("user_id",briefing.user_id),
       ]);
+      if (plannerRes.error || sharedRes.error || subsRes.error) throw new Error("briefing_query_failed");
+      // Nothing can be delivered without a web push subscription; retrying every minute would not change that.
+      if (!subsRes.data?.length) { await db.rpc("complete_daily_briefing",{p_user:briefing.user_id,p_ok:true}); log("briefing_no_subscription"); continue; }
       const personal = (plannerRes.data || []).filter((x:any)=>briefing.include_todos || x.type==="event");
       const shared = (sharedRes.data || []).filter((x:any)=>briefing.include_meals || x.item_type!=="meal");
       const all = [...personal,...shared] as any[];
