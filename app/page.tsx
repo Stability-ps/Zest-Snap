@@ -14,14 +14,8 @@ export const revalidate = 300;
 const planCta: Record<string, string> = { free: "Get started", plus: "Start with Free", business: "Explore Business" };
 
 function planCopy(plan: CatalogPlan) {
-  const parts = [
-    `${plan.monthlyScans} AI scans each month`,
-    `PDFs up to ${plan.pdfPagesPerScan} pages`,
-    plan.bulkExtraction && "multiple-event extraction",
-    plan.smartReminders && "smart reminders",
-    plan.priorityProcessing && "priority processing",
-  ].filter(Boolean) as string[];
-  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
+  // Only benefits the server enforces (reserve_scan): monthly allowance and PDF pages per scan.
+  const list = `${plan.monthlyScans} AI scans each month and PDFs up to ${plan.pdfPagesPerScan} pages`;
   return `${list}.${plan.description ? " " + plan.description : ""}`;
 }
 

@@ -8,13 +8,8 @@ import { hapticSuccess } from "@/lib/native/haptics";
 import { runtime } from "@/lib/native/runtime";
 
 function features(p: CatalogPlan) {
-  return [
-    `${p.monthlyScans} AI scans every month`,
-    `PDFs up to ${p.pdfPagesPerScan} pages`,
-    p.bulkExtraction && "Multiple events from one document",
-    p.smartReminders && "Smart reminders",
-    p.priorityProcessing && "Priority processing",
-  ].filter(Boolean) as string[];
+  // Only benefits the server enforces (reserve_scan): monthly allowance and PDF pages per scan.
+  return [`${p.monthlyScans} AI scans every month`, `PDFs up to ${p.pdfPagesPerScan} pages`];
 }
 
 /** Plans and upgrades. Native apps buy through the App Store / Google Play; the server grants the plan. */
