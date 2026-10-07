@@ -147,10 +147,9 @@ Deno.serve(async (req: Request) => {
   for (const job of queuedMessages || []) {
     messagePushClaimed++;
     try {
-      const [{ data: message }, { data: plan }, { data: sender }, { data: subs, error: subsError }] = await Promise.all([
+      const [{ data: message }, { data: plan }, { data: subs, error: subsError }] = await Promise.all([
         db.from("shared_plan_messages").select("id,body,deleted_at").eq("id",job.message_id).single(),
         db.from("shared_plans").select("id,name").eq("id",job.plan_id).single(),
-        db.from("profiles").select("display_name").eq("id",job.recipient_id).maybeSingle(),
         db.from("push_subscriptions").select("id,endpoint,keys,failure_count").eq("user_id",job.recipient_id),
       ]);
       if (subsError) throw new Error("subscription_query_failed");
