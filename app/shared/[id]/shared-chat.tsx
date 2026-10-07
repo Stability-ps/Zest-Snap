@@ -7,7 +7,8 @@ import styles from "./shared-chat.module.css";
 
 type Member={user_id:string;display_name:string;role:string};
 type Item={id:string;title:string};
-type Attachment={path:string;kind:"photo"|"file"|"voice";name:string;mime?:string;size?:number;duration?:number};\ntype Message={id:string;plan_id:string;sender_id:string;body:string;reply_to:string|null;item_id:string|null;attachment:Attachment|null;edited_at:string|null;deleted_at:string|null;created_at:string};
+type Attachment={path:string;kind:"photo"|"file"|"voice";name:string;mime?:string;size?:number;duration?:number};
+type Message={id:string;plan_id:string;sender_id:string;body:string;reply_to:string|null;item_id:string|null;attachment:Attachment|null;edited_at:string|null;deleted_at:string|null;created_at:string};
 type Reaction={message_id:string;user_id:string;emoji:string};
 const QUICK=["👍","❤️","😂","🎉","👀"];
 
@@ -16,7 +17,9 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
  const [messages,setMessages]=useState<Message[]>([]),[reactions,setReactions]=useState<Reaction[]>([]);
  const [text,setText]=useState(""),[reply,setReply]=useState<Message|null>(null),[linkedItem,setLinkedItem]=useState<Item|null>(null);
  const [typing,setTyping]=useState<Record<string,string>>({}),[online,setOnline]=useState<Record<string,string>>({});
- const [busy,setBusy]=useState(false),[error,setError]=useState(""),[emojiFor,setEmojiFor]=useState<string|null>(null),[showItems,setShowItems]=useState(false),[showAttach,setShowAttach]=useState(false);\n const [mediaUrls,setMediaUrls]=useState<Record<string,string>>({}),[recording,setRecording]=useState(false),[recordSecs,setRecordSecs]=useState(0);\n const photoRef=useRef<HTMLInputElement|null>(null),cameraRef=useRef<HTMLInputElement|null>(null),fileRef=useRef<HTMLInputElement|null>(null),recorderRef=useRef<MediaRecorder|null>(null),chunksRef=useRef<Blob[]>([]),recordStart=useRef(0);
+ const [busy,setBusy]=useState(false),[error,setError]=useState(""),[emojiFor,setEmojiFor]=useState<string|null>(null),[showItems,setShowItems]=useState(false),[showAttach,setShowAttach]=useState(false);
+ const [mediaUrls,setMediaUrls]=useState<Record<string,string>>({}),[recording,setRecording]=useState(false),[recordSecs,setRecordSecs]=useState(0);
+ const photoRef=useRef<HTMLInputElement|null>(null),cameraRef=useRef<HTMLInputElement|null>(null),fileRef=useRef<HTMLInputElement|null>(null),recorderRef=useRef<MediaRecorder|null>(null),chunksRef=useRef<Blob[]>([]),recordStart=useRef(0);
  const endRef=useRef<HTMLDivElement|null>(null),typingTimer=useRef<number|null>(null),channelRef=useRef<ReturnType<typeof db.channel>|null>(null);
  const memberName=useCallback((id:string)=>members.find(m=>m.user_id===id)?.display_name||"Member",[members]);
  const load=useCallback(async()=>{
@@ -29,7 +32,13 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
    await db.rpc("mark_shared_plan_read",{p_plan:planId});
  },[db,planId]);
  useEffect(()=>{load();},[load]);
- useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth",block:"end"});},[messages.length]);\n useEffect(()=>{\n   let live=true;\n   (async()=>{const next:Record<string,string>={};for(const m of messages){if(!m.attachment?.path)continue;const {data}=await db.storage.from("shared-chat").createSignedUrl(m.attachment.path,3600);if(data?.signedUrl)next[m.id]=data.signedUrl;}if(live)setMediaUrls(next);})();\n   return()=>{live=false};\n },[db,messages]);\n useEffect(()=>{if(!recording)return;const id=window.setInterval(()=>setRecordSecs(Math.floor((Date.now()-recordStart.current)/1000)),250);return()=>window.clearInterval(id)},[recording]);
+ useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth",block:"end"});},[messages.length]);
+ useEffect(()=>{
+   let live=true;
+   (async()=>{const next:Record<string,string>={};for(const m of messages){if(!m.attachment?.path)continue;const {data}=await db.storage.from("shared-chat").createSignedUrl(m.attachment.path,3600);if(data?.signedUrl)next[m.id]=data.signedUrl;}if(live)setMediaUrls(next);})();
+   return()=>{live=false};
+ },[db,messages]);
+ useEffect(()=>{if(!recording)return;const id=window.setInterval(()=>setRecordSecs(Math.floor((Date.now()-recordStart.current)/1000)),250);return()=>window.clearInterval(id)},[recording]);
  useEffect(()=>{
    if(!me)return;
    const channel=db.channel(`shared-plan:${planId}`,{config:{private:true,presence:{key:me}}});
