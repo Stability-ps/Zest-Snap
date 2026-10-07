@@ -128,7 +128,12 @@ export default function App() {
   // The static HTML can't know who is signed in, so the greeting stays invisible until identity is known.
   const [greetingReady, setGreetingReady] = useState(false);
   const [scheduleStart, setScheduleStart] = useState("");
-  const [scheduleEnd, setScheduleEnd] = useState("");\n  const [voiceOpen, setVoiceOpen] = useState(false);\n  const [voiceText, setVoiceText] = useState("");\n  const [voiceListening, setVoiceListening] = useState(false);\n  const [voiceBusy, setVoiceBusy] = useState(false);\n  const voiceRecognition = useRef<any>(null);
+  const [scheduleEnd, setScheduleEnd] = useState("");
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceText, setVoiceText] = useState("");
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const voiceRecognition = useRef<any>(null);
 
   const showError = useCallback((message: string, action: "signup" | "plans" | null = null) => {
     setError(message);
