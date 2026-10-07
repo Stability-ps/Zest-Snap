@@ -38,8 +38,8 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
     .on("broadcast",{event:"reaction"},()=>load())
     .on("broadcast",{event:"typing"},({payload})=>{
       const p=payload as {user_id?:string;name?:string;typing?:boolean};
-      if(!p.user_id||p.user_id===me)return;
-      setTyping(v=>{const n={...v};if(p.typing)n[p.user_id]=p.name||"Someone";else delete n[p.user_id];return n;});
+      const uid=p.user_id;if(!uid||uid===me)return;
+      setTyping(v=>{const n={...v};if(p.typing)n[uid]=p.name||"Someone";else delete n[uid];return n;});
     })
     .on("presence",{event:"sync"},()=>{
       const state=channel.presenceState<{user_id?:string;name?:string}>();
