@@ -33,13 +33,30 @@ export async function shareFileNatively(blob: Blob, fileName: string, title: str
 
 /** Shares text/links through the native sheet; null when unavailable so callers can fall back. */
 export async function shareTextNatively(opts: { title: string; text?: string; url?: string }): Promise<ShareResult | null> {
-  if (!hasPlugin("Share")) return null;
-  const { Share } = await import("@capacitor/share");
-  try {
-    await Share.share({ ...opts, dialogTitle: opts.title });
-    return "shared";
-  } catch (e) {
-    if (e instanceof Error && /cancel/i.test(e.message)) return "cancelled";
-    throw e;
+  if (hasPlugin("Share")) {
+    const { Share } = await import("@capacitor/share");
+    try {
+      // Android shares URLs more reliably when the complete invitation is sent as text.
+      // Keep the separate url field for iOS/native targets that understand it.
+      const text = [opts.text, opts.url && !opts.text?.includes(opts.url) ? opts.url : ""].filter(Boolean).join("\n");
+      await Share.share({ title: opts.title, text: text || opts.url, url: opts.url, dialogTitle: opts.title });
+      return "shared";
+    } catch (e) {
+      if (e instanceof Error && /cancel/i.test(e.message)) return "cancelled";
+      throw e;
+    }
   }
+
+  // A remote Capacitor WebView can occasionally report the native plugin bridge late.
+  // Prefer the platform share sheet over silently copying to the clipboard when the browser API is available.
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    try {
+      await navigator.share(opts);
+      return "shared";
+    } catch (e) {
+      if (e instanceof Error && /abort|cancel/i.test(e.name + " " + e.message)) return "cancelled";
+      throw e;
+    }
+  }
+  return null;
 }
