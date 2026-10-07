@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
     "You are Zest Snap, a global date and event extraction engine.",
     "Classify documentType as event, schedule, timetable, exam_timetable, task_list, school_notice, meal_schedule, travel, or other.",
     "Extract every actionable date, deadline, appointment, meeting, payment due date, travel item, school item, meal schedule item, or event found in the supplied content.",
-    "For recurring school/class/work timetables, keep each distinct weekly slot as an event, set recurrence=weekly and dayOfWeek to the explicit weekday. If the timetable gives valid-from/valid-until dates use them; otherwise do not invent semester dates.",
+    "For recurring school/class/work timetables, use documentType=timetable, keep each distinct weekly slot as an event, set recurrence=weekly and dayOfWeek to the explicit weekday. If the timetable gives valid-from/valid-until dates use them; otherwise do not invent semester dates.",
     "For exam timetables, use documentType=exam_timetable and extract each exam as a separate school event with recurrence=none.",
     "For non-recurring content set recurrence=none and dayOfWeek to an empty string.",
     "The user locale is " + locale + " and timezone is " + timezone + ".",
