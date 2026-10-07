@@ -31,7 +31,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Sear
     adminRpc<any[]>("admin_admins"),
   ]);
   const canAct = can(admin.role, "support");
-  const head = <PageHeader title="Support Inbox" description="Conversations with Zest Snap users. Replies appear in the person's Settings → Contact support." actions={<Link className="ad-btn" href="/admin/exports?dataset=tickets">Export tickets</Link>} />;
+  const head = <PageHeader title="Support Inbox" description="Conversations with Zest Snap users. Replies appear in the person's Settings → Contact support." actions={<Link className="zadm-btn" href="/admin/exports?dataset=tickets">Export tickets</Link>} />;
   if (list.error) return <>{head}<Card><LoadError error={list.error} retryHref="/admin/support" /></Card></>;
   const counts = list.data.counts || {};
   const t = ticket?.data?.ticket;
@@ -40,17 +40,17 @@ export default async function SupportPage({ searchParams }: { searchParams: Sear
     <>
       {head}
       <Card flush>
-        <form className="ad-toolbar" action="/admin/support">
-          <input className="ad-input" type="search" name="q" defaultValue={params.q || ""} placeholder="Subject, #number, tag or e-mail" aria-label="Search tickets" />
+        <form className="zadm-toolbar" action="/admin/support">
+          <input className="zadm-input" type="search" name="q" defaultValue={params.q || ""} placeholder="Subject, #number, tag or e-mail" aria-label="Search tickets" />
           <input type="hidden" name="status" value={status} />
-          <select className="ad-select" name="priority" defaultValue={priority || ""} aria-label="Priority">
+          <select className="zadm-select" name="priority" defaultValue={priority || ""} aria-label="Priority">
             <option value="">Any priority</option>{priorities.map((p) => <option key={p} value={p}>{humanize(p)}</option>)}
           </select>
-          <select className="ad-select" name="category" defaultValue={category || ""} aria-label="Category">
+          <select className="zadm-select" name="category" defaultValue={category || ""} aria-label="Category">
             <option value="">Any category</option>{categories.map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
           </select>
-          <label className="ad-check"><input type="checkbox" name="mine" value="1" defaultChecked={mine} /> Assigned to me</label>
-          <button className="ad-btn">Filter</button>
+          <label className="zadm-check"><input type="checkbox" name="mine" value="1" defaultChecked={mine} /> Assigned to me</label>
+          <button className="zadm-btn">Filter</button>
         </form>
         <div style={{ padding: "12px 18px" }}>
           <Chips current={status!} items={statuses.map(([k, l]) => ({
@@ -58,12 +58,12 @@ export default async function SupportPage({ searchParams }: { searchParams: Sear
             count: k === "active" ? ["new", "open", "waiting"].reduce((a, s) => a + Number(counts[s] || 0), 0) : k === "all" ? undefined : Number(counts[k] || 0),
           }))} />
         </div>
-        <div className="ad-inbox" style={{ borderTop: "1px solid var(--ad-line)" }}>
-          <div className="ad-inbox-list" aria-label="Tickets">
+        <div className="zadm-inbox" style={{ borderTop: "1px solid var(--zadm-line)" }}>
+          <div className="zadm-inbox-list" aria-label="Tickets">
             {!list.data.rows.length ? (
               <Empty title={status === "active" ? "Inbox zero" : "No tickets"} icon={<Inbox aria-hidden />}>{status === "active" ? "No open conversations right now." : "Nothing matches these filters."}</Empty>
             ) : list.data.rows.map((r: any) => (
-              <Link key={r.id} className="ad-inbox-item" href={linkWith("/admin/support", params, { t: r.id, page: page || null })} aria-current={r.id === selected ? "true" : undefined}>
+              <Link key={r.id} className="zadm-inbox-item" href={linkWith("/admin/support", params, { t: r.id, page: page || null })} aria-current={r.id === selected ? "true" : undefined}>
                 <span className="top"><span>#{r.number} · {r.email || "Deleted user"}</span><span>{fmtRelative(r.last_message_at)}</span></span>
                 <b>{r.subject}</b>
                 {r.preview && <p>{r.preview}</p>}
@@ -75,97 +75,97 @@ export default async function SupportPage({ searchParams }: { searchParams: Sear
                 </span>
               </Link>
             ))}
-            {Number(list.data.total) > (page + 1) * PAGE && <div style={{ padding: 12 }}><Link className="ad-btn ad-btn-sm" href={linkWith("/admin/support", params, { page: page + 1 })}>Load older</Link></div>}
+            {Number(list.data.total) > (page + 1) * PAGE && <div style={{ padding: 12 }}><Link className="zadm-btn zadm-btn-sm" href={linkWith("/admin/support", params, { page: page + 1 })}>Load older</Link></div>}
           </div>
 
-          <div className="ad-convo">
+          <div className="zadm-convo">
             {!selected ? (
               <Empty title="Select a conversation" icon={<MessageSquare aria-hidden />}>Choose a ticket on the left to read and reply.</Empty>
             ) : ticket?.error ? <LoadError error={ticket.error} /> : !t ? <Empty title="Ticket not found" /> : (
               <>
-                <div className="ad-convo-head">
+                <div className="zadm-convo-head">
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                    <div><h2 style={{ fontSize: 16 }}>{t.subject}</h2><span className="ad-sub">#{t.number} · opened {fmtDateTime(t.created_at)}{t.assignee_email ? ` · assigned to ${t.assignee_email}` : " · unassigned"}</span></div>
+                    <div><h2 style={{ fontSize: 16 }}>{t.subject}</h2><span className="zadm-sub">#{t.number} · opened {fmtDateTime(t.created_at)}{t.assignee_email ? ` · assigned to ${t.assignee_email}` : " · unassigned"}</span></div>
                     <div style={{ display: "flex", gap: 4 }}><StatusBadge status={t.status} /><StatusBadge status={t.priority} /></div>
                   </div>
                 </div>
-                <div className="ad-thread">
+                <div className="zadm-thread">
                   {ticket.data.messages.map((m: any) => (
-                    <div key={m.id} className={`ad-msg${m.internal ? " internal" : m.from_staff ? " staff" : ""}`}>
+                    <div key={m.id} className={`zadm-msg${m.internal ? " internal" : m.from_staff ? " staff" : ""}`}>
                       <small>{m.internal ? "Internal note · " : ""}{m.from_staff ? m.author_email || "Zest team" : t.email || "User"} · {fmtDateTime(m.created_at)}</small>
                       {m.body}
                     </div>
                   ))}
                 </div>
                 {canAct && (
-                  <ActionForm action={replyTicket} className="ad-composer" resetOnSuccess>
+                  <ActionForm action={replyTicket} className="zadm-composer" resetOnSuccess>
                     <input type="hidden" name="id" value={t.id} />
-                    <textarea className="ad-textarea" name="body" required maxLength={5000} placeholder="Write a reply…" aria-label="Message" />
+                    <textarea className="zadm-textarea" name="body" required maxLength={5000} placeholder="Write a reply…" aria-label="Message" />
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                       <div style={{ display: "flex", gap: 14 }}>
-                        <label className="ad-check"><input type="radio" name="mode" value="reply" defaultChecked /> Reply to user</label>
-                        <label className="ad-check"><input type="radio" name="mode" value="note" /> Internal note</label>
+                        <label className="zadm-check"><input type="radio" name="mode" value="reply" defaultChecked /> Reply to user</label>
+                        <label className="zadm-check"><input type="radio" name="mode" value="note" /> Internal note</label>
                       </div>
                       <SubmitButton pendingLabel="Sending…">Send</SubmitButton>
                     </div>
-                    <span className="ad-sub">Replies show in the app. E-mail notifications aren&apos;t configured yet, so the person sees your reply next time they open Contact support.</span>
+                    <span className="zadm-sub">Replies show in the app. E-mail notifications aren&apos;t configured yet, so the person sees your reply next time they open Contact support.</span>
                   </ActionForm>
                 )}
               </>
             )}
           </div>
 
-          <aside className="ad-inbox-side" aria-label="Ticket details">
+          <aside className="zadm-inbox-side" aria-label="Ticket details">
             {t ? (
               <>
                 <div>
                   <h3 style={{ fontSize: 13, marginBottom: 8 }}>Person</h3>
                   {u ? (
-                    <dl className="ad-kv">
-                      <dt>E-mail</dt><dd><Link className="ad-row-link" href={`/admin/users/${u.id}`}>{t.email}</Link></dd>
+                    <dl className="zadm-kv">
+                      <dt>E-mail</dt><dd><Link className="zadm-row-link" href={`/admin/users/${u.id}`}>{t.email}</Link></dd>
                       <dt>Plan</dt><dd><PlanBadge plan={u.plan} /></dd>
                       <dt>Joined</dt><dd>{fmtDate(u.created_at)}</dd>
                       <dt>Scans</dt><dd>{fmtNumber(u.scans)}{u.last_scan_failed ? <Badge tone="bad">Last failed</Badge> : null}</dd>
                       <dt>Tickets</dt><dd>{fmtNumber(u.tickets)}</dd>
                       <dt>Account</dt><dd><StatusBadge status={u.account_status} />{u.support_flag && <Badge tone="warn">Support</Badge>}</dd>
                     </dl>
-                  ) : <p className="ad-sub">Account deleted.</p>}
+                  ) : <p className="zadm-sub">Account deleted.</p>}
                 </div>
                 {Object.keys(t.context || {}).length > 0 && (
                   <div>
                     <h3 style={{ fontSize: 13, marginBottom: 8 }}>App context</h3>
-                    <dl className="ad-kv">
-                      {t.context.route && <><dt>Page</dt><dd className="ad-mono">{t.context.route}</dd></>}
-                      {t.context.appVersion && <><dt>Version</dt><dd className="ad-mono">{t.context.appVersion}</dd></>}
+                    <dl className="zadm-kv">
+                      {t.context.route && <><dt>Page</dt><dd className="zadm-mono">{t.context.route}</dd></>}
+                      {t.context.appVersion && <><dt>Version</dt><dd className="zadm-mono">{t.context.appVersion}</dd></>}
                       {t.context.timezone && <><dt>Timezone</dt><dd>{t.context.timezone}</dd></>}
                       {t.context.userAgent && <><dt>Device</dt><dd style={{ fontSize: 12, fontWeight: 500 }}>{t.context.userAgent}</dd></>}
                     </dl>
                   </div>
                 )}
-                <ActionForm key={`${t.id}:${t.updated_at}`} action={updateTicket} className="ad-grid" inline>
+                <ActionForm key={`${t.id}:${t.updated_at}`} action={updateTicket} className="zadm-grid" inline>
                   <input type="hidden" name="id" value={t.id} />
                   <h3 style={{ fontSize: 13 }}>Ticket</h3>
-                  <label className="ad-field">Status
-                    <select className="ad-select" name="status" defaultValue={t.status} disabled={!canAct}>
+                  <label className="zadm-field">Status
+                    <select className="zadm-select" name="status" defaultValue={t.status} disabled={!canAct}>
                       {statuses.filter(([k]) => !["active", "all"].includes(k)).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                     </select>
                   </label>
-                  <label className="ad-field">Priority
-                    <select className="ad-select" name="priority" defaultValue={t.priority} disabled={!canAct}>{priorities.map((p) => <option key={p} value={p}>{humanize(p)}</option>)}</select>
+                  <label className="zadm-field">Priority
+                    <select className="zadm-select" name="priority" defaultValue={t.priority} disabled={!canAct}>{priorities.map((p) => <option key={p} value={p}>{humanize(p)}</option>)}</select>
                   </label>
-                  <label className="ad-field">Category
-                    <select className="ad-select" name="category" defaultValue={t.category} disabled={!canAct}>{categories.map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}</select>
+                  <label className="zadm-field">Category
+                    <select className="zadm-select" name="category" defaultValue={t.category} disabled={!canAct}>{categories.map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}</select>
                   </label>
-                  <label className="ad-field">Assignee
-                    <select className="ad-select" name="assignee_id" defaultValue={t.assignee_id || ""} disabled={!canAct}>
+                  <label className="zadm-field">Assignee
+                    <select className="zadm-select" name="assignee_id" defaultValue={t.assignee_id || ""} disabled={!canAct}>
                       <option value="">Unassigned</option>
                       {(admins.data || []).map((a: any) => <option key={a.id} value={a.id}>{a.name || a.email}</option>)}
                     </select>
                   </label>
-                  <label className="ad-field">Tags <small>Comma-separated</small>
-                    <input className="ad-input" name="tags" defaultValue={(t.tags || []).join(", ")} disabled={!canAct} />
+                  <label className="zadm-field">Tags <small>Comma-separated</small>
+                    <input className="zadm-input" name="tags" defaultValue={(t.tags || []).join(", ")} disabled={!canAct} />
                   </label>
-                  <SubmitButton className="ad-btn" disabled={!canAct}>Update ticket</SubmitButton>
+                  <SubmitButton className="zadm-btn" disabled={!canAct}>Update ticket</SubmitButton>
                 </ActionForm>
                 <DevDetails data={{ id: t.id, number: t.number, user_id: t.user_id, first_response_at: t.first_response_at, resolved_at: t.resolved_at }} />
               </>

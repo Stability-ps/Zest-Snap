@@ -21,24 +21,24 @@ export default async function RewardRulesPage() {
       <Notice>Rewards are for taking an action — feedback earns the same credits whatever the rating. Milestones are once per account; this is enforced by the database.</Notice>
       <Card flush>
         {res.error ? <LoadError error={res.error} retryHref="/admin/rewards/rules" /> : !res.data.rules.length ? <Empty title="No reward rules" /> : (
-          <div className="ad-table-wrap">
-            <table className="ad-table">
-              <thead><tr><th>Rule</th><th>Public label</th><th className="num">Credits</th><th>Active</th><th className="ad-hide-md">Frequency</th><th className="ad-hide-md">Updated</th><th /></tr></thead>
+          <div className="zadm-table-wrap">
+            <table className="zadm-table">
+              <thead><tr><th>Rule</th><th>Public label</th><th className="num">Credits</th><th>Active</th><th className="zadm-hide-md">Frequency</th><th className="zadm-hide-md">Updated</th><th /></tr></thead>
               <tbody>
                 {res.data.rules.map((r: any) => (
                   <tr key={r.key}>
-                    <td><span className="ad-mono">{r.key}</span></td>
+                    <td><span className="zadm-mono">{r.key}</span></td>
                     <td colSpan={3} style={{ padding: 0 }}>
-                      <ActionForm action={updateRewardRule} inline className="ad-inline-form">
+                      <ActionForm action={updateRewardRule} inline className="zadm-inline-form">
                         <input type="hidden" name="key" value={r.key} />
-                        <input className="ad-input" name="label" defaultValue={r.label || ""} maxLength={60} aria-label="Public label" style={{ minWidth: 160 }} disabled={!operate} />
-                        <input className="ad-input" name="amount" type="number" min={0} max={1000} defaultValue={r.amount} aria-label="Credits" style={{ width: 90 }} disabled={!operate} />
-                        <label className="ad-check"><input type="checkbox" name="enabled" defaultChecked={!!r.enabled} disabled={!operate} /> Active</label>
-                        <SubmitButton className="ad-btn ad-btn-sm" disabled={!operate}>Save</SubmitButton>
+                        <input className="zadm-input" name="label" defaultValue={r.label || ""} maxLength={60} aria-label="Public label" style={{ minWidth: 160 }} disabled={!operate} />
+                        <input className="zadm-input" name="amount" type="number" min={0} max={1000} defaultValue={r.amount} aria-label="Credits" style={{ width: 90 }} disabled={!operate} />
+                        <label className="zadm-check"><input type="checkbox" name="enabled" defaultChecked={!!r.enabled} disabled={!operate} /> Active</label>
+                        <SubmitButton className="zadm-btn zadm-btn-sm" disabled={!operate}>Save</SubmitButton>
                       </ActionForm>
                     </td>
-                    <td className="ad-hide-md">{repeatable[r.key] || <Badge>Once per account</Badge>}</td>
-                    <td className="ad-hide-md nowrap">{fmtDateTime(r.updated_at)}</td>
+                    <td className="zadm-hide-md">{repeatable[r.key] || <Badge>Once per account</Badge>}</td>
+                    <td className="zadm-hide-md nowrap">{fmtDateTime(r.updated_at)}</td>
                     <td />
                   </tr>
                 ))}

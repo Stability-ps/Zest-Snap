@@ -30,7 +30,7 @@ export default async function Growth({ searchParams }: { searchParams: SearchPar
         <Kpi label="New this month" icon={<UserPlus aria-hidden />} value={Number(o.new_users_month)} />
         <Kpi label="First sign-up" icon={<Users aria-hidden />} value={o.first_signup ? fmtDate(o.first_signup) : null} />
       </Kpis>
-      <div className="ad-grid ad-grid-2">
+      <div className="zadm-grid zadm-grid-2">
         <Card title={`Registrations per ${range.bucket}`}>{ts.error ? <LoadError error={ts.error} /> : <BarChart data={ts.data!} series={[{ key: "signups", label: "Sign-ups", color: SERIES_COLORS[0] }]} />}</Card>
         <Card title="Total registered users">{ts.error ? <LoadError error={ts.error} /> : <LineChart data={cumulative} series={[{ key: "total", label: "Registered users", color: SERIES_COLORS[1] }]} />}</Card>
         <Card title="Plan distribution">

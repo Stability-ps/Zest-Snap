@@ -39,7 +39,7 @@ function dateLabel(d: string, compact = false) {
 function Legend({ series }: { series: Series[] }) {
   if (series.length < 2) return null;
   return (
-    <div className="ad-legend" style={{ marginBottom: 8 }}>
+    <div className="zadm-legend" style={{ marginBottom: 8 }}>
       {series.map((s) => (
         <span key={s.key}><i style={{ background: s.color }} />{s.label}</span>
       ))}
@@ -49,7 +49,7 @@ function Legend({ series }: { series: Series[] }) {
 
 function Tooltip({ x, y, point, series, format }: { x: number; y: number; point: Point; series: Series[]; format: (n: number) => string }) {
   return (
-    <div className="ad-tip" style={{ left: x, top: y }}>
+    <div className="zadm-tip" style={{ left: x, top: y }}>
       <b>{dateLabel(String(point.d))}</b>
       {series.map((s) => (
         <div key={s.key}>
@@ -105,7 +105,7 @@ export function LineChart({ data, series, height = 220, format = (n) => n.toLoca
   return (
     <div>
       <Legend series={series} />
-      <div className="ad-chart" ref={ref} style={{ height }}
+      <div className="zadm-chart" ref={ref} style={{ height }}
         onMouseLeave={() => setHover(null)}
         onMouseMove={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
@@ -133,7 +133,7 @@ export function LineChart({ data, series, height = 220, format = (n) => n.toLoca
             })}
           </svg>
         )}
-        {empty && w > 0 && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--ad-muted)", fontSize: 13, fontWeight: 600 }}>{emptyText}</div>}
+        {empty && w > 0 && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--zadm-muted)", fontSize: 13, fontWeight: 600 }}>{emptyText}</div>}
         {hover !== null && !empty && <Tooltip x={x(hover)} y={Math.min(...series.map((s) => y(Number(data[hover][s.key]) || 0)))} point={data[hover]} series={series} format={format} />}
       </div>
     </div>
@@ -159,7 +159,7 @@ export function BarChart({ data, series, height = 220, format = (n) => n.toLocal
   return (
     <div>
       <Legend series={series} />
-      <div className="ad-chart" ref={ref} style={{ height }} onMouseLeave={() => setHover(null)}>
+      <div className="zadm-chart" ref={ref} style={{ height }} onMouseLeave={() => setHover(null)}>
         {w > 0 && (
           <svg width={w} height={height} role="img" aria-label={`${series.map((s) => s.label).join(", ")} per period`}>
             <Axes w={w} h={height} max={max} data={data} />
@@ -186,7 +186,7 @@ export function BarChart({ data, series, height = 220, format = (n) => n.toLocal
             })}
           </svg>
         )}
-        {empty && w > 0 && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--ad-muted)", fontSize: 13, fontWeight: 600 }}>{emptyText}</div>}
+        {empty && w > 0 && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--zadm-muted)", fontSize: 13, fontWeight: 600 }}>{emptyText}</div>}
         {hover !== null && !empty && (
           <Tooltip x={PAD.left + band * (hover + 0.5)} y={PAD.top + ih - (totals[hover] / max) * ih} point={data[hover]} series={series} format={format} />
         )}

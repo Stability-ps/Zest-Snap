@@ -20,14 +20,14 @@ export default async function ExportsPage({ searchParams }: { searchParams: Sear
     <>
       {head}
       <Notice>Every export is recorded in the audit log. Files contain personal data — store and share them carefully. Spreadsheet formulas in cells are neutralised.</Notice>
-      <div className="ad-grid ad-grid-2">
+      <div className="zadm-grid zadm-grid-2">
         {groups.map((g) => (
           <Card key={g} title={g} flush>
-            <div className="ad-list">
+            <div className="zadm-list">
               {exportDefs.filter((d) => d.group === g).map((d) => (
-                <div key={d.key} className="ad-list-row" style={params.dataset === d.key ? { background: "var(--ad-teal-soft)" } : undefined}>
-                  <span className="grow"><b>{d.label}</b><span className="ad-sub">{d.description}</span></span>
-                  <a className="ad-btn ad-btn-sm" href={`/admin/exports/${d.key}${q ? "?" + q : ""}`} download><Download aria-hidden /> CSV</a>
+                <div key={d.key} className="zadm-list-row" style={params.dataset === d.key ? { background: "var(--zadm-teal-soft)" } : undefined}>
+                  <span className="grow"><b>{d.label}</b><span className="zadm-sub">{d.description}</span></span>
+                  <a className="zadm-btn zadm-btn-sm" href={`/admin/exports/${d.key}${q ? "?" + q : ""}`} download><Download aria-hidden /> CSV</a>
                 </div>
               ))}
             </div>

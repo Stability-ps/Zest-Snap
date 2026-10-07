@@ -10,10 +10,10 @@ export function PageHeader({ title, description, crumbs, actions }: {
   actions?: ReactNode;
 }) {
   return (
-    <header className="ad-page-head">
+    <header className="zadm-page-head">
       <div>
         {crumbs && (
-          <nav className="ad-crumbs" aria-label="Breadcrumb">
+          <nav className="zadm-crumbs" aria-label="Breadcrumb">
             {crumbs.map((c, i) => (
               <span key={i} style={{ display: "contents" }}>
                 {i > 0 && <ChevronRight size={12} aria-hidden />}
@@ -25,7 +25,7 @@ export function PageHeader({ title, description, crumbs, actions }: {
         <h1>{title}</h1>
         {description && <p>{description}</p>}
       </div>
-      {actions && <div className="ad-head-actions">{actions}</div>}
+      {actions && <div className="zadm-hezadm-actions">{actions}</div>}
     </header>
   );
 }
@@ -39,9 +39,9 @@ export function Card({ title, description, actions, children, flush, className }
   className?: string;
 }) {
   return (
-    <section className={"ad-card" + (className ? " " + className : "")}>
+    <section className={"zadm-card" + (className ? " " + className : "")}>
       {(title || actions) && (
-        <div className="ad-card-head">
+        <div className="zadm-card-head">
           <div>
             {title && <h2>{title}</h2>}
             {description && <p>{description}</p>}
@@ -49,7 +49,7 @@ export function Card({ title, description, actions, children, flush, className }
           {actions}
         </div>
       )}
-      <div className={"ad-card-body" + (flush ? " flush" : "")}>{children}</div>
+      <div className={"zadm-card-body" + (flush ? " flush" : "")}>{children}</div>
     </section>
   );
 }
@@ -60,7 +60,7 @@ export function Delta({ value, invert }: { value: number | null; invert?: boolea
   const dir = pct < 0.5 ? "flat" : (value > 0) !== !!invert ? "up" : "down";
   const Icon = pct < 0.5 ? Minus : value > 0 ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className={`ad-delta ${dir}`} title="Change vs previous comparable period">
+    <span className={`zadm-delta ${dir}`} title="Change vs previous comparable period">
       <Icon aria-hidden />
       {pct >= 1000 ? ">999" : pct.toFixed(pct < 10 ? 1 : 0)}%
     </span>
@@ -80,28 +80,28 @@ export function Kpi({ label, value, icon, delta, foot, href, unavailable, invert
 }) {
   const body = (
     <>
-      <span className="ad-kpi-label">{icon}{label}</span>
+      <span className="zadm-kpi-label">{icon}{label}</span>
       {value === null || value === undefined ? (
-        <span className="ad-kpi-value muted">{unavailable || "No data yet"}</span>
+        <span className="zadm-kpi-value muted">{unavailable || "No data yet"}</span>
       ) : (
-        <span className="ad-kpi-value">{typeof value === "number" ? fmtNumber(value) : value}</span>
+        <span className="zadm-kpi-value">{typeof value === "number" ? fmtNumber(value) : value}</span>
       )}
-      <span className="ad-kpi-foot">
+      <span className="zadm-kpi-foot">
         {delta !== undefined && <Delta value={delta ?? null} invert={invert} />}
         {foot}
       </span>
     </>
   );
-  return href ? <Link className="ad-kpi" href={href}>{body}</Link> : <div className="ad-kpi">{body}</div>;
+  return href ? <Link className="zadm-kpi" href={href}>{body}</Link> : <div className="zadm-kpi">{body}</div>;
 }
 
 export function Kpis({ children }: { children: ReactNode }) {
-  return <div className="ad-kpis">{children}</div>;
+  return <div className="zadm-kpis">{children}</div>;
 }
 
 export type Tone = "good" | "warn" | "bad" | "info" | "navy" | "neutral";
 export function Badge({ tone = "neutral", children, icon }: { tone?: Tone; children: ReactNode; icon?: ReactNode }) {
-  return <span className={`ad-badge ${tone === "neutral" ? "" : tone}`}>{icon}{children}</span>;
+  return <span className={`zadm-badge ${tone === "neutral" ? "" : tone}`}>{icon}{children}</span>;
 }
 
 const statusTones: Record<string, Tone> = {
@@ -125,8 +125,8 @@ export function PlanBadge({ plan }: { plan: string | null | undefined }) {
 
 export function Empty({ title, children, icon, action }: { title: string; children?: ReactNode; icon?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="ad-empty">
-      <div className="ad-empty-icon">{icon || <Inbox aria-hidden />}</div>
+    <div className="zadm-empty">
+      <div className="zadm-empty-icon">{icon || <Inbox aria-hidden />}</div>
       <h3>{title}</h3>
       {children && <p>{children}</p>}
       {action}
@@ -137,7 +137,7 @@ export function Empty({ title, children, icon, action }: { title: string; childr
 export function Notice({ tone = "info", title, children }: { tone?: "info" | "warn" | "bad" | "good"; title?: string; children?: ReactNode }) {
   const Icon = tone === "good" ? CheckCircle2 : tone === "bad" ? XCircle : tone === "warn" ? AlertTriangle : Info;
   return (
-    <div className={`ad-notice ${tone}`} role={tone === "bad" ? "alert" : undefined}>
+    <div className={`zadm-notice ${tone}`} role={tone === "bad" ? "alert" : undefined}>
       <Icon aria-hidden />
       <div>
         {title && <b>{title}</b>}
@@ -152,7 +152,7 @@ export function LoadError({ error, retryHref }: { error: { code: string; message
   if (error.code === "not_ready") return <NotReady />;
   return (
     <Empty title="Couldn't load this" icon={<XCircle aria-hidden />}
-      action={retryHref ? <a className="ad-btn ad-btn-sm" href={retryHref}><RefreshCw aria-hidden /> Retry</a> : undefined}>
+      action={retryHref ? <a className="zadm-btn zadm-btn-sm" href={retryHref}><RefreshCw aria-hidden /> Retry</a> : undefined}>
       {error.message}
     </Empty>
   );
@@ -161,22 +161,22 @@ export function LoadError({ error, retryHref }: { error: { code: string; message
 export function NotReady() {
   return (
     <Empty title="Database upgrade pending" icon={<Database aria-hidden />}>
-      This section needs the <span className="ad-mono">20261005090000_admin_console</span> migration. Apply it in Supabase and reload — nothing else needs to change.
+      This section needs the <span className="zadm-mono">20261005090000_admin_console</span> migration. Apply it in Supabase and reload — nothing else needs to change.
     </Empty>
   );
 }
 
 export function Pager({ total, page, pageSize, href }: { total: number; page: number; pageSize: number; href: (page: number) => string }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (total <= pageSize && page === 0) return total ? <div className="ad-pager"><span>{fmtNumber(total)} {total === 1 ? "result" : "results"}</span></div> : null;
+  if (total <= pageSize && page === 0) return total ? <div className="zadm-pager"><span>{fmtNumber(total)} {total === 1 ? "result" : "results"}</span></div> : null;
   return (
-    <div className="ad-pager">
+    <div className="zadm-pager">
       <span>
         {fmtNumber(page * pageSize + 1)}–{fmtNumber(Math.min(total, (page + 1) * pageSize))} of {fmtNumber(total)}
       </span>
       <div>
-        {page > 0 ? <Link className="ad-btn ad-btn-sm" href={href(page - 1)}>Previous</Link> : <span className="ad-btn ad-btn-sm" aria-disabled style={{ opacity: 0.45 }}>Previous</span>}
-        {page + 1 < pages ? <Link className="ad-btn ad-btn-sm" href={href(page + 1)}>Next</Link> : <span className="ad-btn ad-btn-sm" aria-disabled style={{ opacity: 0.45 }}>Next</span>}
+        {page > 0 ? <Link className="zadm-btn zadm-btn-sm" href={href(page - 1)}>Previous</Link> : <span className="zadm-btn zadm-btn-sm" aria-disabled style={{ opacity: 0.45 }}>Previous</span>}
+        {page + 1 < pages ? <Link className="zadm-btn zadm-btn-sm" href={href(page + 1)}>Next</Link> : <span className="zadm-btn zadm-btn-sm" aria-disabled style={{ opacity: 0.45 }}>Next</span>}
       </div>
     </div>
   );
@@ -184,9 +184,9 @@ export function Pager({ total, page, pageSize, href }: { total: number; page: nu
 
 export function Tabs({ tabs, current }: { tabs: { key: string; label: string; href: string; count?: number }[]; current: string }) {
   return (
-    <nav className="ad-tabs" aria-label="Sections">
+    <nav className="zadm-tabs" aria-label="Sections">
       {tabs.map((t) => (
-        <Link key={t.key} className="ad-tab" href={t.href} aria-current={t.key === current ? "page" : undefined}>
+        <Link key={t.key} className="zadm-tab" href={t.href} aria-current={t.key === current ? "page" : undefined}>
           {t.label}{t.count ? ` · ${fmtNumber(t.count)}` : ""}
         </Link>
       ))}
@@ -196,9 +196,9 @@ export function Tabs({ tabs, current }: { tabs: { key: string; label: string; hr
 
 export function Chips({ items, current }: { items: { key: string; label: string; href: string; count?: number }[]; current: string }) {
   return (
-    <div className="ad-chips" role="group">
+    <div className="zadm-chips" role="group">
       {items.map((c) => (
-        <Link key={c.key} className="ad-chip" href={c.href} aria-current={c.key === current ? "true" : undefined}>
+        <Link key={c.key} className="zadm-chip" href={c.href} aria-current={c.key === current ? "true" : undefined}>
           {c.label}{c.count !== undefined && <b>{fmtNumber(c.count)}</b>}
         </Link>
       ))}
@@ -214,13 +214,13 @@ export function BarList({ data, format = (n) => fmtNumber(n), empty = "No data i
 }) {
   const rows = data.filter((d) => Number.isFinite(d.value));
   const max = Math.max(0, ...rows.map((d) => d.value));
-  if (!rows.length || max === 0) return <p style={{ margin: 0, color: "var(--ad-muted)" }}>{empty}</p>;
+  if (!rows.length || max === 0) return <p style={{ margin: 0, color: "var(--zadm-muted)" }}>{empty}</p>;
   return (
-    <div className="ad-bars">
+    <div className="zadm-bars">
       {rows.map((d, i) => (
-        <div className="ad-bar-row" key={d.key || i}>
-          <span className="ad-trunc">{d.label}</span>
-          <span className="ad-bar-track" aria-hidden><span className="ad-bar-fill" style={{ width: `${(d.value / max) * 100}%`, display: "block" }} /></span>
+        <div className="zadm-bar-row" key={d.key || i}>
+          <span className="zadm-trunc">{d.label}</span>
+          <span className="zadm-bar-track" aria-hidden><span className="zadm-bar-fill" style={{ width: `${(d.value / max) * 100}%`, display: "block" }} /></span>
           <span className="num">{format(d.value)}</span>
         </div>
       ))}
@@ -230,9 +230,9 @@ export function BarList({ data, format = (n) => fmtNumber(n), empty = "No data i
 
 export function Stats({ items }: { items: { label: string; value: ReactNode }[] }) {
   return (
-    <div className="ad-stats">
+    <div className="zadm-stats">
       {items.map((s) => (
-        <div className="ad-stat" key={s.label}>
+        <div className="zadm-stat" key={s.label}>
           <span>{s.label}</span>
           <b>{typeof s.value === "number" ? fmtNumber(s.value) : s.value}</b>
         </div>
@@ -243,7 +243,7 @@ export function Stats({ items }: { items: { label: string; value: ReactNode }[] 
 
 export function DevDetails({ data }: { data: unknown }) {
   return (
-    <details className="ad-dev">
+    <details className="zadm-dev">
       <summary>Developer details</summary>
       <pre>{JSON.stringify(data, null, 2)}</pre>
     </details>

@@ -25,7 +25,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
         <Kpi label="Events saved to calendars" icon={<CalendarPlus aria-hidden />} value={Number(c.exports)} foot={range.label} />
         <Kpi label="Google Calendar adds" icon={<CalendarDays aria-hidden />} value={Number(c.exports_by_provider?.google || 0)} />
       </Kpis>
-      <div className="ad-grid ad-grid-21">
+      <div className="zadm-grid zadm-grid-21">
         <Card title="Calendar saves">
           {ts.error ? <LoadError error={ts.error} /> : <BarChart data={ts.data!} series={[{ key: "calendar_saves", label: "Calendar saves", color: SERIES_COLORS[1] }]} emptyText="No calendar saves recorded in this period." />}
         </Card>

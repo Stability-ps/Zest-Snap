@@ -14,13 +14,13 @@ function level(bad: boolean, warn: boolean): Level {
 
 function Row({ c }: { c: Check }) {
   const Icon = c.level === "healthy" ? CheckCircle2 : c.level === "warning" ? AlertTriangle : XCircle;
-  const color = c.level === "healthy" ? "var(--ad-good)" : c.level === "warning" ? "var(--ad-warn)" : "var(--ad-bad)";
+  const color = c.level === "healthy" ? "var(--zadm-good)" : c.level === "warning" ? "var(--zadm-warn)" : "var(--zadm-bad)";
   return (
-    <div className="ad-health">
+    <div className="zadm-health">
       <Icon size={20} color={color} aria-hidden />
       <div className="grow"><b>{c.name}</b><p>{c.detail}</p></div>
       <Badge tone={c.level === "healthy" ? "good" : c.level === "warning" ? "warn" : "bad"}>{c.level === "healthy" ? "Healthy" : c.level === "warning" ? "Warning" : "Issue"}</Badge>
-      {c.href && <Link className="ad-btn ad-btn-sm ad-hide-sm" href={c.href}>View</Link>}
+      {c.href && <Link className="zadm-btn zadm-btn-sm zadm-hide-sm" href={c.href}>View</Link>}
     </div>
   );
 }
@@ -76,13 +76,13 @@ export default async function HealthPage() {
     <>
       <PageHeader title="System Health" description="Operational checks measured on this request. Secret values are never displayed."
         actions={<Badge tone={overall === "healthy" ? "good" : overall === "warning" ? "warn" : "bad"}>{overall === "healthy" ? "All systems healthy" : overall === "warning" ? "Some warnings" : "Issues detected"}</Badge>} />
-      <div className="ad-grid ad-grid-21">
+      <div className="zadm-grid zadm-grid-21">
         <Card title="Services" flush><div>{checks.map((c) => <Row key={c.name} c={c} />)}</div></Card>
-        <div className="ad-grid" style={{ alignContent: "start" }}>
+        <div className="zadm-grid" style={{ alignContent: "start" }}>
           <Card title="Deployment">
-            <dl className="ad-kv">
+            <dl className="zadm-kv">
               <dt>Environment</dt><dd>{process.env.VERCEL_ENV || "local"}</dd>
-              <dt>Commit</dt><dd className="ad-mono">{sha ? sha.slice(0, 12) : "—"}</dd>
+              <dt>Commit</dt><dd className="zadm-mono">{sha ? sha.slice(0, 12) : "—"}</dd>
               <dt>Branch</dt><dd>{process.env.VERCEL_GIT_COMMIT_REF || "—"}</dd>
               <dt>Region</dt><dd>{process.env.VERCEL_REGION || "—"}</dd>
               <dt>Checked</dt><dd>{h?.database_time ? fmtDateTime(h.database_time) : "—"}</dd>

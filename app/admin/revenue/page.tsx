@@ -24,7 +24,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Sear
     adminRpc<any[]>("admin_timeseries", { p_from: iso(range.from), p_to: iso(range.to), p_bucket: range.bucket }),
   ]);
   const head = <><PageHeader title="Revenue" description={`Money in and out · ${range.label}`}
-    actions={<Link className="ad-btn" href="/admin/exports?dataset=revenue">Export revenue</Link>} /><RevenueTabs current="overview" range={range} /></>;
+    actions={<Link className="zadm-btn" href="/admin/exports?dataset=revenue">Export revenue</Link>} /><RevenueTabs current="overview" range={range} /></>;
   if (res.error) return <>{head}<Card><LoadError error={res.error} retryHref="/admin/revenue" /></Card></>;
   const d = res.data;
   if (!d.connected) return <>{head}<NotConnected /></>;
@@ -54,7 +54,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Sear
         <Kpi label="Refunds" icon={<RotateCcw aria-hidden />} value={fmtCur(rows, "refunds")} invert />
         <Kpi label="Lifetime value" icon={<Users aria-hidden />} value={null} unavailable="Needs more history" />
       </Kpis>
-      <div className="ad-grid ad-grid-2">
+      <div className="zadm-grid zadm-grid-2">
         <Card title="Net revenue over time">{ts.error ? <LoadError error={ts.error} /> : <LineChart data={ts.data!} series={[{ key: "revenue", label: "Net revenue", color: SERIES_COLORS[0] }]} format={(n) => fmtMoney(n)} />}</Card>
         <Card title="Revenue by plan">
           <BarList data={d.by_plan.map((p: any) => ({ key: p.plan + p.currency, label: `${p.plan} (${p.currency})`, value: Number(p.gross) }))} format={(n) => fmtNumber(n, 2)} />

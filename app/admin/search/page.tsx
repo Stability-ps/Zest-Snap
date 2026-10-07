@@ -8,7 +8,7 @@ import { readParams, type SearchParams } from "../_components/page-utils";
 export const metadata = { title: "Search" };
 
 function Group({ title, children, n }: { title: string; children: React.ReactNode; n: number }) {
-  return n ? <Card title={`${title} · ${n}`} flush><div className="ad-list">{children}</div></Card> : null;
+  return n ? <Card title={`${title} · ${n}`} flush><div className="zadm-list">{children}</div></Card> : null;
 }
 
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
@@ -24,12 +24,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   return (
     <>
       {head}
-      <div className="ad-results">
-        <Group title="Users" n={d.users.length}>{d.users.map((u: any) => <Link key={u.id} className="ad-list-row" href={`/admin/users/${u.id}`}><span className="grow"><b>{u.name || u.email}</b><span className="ad-sub">{u.email} · <span className="ad-mono">{u.id}</span></span></span><PlanBadge plan={u.plan} /></Link>)}</Group>
-        <Group title="Scan requests" n={d.scans.length}>{d.scans.map((s: any) => <Link key={s.id} className="ad-list-row" href={`/admin/scans?request=${s.id}`}><span className="grow ad-mono">{s.id}</span><StatusBadge status={s.status} /></Link>)}</Group>
-        <Group title="Support tickets" n={d.tickets.length}>{d.tickets.map((t: any) => <Link key={t.id} className="ad-list-row" href={`/admin/support?status=all&t=${t.id}`}><b>#{t.number}</b><span className="grow ad-trunc">{t.subject}</span><StatusBadge status={t.status} /></Link>)}</Group>
-        <Group title="Reports" n={d.reports.length}>{d.reports.map((r: any) => <Link key={r.id} className="ad-list-row" href={`/admin/reports?status=all&r=${r.id}`}><b>#{r.number}</b><span className="grow ad-trunc">{humanize(r.kind)} — {r.description}</span><StatusBadge status={r.status} /></Link>)}</Group>
-        <Group title="Referral codes" n={d.referrals.length}>{d.referrals.map((r: any) => <Link key={r.code} className="ad-list-row" href={`/admin/users/${r.user_id}`}><b className="ad-mono">{r.code}</b><span className="grow ad-trunc">{r.email}</span><span className="ad-sub">{r.uses} uses</span></Link>)}</Group>
+      <div className="zadm-results">
+        <Group title="Users" n={d.users.length}>{d.users.map((u: any) => <Link key={u.id} className="zadm-list-row" href={`/admin/users/${u.id}`}><span className="grow"><b>{u.name || u.email}</b><span className="zadm-sub">{u.email} · <span className="zadm-mono">{u.id}</span></span></span><PlanBadge plan={u.plan} /></Link>)}</Group>
+        <Group title="Scan requests" n={d.scans.length}>{d.scans.map((s: any) => <Link key={s.id} className="zadm-list-row" href={`/admin/scans?request=${s.id}`}><span className="grow zadm-mono">{s.id}</span><StatusBadge status={s.status} /></Link>)}</Group>
+        <Group title="Support tickets" n={d.tickets.length}>{d.tickets.map((t: any) => <Link key={t.id} className="zadm-list-row" href={`/admin/support?status=all&t=${t.id}`}><b>#{t.number}</b><span className="grow zadm-trunc">{t.subject}</span><StatusBadge status={t.status} /></Link>)}</Group>
+        <Group title="Reports" n={d.reports.length}>{d.reports.map((r: any) => <Link key={r.id} className="zadm-list-row" href={`/admin/reports?status=all&r=${r.id}`}><b>#{r.number}</b><span className="grow zadm-trunc">{humanize(r.kind)} — {r.description}</span><StatusBadge status={r.status} /></Link>)}</Group>
+        <Group title="Referral codes" n={d.referrals.length}>{d.referrals.map((r: any) => <Link key={r.code} className="zadm-list-row" href={`/admin/users/${r.user_id}`}><b className="zadm-mono">{r.code}</b><span className="grow zadm-trunc">{r.email}</span><span className="zadm-sub">{r.uses} uses</span></Link>)}</Group>
       </div>
     </>
   );

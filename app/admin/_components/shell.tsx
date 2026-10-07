@@ -56,9 +56,9 @@ function RangePicker() {
     router.push(`${pathname}?${next.toString()}`);
   };
   return (
-    <div className="ad-range">
-      <label className="ad-hide-sm" htmlFor="ad-range" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Date range</label>
-      <select id="ad-range" className="ad-select" value={current} onChange={(e) => {
+    <div className="zadm-range">
+      <label className="zadm-hide-sm" htmlFor="zadm-range" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Date range</label>
+      <select id="zadm-range" className="zadm-select" value={current} onChange={(e) => {
         const next = new URLSearchParams(params.toString());
         if (e.target.value === "30d") next.delete("range"); else next.set("range", e.target.value);
         if (e.target.value !== "custom") { next.delete("from"); next.delete("to"); go(next); } else {
@@ -70,14 +70,14 @@ function RangePicker() {
         {rangeOptions.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
       </select>
       {current === "custom" && (
-        <form className="ad-range-custom" onSubmit={(e) => {
+        <form className="zadm-range-custom" onSubmit={(e) => {
           e.preventDefault();
           const next = new URLSearchParams(params.toString());
           next.set("range", "custom"); next.set("from", from); next.set("to", to); go(next);
         }}>
-          <input className="ad-input" type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} aria-label="From" required />
-          <input className="ad-input" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-label="To" required />
-          <button className="ad-btn">Apply</button>
+          <input className="zadm-input" type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} aria-label="From" required />
+          <input className="zadm-input" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-label="To" required />
+          <button className="zadm-btn">Apply</button>
         </form>
       )}
     </div>
@@ -100,17 +100,17 @@ function Alerts({ attention }: { attention: Attention | null }) {
   ].filter((i) => Number(i.n) > 0) : [];
   const total = items.reduce((a, i) => a + Number(i.n), 0);
   return (
-    <div className="ad-pop" ref={ref}>
-      <button className="ad-btn ad-icon-btn" aria-label={`Alerts${total ? `, ${total} need attention` : ""}`} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+    <div className="zadm-pop" ref={ref}>
+      <button className="zadm-btn zadm-icon-btn" aria-label={`Alerts${total ? `, ${total} need attention` : ""}`} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <Bell aria-hidden />
-        {total > 0 && <span className="ad-dot">{total > 99 ? "99+" : total}</span>}
+        {total > 0 && <span className="zadm-dot">{total > 99 ? "99+" : total}</span>}
       </button>
       {open && (
-        <div className="ad-pop-panel">
+        <div className="zadm-pop-panel">
           <header>Needs attention</header>
-          <div className="ad-menu">
-            {attention === null && <p style={{ padding: "12px 14px", margin: 0, color: "var(--ad-muted)" }}>Alerts are unavailable until the admin database upgrade is applied.</p>}
-            {attention && !items.length && <p style={{ padding: "12px 14px", margin: 0, color: "var(--ad-muted)" }}>All clear — nothing needs attention.</p>}
+          <div className="zadm-menu">
+            {attention === null && <p style={{ padding: "12px 14px", margin: 0, color: "var(--zadm-muted)" }}>Alerts are unavailable until the admin database upgrade is applied.</p>}
+            {attention && !items.length && <p style={{ padding: "12px 14px", margin: 0, color: "var(--zadm-muted)" }}>All clear — nothing needs attention.</p>}
             {items.map((i) => (
               <Link key={i.label} href={i.href} prefetch={false} onClick={() => setOpen(false)}>
                 <b style={{ minWidth: 26 }}>{i.n}</b><span>{i.label}</span>
@@ -128,17 +128,17 @@ function ProfileMenu({ name, email, role }: { name: string | null; email: string
   const ref = useOutside<HTMLDivElement>(open, () => setOpen(false));
   const initial = (name || email || "A").trim().charAt(0).toUpperCase();
   return (
-    <div className="ad-pop" ref={ref}>
-      <button className="ad-btn ad-icon-btn" style={{ borderRadius: 99, background: "var(--ad-navy)", color: "#fff", borderColor: "var(--ad-navy)", fontWeight: 800 }}
+    <div className="zadm-pop" ref={ref}>
+      <button className="zadm-btn zadm-icon-btn" style={{ borderRadius: 99, background: "var(--zadm-navy)", color: "#fff", borderColor: "var(--zadm-navy)", fontWeight: 800 }}
         aria-label="Account menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>{initial}</button>
       {open && (
-        <div className="ad-pop-panel" style={{ width: 260 }}>
+        <div className="zadm-pop-panel" style={{ width: 260 }}>
           <header style={{ display: "grid", gap: 2 }}>
             <span>{name || "Admin"}</span>
-            <small style={{ color: "var(--ad-muted)", fontWeight: 500 }}>{email}</small>
-            <small style={{ color: "var(--ad-teal-ink)", fontWeight: 700, textTransform: "capitalize" }}>{role}</small>
+            <small style={{ color: "var(--zadm-muted)", fontWeight: 500 }}>{email}</small>
+            <small style={{ color: "var(--zadm-teal-ink)", fontWeight: 700, textTransform: "capitalize" }}>{role}</small>
           </header>
-          <div className="ad-menu">
+          <div className="zadm-menu">
             <a href="/app"><ExternalLink aria-hidden /> Open Zest Snap</a>
             <a href="https://zestsnap.app" target="_blank" rel="noreferrer"><Globe aria-hidden /> View public site</a>
             <button onClick={async () => {
@@ -190,32 +190,32 @@ export default function AdminShell({ children, admin, attention, buildLabel }: {
   };
 
   return (
-    <div className="ad-root" data-collapsed={collapsed} data-drawer={drawer ? "open" : "closed"}>
-      <aside className="ad-side" aria-label="Admin navigation">
-        <div className="ad-side-head">
+    <div className="zadm-root" data-collapsed={collapsed} data-drawer={drawer ? "open" : "closed"}>
+      <aside className="zadm-side" aria-label="Admin navigation">
+        <div className="zadm-side-head">
           <Link
             href="/admin"
             prefetch={false}
-            className="ad-logo"
+            className="zadm-logo"
             onMouseEnter={() => router.prefetch("/admin")}
             onFocus={() => router.prefetch("/admin")}
             onClick={() => pathname !== "/admin" && setPendingHref("/admin")}
           >
-            <span className="ad-logo-mark" aria-hidden>Z</span>
-            <span className="ad-hide-collapsed">Zest Snap<small>Admin</small></span>
+            <span className="zadm-logo-mark" aria-hidden>Z</span>
+            <span className="zadm-hide-collapsed">Zest Snap<small>Admin</small></span>
           </Link>
-          <button className="ad-collapse-btn desktop" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => {
+          <button className="zadm-collapse-btn desktop" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => {
             setCollapsed((c) => {
               try { localStorage.setItem("zest-admin-collapsed", c ? "0" : "1"); } catch {}
               return !c;
             });
           }}>{collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}</button>
-          {drawer && <button className="ad-collapse-btn" aria-label="Close menu" onClick={() => setDrawer(false)}><X size={18} /></button>}
+          {drawer && <button className="zadm-collapse-btn" aria-label="Close menu" onClick={() => setDrawer(false)}><X size={18} /></button>}
         </div>
         <nav>
           {adminNav.map((group, gi) => (
             <div key={gi} style={{ display: "contents" }}>
-              {group.label && <div className="ad-nav-group">{group.label}</div>}
+              {group.label && <div className="zadm-nav-group">{group.label}</div>}
               {group.items.map((item) => {
                 const Icon = icons[item.icon] || LayoutDashboard;
                 const count = item.badge ? counts[item.badge] : undefined;
@@ -224,7 +224,7 @@ export default function AdminShell({ children, admin, attention, buildLabel }: {
                     key={item.href}
                     href={item.href}
                     prefetch={false}
-                    className="ad-nav-link"
+                    className="zadm-nav-link"
                     aria-current={active === item.href ? "page" : undefined}
                     aria-busy={pendingHref === item.href ? "true" : undefined}
                     data-pending={pendingHref === item.href ? "true" : undefined}
@@ -234,39 +234,39 @@ export default function AdminShell({ children, admin, attention, buildLabel }: {
                     onClick={() => active !== item.href && setPendingHref(item.href)}
                   >
                     <Icon aria-hidden />
-                    <span className="ad-hide-collapsed">{item.label}</span>
-                    {!!count && <span className="ad-nav-count ad-hide-collapsed">{count}</span>}
+                    <span className="zadm-hide-collapsed">{item.label}</span>
+                    {!!count && <span className="zadm-nav-count zadm-hide-collapsed">{count}</span>}
                   </Link>
                 );
               })}
             </div>
           ))}
         </nav>
-        <div className="ad-side-foot ad-hide-collapsed">Build {buildLabel}</div>
+        <div className="zadm-side-foot zadm-hide-collapsed">Build {buildLabel}</div>
       </aside>
-      {drawer && <div className="ad-drawer-backdrop" onClick={() => setDrawer(false)} aria-hidden />}
-      <div className="ad-main">
-        <header className="ad-top">
-          <button className="ad-btn ad-icon-btn ad-menu-btn" aria-label="Open menu" onClick={() => setDrawer(true)}><Menu aria-hidden /></button>
-          <form className="ad-search" role="search" onSubmit={(e) => {
+      {drawer && <div className="zadm-drawer-backdrop" onClick={() => setDrawer(false)} aria-hidden />}
+      <div className="zadm-main">
+        <header className="zadm-top">
+          <button className="zadm-btn zadm-icon-btn zadm-menu-btn" aria-label="Open menu" onClick={() => setDrawer(true)}><Menu aria-hidden /></button>
+          <form className="zadm-search" role="search" onSubmit={(e) => {
             e.preventDefault();
             const q = searchRef.current?.value.trim();
             if (q) router.push(`/admin/search?q=${encodeURIComponent(q)}`);
           }}>
             <Search aria-hidden />
             <input ref={searchRef} type="search" name="q" placeholder="Search users, e-mails, IDs, tickets, reports…" aria-label="Search admin" />
-            <kbd className="ad-hide-sm">/</kbd>
+            <kbd className="zadm-hide-sm">/</kbd>
           </form>
-          <div className="ad-top-actions">
+          <div className="zadm-top-actions">
             <Suspense fallback={null}><RangePicker /></Suspense>
-            <a className="ad-btn ad-hide-md" href="/app"><ExternalLink aria-hidden /> Open Zest Snap</a>
-            <a className="ad-btn ad-btn-ghost ad-icon-btn ad-hide-md" href="https://zestsnap.app" target="_blank" rel="noreferrer" aria-label="View public site" title="View public site"><Globe aria-hidden /></a>
+            <a className="zadm-btn zadm-hide-md" href="/app"><ExternalLink aria-hidden /> Open Zest Snap</a>
+            <a className="zadm-btn zadm-btn-ghost zadm-icon-btn zadm-hide-md" href="https://zestsnap.app" target="_blank" rel="noreferrer" aria-label="View public site" title="View public site"><Globe aria-hidden /></a>
             <Alerts attention={attention} />
             <ProfileMenu {...admin} />
           </div>
         </header>
-        {pendingHref && <div className="ad-nav-progress" role="status" aria-label="Loading next admin page"><span /></div>}
-        <main className="ad-content" id="admin-main" aria-busy={pendingHref ? "true" : undefined}>{children}</main>
+        {pendingHref && <div className="zadm-nav-progress" role="status" aria-label="Loading next admin page"><span /></div>}
+        <main className="zadm-content" id="admin-main" aria-busy={pendingHref ? "true" : undefined}>{children}</main>
       </div>
     </div>
   );

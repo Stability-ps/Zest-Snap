@@ -25,16 +25,16 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
   return (
     <>
       <PageHeader title="Users" description="Everyone with a Zest Snap account. Click a person for their full profile, usage and support history."
-        actions={<Link className="ad-btn" href="/admin/exports?dataset=users"><Download aria-hidden /> Export users</Link>} />
+        actions={<Link className="zadm-btn" href="/admin/exports?dataset=users"><Download aria-hidden /> Export users</Link>} />
       <Card flush>
-        <form className="ad-toolbar" action="/admin/users">
-          <input className="ad-input" type="search" name="q" defaultValue={params.q || ""} placeholder="Name, e-mail or user ID" aria-label="Search users" />
+        <form className="zadm-toolbar" action="/admin/users">
+          <input className="zadm-input" type="search" name="q" defaultValue={params.q || ""} placeholder="Name, e-mail or user ID" aria-label="Search users" />
           {filter && <input type="hidden" name="filter" value={filter} />}
-          <select className="ad-select" name="sort" defaultValue={sort} aria-label="Sort">
+          <select className="zadm-select" name="sort" defaultValue={sort} aria-label="Sort">
             {sorts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
-          <button className="ad-btn"><Search aria-hidden /> Search</button>
-          {(params.q || filter) && <Link className="ad-btn ad-btn-ghost" href="/admin/users">Clear</Link>}
+          <button className="zadm-btn"><Search aria-hidden /> Search</button>
+          {(params.q || filter) && <Link className="zadm-btn zadm-btn-ghost" href="/admin/users">Clear</Link>}
         </form>
         <div style={{ padding: "12px 18px 0" }}>
           <Chips current={filter} items={filters.map(([k, l]) => ({ key: k, label: l, href: linkWith("/admin/users", params, { filter: k || null }) }))} />
@@ -46,29 +46,29 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
             </Empty>
           ) : (
             <>
-              <div className="ad-table-wrap">
-                <table className="ad-table">
+              <div className="zadm-table-wrap">
+                <table className="zadm-table">
                   <thead><tr>
-                    <th>User</th><th>Joined</th><th>Last active</th><th>Plan</th><th className="ad-hide-sm">Subscription</th>
+                    <th>User</th><th>Joined</th><th>Last active</th><th>Plan</th><th className="zadm-hide-sm">Subscription</th>
                     <th className="num">Scans (month)</th><th className="num">Planner</th><th className="num">Credits</th>
-                    <th className="ad-hide-md">Calendar</th><th className="ad-hide-md">Region</th><th>Status</th>
+                    <th className="zadm-hide-md">Calendar</th><th className="zadm-hide-md">Region</th><th>Status</th>
                   </tr></thead>
                   <tbody>
                     {res.data.rows.map((u) => (
                       <tr key={u.id}>
                         <td>
-                          <Link className="ad-row-link" href={`/admin/users/${u.id}`}>{u.display_name || u.email || "Unnamed"}</Link>
-                          <span className="ad-sub">{u.email}</span>
+                          <Link className="zadm-row-link" href={`/admin/users/${u.id}`}>{u.display_name || u.email || "Unnamed"}</Link>
+                          <span className="zadm-sub">{u.email}</span>
                         </td>
                         <td className="nowrap">{fmtDate(u.created_at)}</td>
                         <td className="nowrap">{fmtRelative(u.last_active)}</td>
                         <td><PlanBadge plan={u.plan} /></td>
-                        <td className="ad-hide-sm">{u.sub_status ? <StatusBadge status={u.sub_status} /> : <span className="ad-sub">None</span>}</td>
+                        <td className="zadm-hide-sm">{u.sub_status ? <StatusBadge status={u.sub_status} /> : <span className="zadm-sub">None</span>}</td>
                         <td className="num">{fmtNumber(u.scans_month)}</td>
                         <td className="num">{fmtNumber(u.planner_count)}</td>
                         <td className="num">{fmtNumber(u.credits)}</td>
-                        <td className="ad-hide-md">{u.calendar_connected ? <Badge tone="good">Connected</Badge> : <span className="ad-sub">—</span>}</td>
-                        <td className="ad-hide-md nowrap">{[u.country_code, u.locale].filter(Boolean).join(" · ") || "—"}</td>
+                        <td className="zadm-hide-md">{u.calendar_connected ? <Badge tone="good">Connected</Badge> : <span className="zadm-sub">—</span>}</td>
+                        <td className="zadm-hide-md nowrap">{[u.country_code, u.locale].filter(Boolean).join(" · ") || "—"}</td>
                         <td>
                           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                             <StatusBadge status={u.account_status} />
