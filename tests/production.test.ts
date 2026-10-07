@@ -101,7 +101,11 @@ test("auth redirects stay inside the app and keep Rewards return paths", async (
   const { safeAuthNext } = await import("../lib/auth");
   assert.equal(safeAuthNext("/app?view=rewards"), "/app?view=rewards");
   assert.equal(safeAuthNext("/settings"), "/settings");
-  for (const bad of ["https://evil.example/app", "//evil.example", "/\\evil.example", "javascript:alert(1)", "/adminx", null])
+  // Invite links must survive sign-up/sign-in, otherwise new recipients lose the invitation.
+  const token = "3f2b8c1e-9a4d-4f6b-8e2a-1c5d7e9f0a3b";
+  assert.equal(safeAuthNext(`/share/${token}`), `/share/${token}`);
+  assert.equal(safeAuthNext(`/shared/${token}`), `/shared/${token}`);
+  for (const bad of ["/share/not-a-token", "/sharedx/3f2b8c1e-9a4d-4f6b-8e2a-1c5d7e9f0a3b", `/share/${token}/x`, "https://evil.example/app", "//evil.example", "/\\evil.example", "javascript:alert(1)", "/adminx", null])
     assert.equal(safeAuthNext(bad as string | null), "/app");
 });
 

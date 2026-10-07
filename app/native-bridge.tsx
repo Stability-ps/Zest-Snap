@@ -119,6 +119,8 @@ export default function NativeBridge() {
             const { createClient, isSupabaseConfigured } = await import("@/lib/supabase/client");
             if (isSupabaseConfigured()) await createClient().auth.getSession();
           } catch {}
+          const { reloadIfNewRelease } = await import("@/lib/native/release");
+          if (await reloadIfNewRelease()) return;
           window.dispatchEvent(new Event("zest-app-resume"));
           await syncAndroidInsets();
           syncReminders();

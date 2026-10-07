@@ -86,6 +86,9 @@ npm run mobile:build:android
 # → android/app/build/outputs/apk/debug/app-debug.apk        (direct device testing)
 # → android/app/build/outputs/bundle/release/app-release.aab (Play upload; signed when keystore.properties exists)
 ```
+The build regenerates the generic `ic_launcher*`/`splash*` resources, but the app does not use them: the launcher and
+splash point at the hand-tuned `zest_*_v6` resources (`AndroidManifest.xml`, `styles.xml`), which generation never
+overwrites. Discard the regenerated files after a build unless the source artwork in `mobile/assets/` changed.
 Release signing: the upload key lives **outside the repository** (e.g. `~/.zest-snap-signing/zest-upload.jks`, owner-only
 permissions) and `android/keystore.properties` (git-ignored) points to it:
 ```

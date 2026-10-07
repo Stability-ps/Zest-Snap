@@ -8,7 +8,6 @@ import { BarList, Card, Empty, Kpi, Kpis, LoadError, Notice, PageHeader, Stats }
 import { BarChart, LineChart } from "./_components/charts";
 import { SERIES_COLORS } from "@/lib/admin/palette";
 import { readParams, rangeFrom, rangeQuery, type SearchParams } from "./_components/page-utils";
-import type { Attention } from "./_components/shell";
 
 type Money = Record<string, number> | null;
 const money = (m: Money) => {

@@ -159,6 +159,11 @@ test("no server secrets or service keys can reach the native shell or client bun
 test("Android release builds regenerate approved branding and publish real system insets", () => {
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   assert.match(pkg.scripts["mobile:build:android"], /mobile:assets/, "release build must regenerate launcher and splash resources");
+  // Regeneration only rewrites ic_launcher*/splash*; the launcher and splash use hand-tuned v6 resources it never touches.
+  const manifest = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
+  assert.match(manifest, /android:icon="@mipmap\/zest_launcher_v6"/);
+  assert.match(manifest, /android:roundIcon="@mipmap\/zest_launcher_round_v6"/);
+  assert.match(readFileSync("android/app/src/main/res/values/styles.xml", "utf8"), /@drawable\/zest_splash_v6/);
   const brand = readFileSync("scripts/mobile-assets.mjs", "utf8");
   assert.match(brand, /#0B1F3B/);
   assert.match(brand, /#00C6A7/);
@@ -170,4 +175,15 @@ test("Android release builds regenerate approved branding and publish real syste
   const css = readFileSync("app/globals.css", "utf8");
   assert.match(css, /--zest-safe-bottom/);
   assert.match(css, /html\.native \.settingsPage/);
+});
+
+test("a resumed native WebView moves to the live release only when nothing is in progress", async () => {
+  const { shouldReloadForRelease, hasWorkInProgress } = await import("../lib/native/release");
+  assert.equal(shouldReloadForRelease("abc", "def", false), true);
+  assert.equal(shouldReloadForRelease("abc", "abc", false), false);
+  assert.equal(shouldReloadForRelease("abc", "def", true), false, "never reload over a scan review or open sheet");
+  for (const live of [undefined, null, "", "local", 42]) assert.equal(shouldReloadForRelease("abc", live, false), false);
+  assert.equal(shouldReloadForRelease("local", "def", false), false);
+  assert.equal(hasWorkInProgress({ querySelector: () => null }), false);
+  assert.equal(hasWorkInProgress({ querySelector: (s: string) => (s.includes(".reviewTop") ? ({} as Element) : null) }), true);
 });
