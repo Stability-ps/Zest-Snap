@@ -45,6 +45,7 @@ import { addPlannerItemToDevice, deviceCalendarAvailable } from "@/lib/native/ca
 import { hapticSuccess } from "@/lib/native/haptics";
 import { isNative } from "@/lib/native/runtime";
 import { openAppSettings } from "@/lib/native/permissions";
+import PlanningTools from "./planning-tools";
 
 type Tab = "today" | "upcoming" | "calendar" | "reminders";
 type ReminderFilter = "all" | "today" | "upcoming" | "overdue";
@@ -482,6 +483,7 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
           onCancel={(id) => act(() => cancelReminder(id))}
         />
       )}
+      {tab !== "reminders" && <PlanningTools identity={identity} timezone={timezone} signedIn={signedIn} onNotice={onNotice} />}
       {daySheet && (
         <Sheet label={formatDate(selectedDate, "long")} onClose={() => setDaySheet(false)} className="compact calendarActionSheet">
           <div className="sheetTop">
