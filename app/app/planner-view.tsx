@@ -47,6 +47,8 @@ import { isNative } from "@/lib/native/runtime";
 import { openAppSettings } from "@/lib/native/permissions";
 import PlanningTools from "./planning-tools";
 import SmartFollowups from "./smart-followups";
+import { followupCandidates } from "@/lib/followup-suggestions";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type Tab = "today" | "upcoming" | "calendar" | "reminders";
 type ReminderFilter = "all" | "today" | "upcoming" | "overdue";
@@ -261,6 +263,17 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
     } finally {
       setBusy(false);
     }
+  };
+  const createFollowups = async (item: PlannerItem) => {
+    if (!signedIn || !isSupabaseConfigured() || !navigator.onLine) return;
+    const candidates = followupCandidates(item);
+    if (!candidates.length) return;
+    const db = createClient();
+    const { data: auth } = await db.auth.getUser();
+    const userId = auth.user?.id;
+    if (!userId) return;
+    const rows = candidates.map((x) => ({ user_id: userId, planner_item_id: item.id, kind: x.kind, title: x.title, scheduled_at: x.scheduledAt }));
+    await db.from("followup_suggestions").insert(rows);
   };
   const reminderSaved = (background: boolean) =>
     notice(
@@ -577,6 +590,7 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
           onSave={(i, d) =>
             act(async () => {
               await store!.upsert(i);
+              await createFollowups(i);
               setEditing(null);
               if (d) {
                 const r = await createReminder(i, d, i.title);
