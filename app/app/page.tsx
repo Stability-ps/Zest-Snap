@@ -29,6 +29,8 @@ import {
   ListChecks,
   Layers,
   UsersRound,
+  Mic,
+  Square,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ExtractionResult, ExtractedEvent } from "@/lib/extraction-types";
