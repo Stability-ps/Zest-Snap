@@ -34,6 +34,8 @@
                 <data android:scheme="https" android:host="app.zestsnap.app" android:pathPrefix="/reset-password" />
                 <data android:scheme="https" android:host="app.zestsnap.app" android:pathPrefix="/login" />
                 <data android:scheme="https" android:host="app.zestsnap.app" android:pathPrefix="/settings" />
+                <data android:scheme="https" android:host="app.zestsnap.app" android:pathPrefix="/share/" />
+                <data android:scheme="https" android:host="app.zestsnap.app" android:pathPrefix="/shared/" />
             </intent-filter>
 
             <!-- Custom scheme fallback, e.g. zestsnap://app?view=planner -->

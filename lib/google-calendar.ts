@@ -1,4 +1,5 @@
 import type { ExtractedEvent } from "@/lib/extraction-types";
+import { isValidDate } from "@/lib/dates";
 
 function ymd(value: string) {
   return value.replaceAll("-", "");
@@ -27,7 +28,7 @@ function plusMinutes(time: string, minutes: number) {
  * in Google Calendar without creating or downloading an .ics file.
  */
 export function googleCalendarUrl(event: ExtractedEvent, fallbackTimezone = "UTC") {
-  if (!event.startDate) throw new Error("A date is required before adding this event to a calendar.");
+  if (!isValidDate(event.startDate)) throw new Error("Check the date before adding this event to a calendar.");
 
   const params = new URLSearchParams({
     action: "TEMPLATE",

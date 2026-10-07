@@ -4,7 +4,7 @@
  * app to foreign sites. Pure, so it is unit-tested.
  */
 const HOSTS = new Set(["app.zestsnap.app", "zestsnap.app", "www.zestsnap.app"]);
-const ALLOWED = /^\/(app|login|settings|onboarding|reset-password|auth\/callback|privacy|terms)(\/|$)/;
+const ALLOWED = /^\/(app|login|settings|onboarding|reset-password|auth\/callback|privacy|terms|share|shared)(\/|$)/;
 
 export function inAppPath(raw: string): string | null {
   let url: URL;

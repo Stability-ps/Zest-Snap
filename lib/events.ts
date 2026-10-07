@@ -1,5 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
 import type { ExtractedEvent } from "./extraction-types";
+import { requireValidDate } from "./dates";
 const normalize = (s: string) =>
   s.normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " ");
 export function eventFingerprint(e: ExtractedEvent): string {
@@ -19,8 +20,8 @@ export function validateEvent(e: ExtractedEvent) {
     e.title.length > 500
   )
     throw new Error("Enter an event title.");
-  const start = Temporal.PlainDate.from(e.startDate);
-  const end = Temporal.PlainDate.from(e.endDate || e.startDate);
+  const start = Temporal.PlainDate.from(requireValidDate(e.startDate, "Check this event's date before exporting it."));
+  const end = Temporal.PlainDate.from(requireValidDate(e.endDate || e.startDate, "Check this event's end date before exporting it."));
   if (Temporal.PlainDate.compare(end, start) < 0)
     throw new Error("End date must follow the start date.");
   for (const key of ["description", "location", "timezone"] as const)

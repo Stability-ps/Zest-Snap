@@ -1,4 +1,5 @@
 import type { ExtractedEvent } from "./extraction-types";
+import { isValidDate } from "./dates";
 
 const DAYS:Record<string,number>={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
 
@@ -13,7 +14,7 @@ export function firstWeekdayOnOrAfter(startDate:string,dayOfWeek:string){
 }
 
 export function materializeWeeklySchedule(events:ExtractedEvent[],rangeStart:string,rangeEnd:string){
-  if(!rangeStart||!rangeEnd||rangeEnd<rangeStart)throw new Error("Choose a valid start and end date.");
+  if(!isValidDate(rangeStart)||!isValidDate(rangeEnd)||rangeEnd<rangeStart)throw new Error("Choose real term start and end dates between 1900 and 2100.");
   return events.map(event=>{
     if(event.startDate)return event;
     if(event.recurrence!=="weekly"||!event.dayOfWeek)return event;
