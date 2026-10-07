@@ -62,10 +62,10 @@ test("read markers drive unread counts without leaking other plans",async()=>{
   await as(db,OWNER,`select public.mark_shared_plan_read($1)`,[plan]);
   await as(db,VIEWER,`insert into public.shared_plan_messages(plan_id,sender_id,body) values($1,$2,'New message')`,[plan,VIEWER]);
   const counts=(await as<{plan_id:string;unread_count:bigint}>(db,OWNER,`select * from public.shared_plan_unread_counts()`)).rows;
-  assert.equal(counts.find(r=>r.plan_id===plan)?.unread_count,1n);
+  assert.equal(counts.find(r=>r.plan_id===plan)?.unread_count,BigInt(1));
   await as(db,OWNER,`select public.mark_shared_plan_read($1)`,[plan]);
   const after=(await as<{plan_id:string;unread_count:bigint}>(db,OWNER,`select * from public.shared_plan_unread_counts()`)).rows;
-  assert.equal(after.find(r=>r.plan_id===plan)?.unread_count,0n);
+  assert.equal(after.find(r=>r.plan_id===plan)?.unread_count,BigInt(0));
   await assert.rejects(as(db,STRANGER,`select public.mark_shared_plan_read($1)`,[plan]),/not_allowed/);
   await db.close();
 });
