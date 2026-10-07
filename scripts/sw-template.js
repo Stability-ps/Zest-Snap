@@ -127,7 +127,7 @@ self.addEventListener("push", (event) => {
       renotify: true,
       // Sound and vibration are ultimately controlled by the device and browser settings.
       vibrate: [180, 80, 180],
-      data: { url, reminderId },
+      data: { url, reminderId, kind: payload.kind || null, planId: payload.planId || null, messageId: payload.messageId || null },
       actions: reminderId
         ? [
             { action: "snooze", title: "Snooze 15 min" },
