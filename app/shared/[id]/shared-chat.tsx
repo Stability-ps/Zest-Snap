@@ -44,7 +44,7 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
     .on("presence",{event:"sync"},()=>{
       const state=channel.presenceState<{user_id?:string;name?:string}>();
       const next:Record<string,string>={};
-      Object.values(state).flat().forEach(p=>{if(p.user_id)next[p.user_id]=p.name||memberName(p.user_id);});
+      Object.values(state).flat().forEach(p=>{const uid=p.user_id;if(uid)next[uid]=p.name||memberName(uid);});
       setOnline(next);
     })
     .subscribe(async status=>{
