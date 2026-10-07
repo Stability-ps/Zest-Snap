@@ -29,6 +29,8 @@ import {
   ListChecks,
   Layers,
   UsersRound,
+  Mic,
+  Square,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ExtractionResult, ExtractedEvent } from "@/lib/extraction-types";
@@ -129,6 +131,11 @@ export default function App() {
   const [greetingReady, setGreetingReady] = useState(false);
   const [scheduleStart, setScheduleStart] = useState("");
   const [scheduleEnd, setScheduleEnd] = useState("");
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceText, setVoiceText] = useState("");
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const voiceRecognition = useRef<any>(null);
 
   const showError = useCallback((message: string, action: "signup" | "plans" | null = null) => {
     setError(message);
@@ -829,6 +836,58 @@ export default function App() {
     }
   }
 
+  function closeVoicePlanner() {
+    try { voiceRecognition.current?.stop?.(); } catch {}
+    voiceRecognition.current = null;
+    setVoiceListening(false);
+    setVoiceOpen(false);
+  }
+
+  function toggleVoiceListening() {
+    if (voiceListening) { try { voiceRecognition.current?.stop?.(); } catch {} return; }
+    const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!Recognition) return showError("Voice input is not available in this browser. You can still type your plan.");
+    const recognition = new Recognition();
+    recognition.lang = locale || navigator.language || "en";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    let committed = voiceText.trim();
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const words = String(event.results[i][0]?.transcript || "").trim();
+        if (!words) continue;
+        if (event.results[i].isFinal) committed = (committed + " " + words).trim();
+        else interim = (interim + " " + words).trim();
+      }
+      setVoiceText((committed + " " + interim).trim());
+    };
+    recognition.onerror = (event: any) => { if (event?.error !== "aborted" && event?.error !== "no-speech") showError("I couldn’t hear that clearly. Try again or type your plan."); };
+    recognition.onend = () => { voiceRecognition.current = null; setVoiceListening(false); };
+    voiceRecognition.current = recognition;
+    setVoiceListening(true);
+    recognition.start();
+  }
+
+  async function organiseVoicePlan() {
+    const text = voiceText.trim();
+    if (!text) return showError("Say or type what you want to plan first.");
+    if (mode !== "cloud") return goToSignUp();
+    try { voiceRecognition.current?.stop?.(); } catch {}
+    setVoiceBusy(true); setError(""); setSuccess("");
+    try {
+      const response = await fetch("/api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(30000), body: JSON.stringify({ text, timezone, locale }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || "Zest could not organise that plan.");
+      const planned = normalizeDocumentType(body as ExtractionResult);
+      setActiveScan(null); setResult(planned);
+      setSelected(planned.events.map((event, i) => isValidDate(event.startDate) ? i : -1).filter(i => i >= 0));
+      closeVoicePlanner(); openView("review");
+      setSuccess(planned.events.length ? "Review your plan before saving it." : "I couldn’t find an actionable date yet. Try adding a day or time.");
+    } catch (e) { showError(e instanceof Error ? e.message : "Zest could not organise that plan."); }
+    finally { setVoiceBusy(false); }
+  }
+
   const goToSignUp = () => router.push("/login?mode=signup&next=" + encodeURIComponent(window.location.pathname + window.location.search));
 
   return (
@@ -916,6 +975,13 @@ export default function App() {
               )}
             </section>
 
+            <section className="planWithZest">
+              <button className="planWithZestButton" onClick={() => setVoiceOpen(true)} disabled={busy || !ready}>
+                <span className="planWithZestIcon"><Mic size={19} /></span>
+                <span><b>Plan with Zest</b><small>Say what you need to do</small></span>
+                <ChevronRight size={18} />
+              </button>
+            </section>
             <section className="homeToday">
               <div className="homeTodayHead">
                 <div className="homeTodayTitle">
@@ -1268,6 +1334,26 @@ export default function App() {
           </div>
         )}
 
+        {voiceOpen && (
+          <div className="voicePlanBackdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && closeVoicePlanner()}>
+            <section className="voicePlanSheet" role="dialog" aria-modal="true" aria-labelledby="voice-plan-title">
+              <div className="voicePlanHead">
+                <div><span className="eyebrow">PLAN WITH ZEST</span><h2 id="voice-plan-title">What’s your plan?</h2></div>
+                <button className="iconButton" onClick={closeVoicePlanner} aria-label="Close"><X size={20} /></button>
+              </div>
+              <p className="voicePlanHint">Speak naturally. For example: “Tomorrow at 9, dentist. At 2, call Sarah. Remind me at 6 to buy groceries.”</p>
+              <textarea className="voicePlanText" value={voiceText} maxLength={2000} onChange={(e) => setVoiceText(e.target.value)} placeholder="Say it or type it here…" />
+              <button className={"voiceRecordButton " + (voiceListening ? "listening" : "")} onClick={toggleVoiceListening} type="button">
+                {voiceListening ? <Square size={20} /> : <Mic size={22} />}
+                <span>{voiceListening ? "Stop listening" : "Start speaking"}</span>
+              </button>
+              <div className="voicePlanPrivacy">Your words are sent only when you choose <b>Organise my plan</b>. Review everything before it is saved.</div>
+              <button className="button voicePlanSubmit" disabled={voiceBusy || !voiceText.trim()} onClick={organiseVoicePlan}>
+                {voiceBusy ? <Loader2 className="spin" size={19} /> : <Sparkles size={19} />} {voiceBusy ? "Organising…" : "Organise my plan"}
+              </button>
+            </section>
+          </div>
+        )}
         {editingIndex !== null && draft && (
           <dialog
             ref={dialogRef}
