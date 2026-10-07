@@ -199,7 +199,7 @@ test("CSP reports are logged without paths' query strings, tokens or full blocke
 test("Google Planner event IDs are deterministic so concurrent sync cannot create duplicates", async () => {
   const { googlePlannerEventId } = await import("../lib/google-calendar-server");
   const id = "123e4567-e89b-12d3-a456-426614174000";
-  assert.equal(googlePlannerEventId(id), "zest123e4567e89b12d3a456426614174000");
+  assert.equal(googlePlannerEventId(id), "a123e4567e89b12d3a456426614174000");
   assert.equal(googlePlannerEventId(id), googlePlannerEventId(id));
   assert.throws(() => googlePlannerEventId("not-a-uuid"));
 });
