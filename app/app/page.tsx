@@ -1312,7 +1312,7 @@ export default function App() {
               try {
                 const code = await provider.current?.createReferral();
                 if (!code) return goToSignUp();
-                const url = `https://zestsnap.app/?ref=${encodeURIComponent(code)}`;
+                const url = `https://zestsnap.app/r/${encodeURIComponent(code)}`;
                 const shareText = "Turn photos, screenshots and documents into plans with Zest Snap 📅\n\nTry Zest Snap:";
                 const nativeShare = await shareTextNatively({ title: "Zest Snap", text: shareText, url });
                 if (nativeShare) return;
