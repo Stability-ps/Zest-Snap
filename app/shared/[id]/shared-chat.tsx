@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback,useEffect,useMemo,useRef,useState } from "react";
-import { CornerUpLeft,Edit3,Link2,MessageCircle,Paperclip,Send,Smile,Trash2,X } from "lucide-react";
+import { Camera,CornerUpLeft,Edit3,FileText,Image as ImageIcon,Link2,MessageCircle,Mic,Paperclip,Play,Send,Smile,Square,Trash2,X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./shared-chat.module.css";
 
 type Member={user_id:string;display_name:string;role:string};
 type Item={id:string;title:string};
-type Message={id:string;plan_id:string;sender_id:string;body:string;reply_to:string|null;item_id:string|null;edited_at:string|null;deleted_at:string|null;created_at:string};
+type Attachment={path:string;kind:"photo"|"file"|"voice";name:string;mime?:string;size?:number;duration?:number};\ntype Message={id:string;plan_id:string;sender_id:string;body:string;reply_to:string|null;item_id:string|null;attachment:Attachment|null;edited_at:string|null;deleted_at:string|null;created_at:string};
 type Reaction={message_id:string;user_id:string;emoji:string};
 const QUICK=["👍","❤️","😂","🎉","👀"];
 
@@ -16,12 +16,12 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
  const [messages,setMessages]=useState<Message[]>([]),[reactions,setReactions]=useState<Reaction[]>([]);
  const [text,setText]=useState(""),[reply,setReply]=useState<Message|null>(null),[linkedItem,setLinkedItem]=useState<Item|null>(null);
  const [typing,setTyping]=useState<Record<string,string>>({}),[online,setOnline]=useState<Record<string,string>>({});
- const [busy,setBusy]=useState(false),[error,setError]=useState(""),[emojiFor,setEmojiFor]=useState<string|null>(null),[showItems,setShowItems]=useState(false);
+ const [busy,setBusy]=useState(false),[error,setError]=useState(""),[emojiFor,setEmojiFor]=useState<string|null>(null),[showItems,setShowItems]=useState(false),[showAttach,setShowAttach]=useState(false);\n const [mediaUrls,setMediaUrls]=useState<Record<string,string>>({}),[recording,setRecording]=useState(false),[recordSecs,setRecordSecs]=useState(0);\n const photoRef=useRef<HTMLInputElement|null>(null),cameraRef=useRef<HTMLInputElement|null>(null),fileRef=useRef<HTMLInputElement|null>(null),recorderRef=useRef<MediaRecorder|null>(null),chunksRef=useRef<Blob[]>([]),recordStart=useRef(0);
  const endRef=useRef<HTMLDivElement|null>(null),typingTimer=useRef<number|null>(null),channelRef=useRef<ReturnType<typeof db.channel>|null>(null);
  const memberName=useCallback((id:string)=>members.find(m=>m.user_id===id)?.display_name||"Member",[members]);
  const load=useCallback(async()=>{
    const [m,r]=await Promise.all([
-     db.from("shared_plan_messages").select("id,plan_id,sender_id,body,reply_to,item_id,edited_at,deleted_at,created_at").eq("plan_id",planId).order("created_at",{ascending:true}).limit(250),
+     db.from("shared_plan_messages").select("id,plan_id,sender_id,body,reply_to,item_id,attachment,edited_at,deleted_at,created_at").eq("plan_id",planId).order("created_at",{ascending:true}).limit(250),
      db.from("shared_plan_message_reactions").select("message_id,user_id,emoji").eq("plan_id",planId)
    ]);
    if(m.error){setError("Messages could not be loaded.");return;}
@@ -29,7 +29,7 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
    await db.rpc("mark_shared_plan_read",{p_plan:planId});
  },[db,planId]);
  useEffect(()=>{load();},[load]);
- useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth",block:"end"});},[messages.length]);
+ useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth",block:"end"});},[messages.length]);\n useEffect(()=>{\n   let live=true;\n   (async()=>{const next:Record<string,string>={};for(const m of messages){if(!m.attachment?.path)continue;const {data}=await db.storage.from("shared-chat").createSignedUrl(m.attachment.path,3600);if(data?.signedUrl)next[m.id]=data.signedUrl;}if(live)setMediaUrls(next);})();\n   return()=>{live=false};\n },[db,messages]);\n useEffect(()=>{if(!recording)return;const id=window.setInterval(()=>setRecordSecs(Math.floor((Date.now()-recordStart.current)/1000)),250);return()=>window.clearInterval(id)},[recording]);
  useEffect(()=>{
    if(!me)return;
    const channel=db.channel(`shared-plan:${planId}`,{config:{private:true,presence:{key:me}}});
@@ -68,6 +68,35 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
    else{setText("");setReply(null);setLinkedItem(null);sendTyping(false);await load();await broadcast("message",{plan_id:planId});}
    setBusy(false);
  }
+ async function sendMedia(file:File,kind:"photo"|"file"|"voice",duration?:number){
+   if(!me||busy)return;
+   if(file.size>25_000_000){setError("That file is larger than 25 MB.");return;}
+   setBusy(true);setError("");setShowAttach(false);
+   const safe=file.name.replace(/[^a-zA-Z0-9._-]+/g,"-").slice(-120)||"attachment";
+   const path=`${planId}/${me}/${crypto.randomUUID()}-${safe}`;
+   const {error:uploadError}=await db.storage.from("shared-chat").upload(path,file,{contentType:file.type||undefined,upsert:false});
+   if(uploadError){setError("Attachment could not be uploaded.");setBusy(false);return;}
+   const attachment:Attachment={path,kind,name:file.name||("Voice note"),mime:file.type,size:file.size,...(duration?{duration}: {})};
+   const label=kind==="voice"?"Voice note":kind==="photo"?"Photo":file.name;
+   const {error:e}=await db.from("shared_plan_messages").insert({plan_id:planId,sender_id:me,body:label,reply_to:reply?.id||null,item_id:linkedItem?.id||null,attachment});
+   if(e){await db.storage.from("shared-chat").remove([path]);setError("Attachment message could not be sent.");}
+   else{setReply(null);setLinkedItem(null);await load();await broadcast("message",{plan_id:planId});}
+   setBusy(false);
+ }
+ async function pick(e:React.ChangeEvent<HTMLInputElement>,kind:"photo"|"file"){const file=e.target.files?.[0];e.target.value="";if(file)await sendMedia(file,kind);}
+ async function startVoice(){
+   if(!me||busy||recording)return;
+   try{
+     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+     const preferred=["audio/webm;codecs=opus","audio/mp4","audio/webm"].find(x=>MediaRecorder.isTypeSupported(x));
+     const rec=new MediaRecorder(stream,preferred?{mimeType:preferred}:undefined);chunksRef.current=[];
+     rec.ondataavailable=e=>{if(e.data.size)chunksRef.current.push(e.data)};
+     rec.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());const seconds=Math.max(1,Math.round((Date.now()-recordStart.current)/1000));const mime=rec.mimeType||"audio/webm";const ext=mime.includes("mp4")?"m4a":mime.includes("ogg")?"ogg":"webm";const blob=new Blob(chunksRef.current,{type:mime});setRecording(false);setRecordSecs(0);if(blob.size)await sendMedia(new File([blob],`voice-${Date.now()}.${ext}`,{type:mime}),"voice",seconds);};
+     recorderRef.current=rec;recordStart.current=Date.now();setRecordSecs(0);setRecording(true);rec.start(250);
+   }catch{setError("Microphone access is needed to record a voice note.");}
+ }
+ function stopVoice(){if(recorderRef.current?.state==="recording")recorderRef.current.stop();}
+
  async function react(messageId:string,emoji:string){
    if(!me)return;
    const existing=reactions.find(r=>r.message_id===messageId&&r.user_id===me&&r.emoji===emoji);
@@ -101,7 +130,7 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
        <div className={`${styles.bubble} ${m.deleted_at?styles.deleted:""}`}>
         {parent&&<div className={styles.replyPreview}><CornerUpLeft/><span><b>{memberName(parent.sender_id)}</b><br/>{parent.deleted_at?"Message deleted":parent.body.slice(0,90)}</span></div>}
         {item&&<div className={styles.itemPreview}><Link2/><span><b>Discussing</b><br/>{item.title}</span></div>}
-        <div className={styles.body}>{m.body}</div>
+        {m.attachment?.kind==="photo"&&mediaUrls[m.id]?<a href={mediaUrls[m.id]} target="_blank" rel="noreferrer" className={styles.photo}><img src={mediaUrls[m.id]} alt={m.attachment.name}/></a>:m.attachment?.kind==="voice"&&mediaUrls[m.id]?<div className={styles.voice}><Play/><div className={styles.wave}>{Array.from({length:18},(_,i)=><i key={i}/>)}</div><audio controls preload="metadata" src={mediaUrls[m.id]}/><span>{Math.floor((m.attachment.duration||0)/60)}:{String((m.attachment.duration||0)%60).padStart(2,"0")}</span></div>:m.attachment?.kind==="file"&&mediaUrls[m.id]?<a className={styles.fileCard} href={mediaUrls[m.id]} target="_blank" rel="noreferrer"><FileText/><span><b>{m.attachment.name}</b><small>{m.attachment.size?`${Math.max(1,Math.round(m.attachment.size/1024))} KB`:"File"}</small></span></a>:<div className={styles.body}>{m.body}</div>}
         <div className={styles.meta}><span>{new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}{m.edited_at?" · edited":""}</span>{!m.deleted_at&&<span className={styles.actions}><button onClick={()=>setReply(m)} aria-label="Reply"><CornerUpLeft/></button><button onClick={()=>setEmojiFor(emojiFor===m.id?null:m.id)} aria-label="React"><Smile/></button>{mine&&<><button onClick={()=>edit(m)} aria-label="Edit"><Edit3/></button><button onClick={()=>remove(m)} aria-label="Delete"><Trash2/></button></>}</span>}</div>
         {emojiFor===m.id&&<div className={styles.emojiTray}>{QUICK.map(e=><button key={e} onClick={()=>react(m.id,e)}>{e}</button>)}</div>}
         {!!groups.length&&<div className={styles.reactions}>{groups.map(([emoji,list])=><button key={emoji} className={`${styles.reaction} ${list.some(r=>r.user_id===me)?styles.reactionActive:""}`} onClick={()=>react(m.id,emoji)} title={list.map(r=>memberName(r.user_id)).join(", ")}>{emoji} {list.length}</button>)}</div>}
