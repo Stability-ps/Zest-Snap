@@ -55,6 +55,7 @@ import SharedView from "./shared-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
+import { normalizeDocumentType } from "@/lib/extraction-validation";
 import { monthGrid, plannerFingerprint, plannerReferenceDate, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, mergePlannerWithExternal, type PlannerItem } from "@/lib/planner";
 import {
   STARTUP_STATE_KEY,
@@ -546,7 +547,7 @@ export default function App() {
       await persist({ ...store, scans: [scan, ...store.scans.filter((s) => s.id !== scan.id)] });
 
       setActiveScan(scan.id);
-      setResult(payload);
+      setResult(normalizeDocumentType(payload));
       hapticSuccess();
       setSelected(payload.events.map((_: ExtractedEvent, i: number) => i).filter((i: number) => !duplicateOf(payload.events[i])));
       openView("review");
@@ -1145,7 +1146,7 @@ export default function App() {
             scans={store.scans}
             onOpen={(s) => {
               setActiveScan(s.id);
-              setResult({ ...s, warnings: s.warnings || [] });
+              setResult(normalizeDocumentType({ ...s, warnings: s.warnings || [] }));
               setSelected(s.events.map((_, i) => i));
               openView("review");
             }}
