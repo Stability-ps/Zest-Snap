@@ -401,7 +401,7 @@ export function googlePlannerEventId(plannerItemId: string) {
   if (!/^[0-9a-f]{32}$/.test(compact)) throw new Error("planner_item_not_found");
   // Google Calendar custom event IDs accept base32hex characters (0-9, a-v).
   // A UUID contains only 0-9/a-f, so this is stable and safe across retries/races.
-  return `zest${compact}`;
+  return `a${compact}`;
 }
 
 async function patchGoogleEvent(token: string, calendarId: string, googleId: string, body: Record<string, unknown>) {
