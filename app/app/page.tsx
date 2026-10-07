@@ -834,7 +834,59 @@ export default function App() {
     }
   }
 
-  function closeVoicePlanner() {\n    try { voiceRecognition.current?.stop?.(); } catch {}\n    voiceRecognition.current = null;\n    setVoiceListening(false);\n    setVoiceOpen(false);\n  }\n\n  function toggleVoiceListening() {\n    if (voiceListening) { try { voiceRecognition.current?.stop?.(); } catch {} return; }\n    const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;\n    if (!Recognition) return showError("Voice input is not available in this browser. You can still type your plan.");\n    const recognition = new Recognition();\n    recognition.lang = locale || navigator.language || "en";\n    recognition.continuous = true;\n    recognition.interimResults = true;\n    let committed = voiceText.trim();\n    recognition.onresult = (event: any) => {\n      let interim = "";\n      for (let i = event.resultIndex; i < event.results.length; i++) {\n        const words = String(event.results[i][0]?.transcript || "").trim();\n        if (!words) continue;\n        if (event.results[i].isFinal) committed = (committed + " " + words).trim();\n        else interim = (interim + " " + words).trim();\n      }\n      setVoiceText((committed + " " + interim).trim());\n    };\n    recognition.onerror = (event: any) => { if (event?.error !== "aborted" && event?.error !== "no-speech") showError("I couldn’t hear that clearly. Try again or type your plan."); };\n    recognition.onend = () => { voiceRecognition.current = null; setVoiceListening(false); };\n    voiceRecognition.current = recognition;\n    setVoiceListening(true);\n    recognition.start();\n  }\n\n  async function organiseVoicePlan() {\n    const text = voiceText.trim();\n    if (!text) return showError("Say or type what you want to plan first.");\n    if (mode !== "cloud") return goToSignUp();\n    try { voiceRecognition.current?.stop?.(); } catch {}\n    setVoiceBusy(true); setError(""); setSuccess("");\n    try {\n      const response = await fetch("/api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(30000), body: JSON.stringify({ text, timezone, locale }) });\n      const body = await response.json().catch(() => ({}));\n      if (!response.ok) throw new Error(body?.error || "Zest could not organise that plan.");\n      const planned = normalizeDocumentType(body as ExtractionResult);\n      setActiveScan(null); setResult(planned);\n      setSelected(planned.events.map((event, i) => isValidDate(event.startDate) ? i : -1).filter(i => i >= 0));\n      closeVoicePlanner(); openView("review");\n      setSuccess(planned.events.length ? "Review your plan before saving it." : "I couldn’t find an actionable date yet. Try adding a day or time.");\n    } catch (e) { showError(e instanceof Error ? e.message : "Zest could not organise that plan."); }\n    finally { setVoiceBusy(false); }\n  }\n\n  const goToSignUp = () => router.push("/login?mode=signup&next=" + encodeURIComponent(window.location.pathname + window.location.search));
+  function closeVoicePlanner() {
+    try { voiceRecognition.current?.stop?.(); } catch {}
+    voiceRecognition.current = null;
+    setVoiceListening(false);
+    setVoiceOpen(false);
+  }
+
+  function toggleVoiceListening() {
+    if (voiceListening) { try { voiceRecognition.current?.stop?.(); } catch {} return; }
+    const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!Recognition) return showError("Voice input is not available in this browser. You can still type your plan.");
+    const recognition = new Recognition();
+    recognition.lang = locale || navigator.language || "en";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    let committed = voiceText.trim();
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const words = String(event.results[i][0]?.transcript || "").trim();
+        if (!words) continue;
+        if (event.results[i].isFinal) committed = (committed + " " + words).trim();
+        else interim = (interim + " " + words).trim();
+      }
+      setVoiceText((committed + " " + interim).trim());
+    };
+    recognition.onerror = (event: any) => { if (event?.error !== "aborted" && event?.error !== "no-speech") showError("I couldn’t hear that clearly. Try again or type your plan."); };
+    recognition.onend = () => { voiceRecognition.current = null; setVoiceListening(false); };
+    voiceRecognition.current = recognition;
+    setVoiceListening(true);
+    recognition.start();
+  }
+
+  async function organiseVoicePlan() {
+    const text = voiceText.trim();
+    if (!text) return showError("Say or type what you want to plan first.");
+    if (mode !== "cloud") return goToSignUp();
+    try { voiceRecognition.current?.stop?.(); } catch {}
+    setVoiceBusy(true); setError(""); setSuccess("");
+    try {
+      const response = await fetch("/api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(30000), body: JSON.stringify({ text, timezone, locale }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || "Zest could not organise that plan.");
+      const planned = normalizeDocumentType(body as ExtractionResult);
+      setActiveScan(null); setResult(planned);
+      setSelected(planned.events.map((event, i) => isValidDate(event.startDate) ? i : -1).filter(i => i >= 0));
+      closeVoicePlanner(); openView("review");
+      setSuccess(planned.events.length ? "Review your plan before saving it." : "I couldn’t find an actionable date yet. Try adding a day or time.");
+    } catch (e) { showError(e instanceof Error ? e.message : "Zest could not organise that plan."); }
+    finally { setVoiceBusy(false); }
+  }
+
+  const goToSignUp = () => router.push("/login?mode=signup&next=" + encodeURIComponent(window.location.pathname + window.location.search));
 
   return (
     <main className="appShell">
