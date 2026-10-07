@@ -67,9 +67,10 @@ export default function LoginPage() {
   }
 
   function authErrorMessage(code?: string, fallback?: string) {
+    const normalizedFallback = fallback?.toLowerCase() || "";
     switch (code) {
       case "invalid_credentials":
-        return "That email or password doesn’t match. Check your details and try again.";
+        return "Incorrect email or password. Check your email address and password, then try again.";
       case "email_not_confirmed":
         return "Confirm your email first, then come back and sign in.";
       case "user_already_exists":
@@ -83,6 +84,17 @@ export default function LoginPage() {
       case "signup_disabled":
         return "New account creation is temporarily unavailable.";
       default:
+        if (
+          normalizedFallback.includes("invalid login credentials") ||
+          normalizedFallback.includes("invalid credentials")
+        )
+          return "Incorrect email or password. Check your email address and password, then try again.";
+        if (
+          normalizedFallback.includes("failed to fetch") ||
+          normalizedFallback.includes("networkerror") ||
+          normalizedFallback.includes("network request failed")
+        )
+          return "Unable to connect to Zest Snap. Check your internet connection and try again.";
         return fallback || "We could not complete that request. Please try again.";
     }
   }
@@ -167,8 +179,12 @@ export default function LoginPage() {
           "Check your email to confirm your Zest Snap account, then sign in.",
         );
       }
-    } catch {
-      setMessage("Connection interrupted. Please try again.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? authErrorMessage(undefined, error.message)
+          : "Unable to connect to Zest Snap. Check your internet connection and try again.",
+      );
     } finally {
       setBusy(false);
     }
