@@ -1,0 +1,158 @@
+"use client";
+
+import { useCallback,useEffect,useMemo,useRef,useState } from "react";
+import { Camera,CornerUpLeft,Edit3,FileText,Image as ImageIcon,Link2,MessageCircle,Mic,Paperclip,Play,Send,Smile,Square,Trash2,X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import styles from "./shared-chat.module.css";
+
+type Member={user_id:string;display_name:string;role:string};
+type Item={id:string;title:string};
+type Attachment={path:string;kind:"photo"|"file"|"voice";name:string;mime?:string;size?:number;duration?:number};
+type Message={id:string;plan_id:string;sender_id:string;body:string;reply_to:string|null;item_id:string|null;attachment:Attachment|null;edited_at:string|null;deleted_at:string|null;created_at:string};
+type Reaction={message_id:string;user_id:string;emoji:string};
+const QUICK=["👍","❤️","😂","🎉","👀"];
+
+export default function SharedChat({planId,me,members,items}:{planId:string;me:string|null;members:Member[];items:Item[]}){
+ const db=useMemo(()=>createClient(),[]);
+ const [messages,setMessages]=useState<Message[]>([]),[reactions,setReactions]=useState<Reaction[]>([]);
+ const [text,setText]=useState(""),[reply,setReply]=useState<Message|null>(null),[linkedItem,setLinkedItem]=useState<Item|null>(null);
+ const [typing,setTyping]=useState<Record<string,string>>({}),[online,setOnline]=useState<Record<string,string>>({});
+ const [busy,setBusy]=useState(false),[error,setError]=useState(""),[emojiFor,setEmojiFor]=useState<string|null>(null),[showItems,setShowItems]=useState(false),[showAttach,setShowAttach]=useState(false);
+ const [mediaUrls,setMediaUrls]=useState<Record<string,string>>({}),[recording,setRecording]=useState(false),[recordSecs,setRecordSecs]=useState(0);
+ const photoRef=useRef<HTMLInputElement|null>(null),cameraRef=useRef<HTMLInputElement|null>(null),fileRef=useRef<HTMLInputElement|null>(null),recorderRef=useRef<MediaRecorder|null>(null),chunksRef=useRef<Blob[]>([]),recordStart=useRef(0);
+ const endRef=useRef<HTMLDivElement|null>(null),typingTimer=useRef<number|null>(null),channelRef=useRef<ReturnType<typeof db.channel>|null>(null);
+ const memberName=useCallback((id:string)=>members.find(m=>m.user_id===id)?.display_name||"Member",[members]);
+ const load=useCallback(async()=>{
+   const [m,r]=await Promise.all([
+     db.from("shared_plan_messages").select("id,plan_id,sender_id,body,reply_to,item_id,attachment,edited_at,deleted_at,created_at").eq("plan_id",planId).order("created_at",{ascending:true}).limit(250),
+     db.from("shared_plan_message_reactions").select("message_id,user_id,emoji").eq("plan_id",planId)
+   ]);
+   if(m.error){setError("Messages could not be loaded.");return;}
+   setMessages((m.data||[]) as Message[]); setReactions((r.data||[]) as Reaction[]);
+   await db.rpc("mark_shared_plan_read",{p_plan:planId});
+ },[db,planId]);
+ useEffect(()=>{load();},[load]);
+ useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth",block:"end"});},[messages.length]);
+ useEffect(()=>{
+   let live=true;
+   (async()=>{const next:Record<string,string>={};for(const m of messages){if(!m.attachment?.path)continue;const {data}=await db.storage.from("shared-chat").createSignedUrl(m.attachment.path,3600);if(data?.signedUrl)next[m.id]=data.signedUrl;}if(live)setMediaUrls(next);})();
+   return()=>{live=false};
+ },[db,messages]);
+ useEffect(()=>{if(!recording)return;const id=window.setInterval(()=>setRecordSecs(Math.floor((Date.now()-recordStart.current)/1000)),250);return()=>window.clearInterval(id)},[recording]);
+ useEffect(()=>{
+   if(!me)return;
+   const channel=db.channel(`shared-plan:${planId}`,{config:{private:true,presence:{key:me}}});
+   channel
+    .on("broadcast",{event:"message"},()=>load())
+    .on("broadcast",{event:"reaction"},()=>load())
+    .on("broadcast",{event:"typing"},({payload})=>{
+      const p=payload as {user_id?:string;name?:string;typing?:boolean};
+      const uid=p.user_id;if(!uid||uid===me)return;
+      setTyping(v=>{const n={...v};if(p.typing)n[uid]=p.name||"Someone";else delete n[uid];return n;});
+    })
+    .on("presence",{event:"sync"},()=>{
+      const state=channel.presenceState<{user_id?:string;name?:string}>();
+      const next:Record<string,string>={};
+      Object.values(state).flat().forEach(p=>{const uid=p.user_id;if(uid)next[uid]=p.name||memberName(uid);});
+      setOnline(next);
+    })
+    .subscribe(async status=>{
+      if(status==="SUBSCRIBED")await channel.track({user_id:me,name:memberName(me),online_at:new Date().toISOString()});
+    });
+   channelRef.current=channel;
+   return()=>{channelRef.current=null;void db.removeChannel(channel);};
+ },[db,me,memberName,planId,load]);
+ const broadcast=async(event:string,payload:Record<string,unknown>)=>{await channelRef.current?.send({type:"broadcast",event,payload});};
+ const sendTyping=(value:boolean)=>{
+   if(!me)return;
+   void broadcast("typing",{user_id:me,name:memberName(me),typing:value});
+   if(typingTimer.current)window.clearTimeout(typingTimer.current);
+   if(value)typingTimer.current=window.setTimeout(()=>void broadcast("typing",{user_id:me,name:memberName(me),typing:false}),1400);
+ };
+ async function send(){
+   const body=text.trim();if(!me||!body||busy)return;
+   setBusy(true);setError("");
+   const {error:e}=await db.from("shared_plan_messages").insert({plan_id:planId,sender_id:me,body,reply_to:reply?.id||null,item_id:linkedItem?.id||null});
+   if(e)setError("Message could not be sent.");
+   else{setText("");setReply(null);setLinkedItem(null);sendTyping(false);await load();await broadcast("message",{plan_id:planId});}
+   setBusy(false);
+ }
+ async function sendMedia(file:File,kind:"photo"|"file"|"voice",duration?:number){
+   if(!me||busy)return;
+   if(file.size>25_000_000){setError("That file is larger than 25 MB.");return;}
+   setBusy(true);setError("");setShowAttach(false);
+   const safe=file.name.replace(/[^a-zA-Z0-9._-]+/g,"-").slice(-120)||"attachment";
+   const path=`${planId}/${me}/${crypto.randomUUID()}-${safe}`;
+   const {error:uploadError}=await db.storage.from("shared-chat").upload(path,file,{contentType:file.type||undefined,upsert:false});
+   if(uploadError){setError("Attachment could not be uploaded.");setBusy(false);return;}
+   const attachment:Attachment={path,kind,name:file.name||("Voice note"),mime:file.type,size:file.size,...(duration?{duration}: {})};
+   const label=kind==="voice"?"Voice note":kind==="photo"?"Photo":file.name;
+   const {error:e}=await db.from("shared_plan_messages").insert({plan_id:planId,sender_id:me,body:label,reply_to:reply?.id||null,item_id:linkedItem?.id||null,attachment});
+   if(e){await db.storage.from("shared-chat").remove([path]);setError("Attachment message could not be sent.");}
+   else{setReply(null);setLinkedItem(null);await load();await broadcast("message",{plan_id:planId});}
+   setBusy(false);
+ }
+ async function pick(e:React.ChangeEvent<HTMLInputElement>,kind:"photo"|"file"){const file=e.target.files?.[0];e.target.value="";if(file)await sendMedia(file,kind);}
+ async function startVoice(){
+   if(!me||busy||recording)return;
+   try{
+     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+     const preferred=["audio/webm;codecs=opus","audio/mp4","audio/webm"].find(x=>MediaRecorder.isTypeSupported(x));
+     const rec=new MediaRecorder(stream,preferred?{mimeType:preferred}:undefined);chunksRef.current=[];
+     rec.ondataavailable=e=>{if(e.data.size)chunksRef.current.push(e.data)};
+     rec.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());const seconds=Math.max(1,Math.round((Date.now()-recordStart.current)/1000));const mime=rec.mimeType||"audio/webm";const ext=mime.includes("mp4")?"m4a":mime.includes("ogg")?"ogg":"webm";const blob=new Blob(chunksRef.current,{type:mime});setRecording(false);setRecordSecs(0);if(blob.size)await sendMedia(new File([blob],`voice-${Date.now()}.${ext}`,{type:mime}),"voice",seconds);};
+     recorderRef.current=rec;recordStart.current=Date.now();setRecordSecs(0);setRecording(true);rec.start(250);
+   }catch{setError("Microphone access is needed to record a voice note.");}
+ }
+ function stopVoice(){if(recorderRef.current?.state==="recording")recorderRef.current.stop();}
+
+ async function react(messageId:string,emoji:string){
+   if(!me)return;
+   const existing=reactions.find(r=>r.message_id===messageId&&r.user_id===me&&r.emoji===emoji);
+   const q=existing?db.from("shared_plan_message_reactions").delete().eq("message_id",messageId).eq("user_id",me).eq("emoji",emoji)
+     :db.from("shared_plan_message_reactions").insert({message_id:messageId,plan_id:planId,user_id:me,emoji});
+   const {error:e}=await q;if(!e){setEmojiFor(null);await load();await broadcast("reaction",{plan_id:planId});}
+ }
+ async function edit(m:Message){
+   if(m.sender_id!==me||m.deleted_at)return;
+   const body=window.prompt("Edit message",m.body)?.trim();if(!body||body===m.body)return;
+   const {error:e}=await db.rpc("edit_shared_message",{p_message:m.id,p_body:body});
+   if(!e){await load();await broadcast("message",{plan_id:planId});}
+ }
+ async function remove(m:Message){
+   if(m.sender_id!==me||m.deleted_at||!window.confirm("Delete this message?"))return;
+   const {error:e}=await db.rpc("delete_shared_message",{p_message:m.id});
+   if(!e){await load();await broadcast("message",{plan_id:planId});}
+ }
+ function replyMessage(id:string|null){return id?messages.find(m=>m.id===id)||null:null}
+ function itemFor(id:string|null){return id?items.find(i=>i.id===id)||null:null}
+ const typingNames=Object.values(typing),onlineCount=Object.keys(online).length;
+ return <section className={styles.chatShell} aria-label="Plan messages">
+   <div className={styles.chatTop}><div><strong>Messages</strong><small>Conversation stays with this plan</small></div><div className={styles.presence}><span className={styles.presenceDot}/>{onlineCount||1} online</div></div>
+   <div className={styles.messages}>
+    {!messages.length?<div className={styles.empty}><div><MessageCircle/><strong>Start the conversation</strong><span>Messages, replies and reactions stay connected to this plan.</span></div></div>:messages.map((m,idx)=>{
+      const mine=m.sender_id===me,parent=replyMessage(m.reply_to),item=itemFor(m.item_id);
+      const grouped=idx>0&&messages[idx-1].sender_id===m.sender_id&&(new Date(m.created_at).getTime()-new Date(messages[idx-1].created_at).getTime()<5*60_000);
+      const rs=reactions.filter(r=>r.message_id===m.id);const groups=Object.entries(rs.reduce<Record<string,Reaction[]>>((a,r)=>((a[r.emoji]||=[]).push(r),a),{}));
+      return <div className={`${styles.row} ${mine?styles.mine:styles.theirs}`} key={m.id}>
+       {!mine&&!grouped&&<span className={styles.author}>{memberName(m.sender_id)}</span>}
+       <div className={`${styles.bubble} ${m.deleted_at?styles.deleted:""}`}>
+        {parent&&<div className={styles.replyPreview}><CornerUpLeft/><span><b>{memberName(parent.sender_id)}</b><br/>{parent.deleted_at?"Message deleted":parent.body.slice(0,90)}</span></div>}
+        {item&&<div className={styles.itemPreview}><Link2/><span><b>Discussing</b><br/>{item.title}</span></div>}
+        {m.attachment?.kind==="photo"&&mediaUrls[m.id]?<a href={mediaUrls[m.id]} target="_blank" rel="noreferrer" className={styles.photo}><img src={mediaUrls[m.id]} alt={m.attachment.name}/></a>:m.attachment?.kind==="voice"&&mediaUrls[m.id]?<div className={styles.voice}><Play/><div className={styles.wave}>{Array.from({length:18},(_,i)=><i key={i}/>)}</div><audio controls preload="metadata" src={mediaUrls[m.id]}/><span>{Math.floor((m.attachment.duration||0)/60)}:{String((m.attachment.duration||0)%60).padStart(2,"0")}</span></div>:m.attachment?.kind==="file"&&mediaUrls[m.id]?<a className={styles.fileCard} href={mediaUrls[m.id]} target="_blank" rel="noreferrer"><FileText/><span><b>{m.attachment.name}</b><small>{m.attachment.size?`${Math.max(1,Math.round(m.attachment.size/1024))} KB`:"File"}</small></span></a>:<div className={styles.body}>{m.body}</div>}
+        <div className={styles.meta}><span>{new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}{m.edited_at?" · edited":""}</span>{!m.deleted_at&&<span className={styles.actions}><button onClick={()=>setReply(m)} aria-label="Reply"><CornerUpLeft/></button><button onClick={()=>setEmojiFor(emojiFor===m.id?null:m.id)} aria-label="React"><Smile/></button>{mine&&<><button onClick={()=>edit(m)} aria-label="Edit"><Edit3/></button><button onClick={()=>remove(m)} aria-label="Delete"><Trash2/></button></>}</span>}</div>
+        {emojiFor===m.id&&<div className={styles.emojiTray}>{QUICK.map(e=><button key={e} onClick={()=>react(m.id,e)}>{e}</button>)}</div>}
+        {!!groups.length&&<div className={styles.reactions}>{groups.map(([emoji,list])=><button key={emoji} className={`${styles.reaction} ${list.some(r=>r.user_id===me)?styles.reactionActive:""}`} onClick={()=>react(m.id,emoji)} title={list.map(r=>memberName(r.user_id)).join(", ")}>{emoji} {list.length}</button>)}</div>}
+       </div>
+      </div>
+    })}<div ref={endRef}/>
+   </div>
+   <div className={styles.typing}>{typingNames.length?typingNames.slice(0,2).join(" & ")+" typing…":""}</div>
+   <div className={styles.composer}>
+    {(reply||linkedItem)&&<div className={styles.context}><span>{reply?`Replying to ${memberName(reply.sender_id)}`:`Discussing ${linkedItem?.title}`}</span><button onClick={()=>{setReply(null);setLinkedItem(null)}} aria-label="Clear context"><X/></button></div>}
+    <div className={styles.composerRow}>{items.length>0&&<button className={styles.attach} onClick={()=>setShowItems(v=>!v)} aria-label="Discuss a plan item" aria-expanded={showItems}><Paperclip/></button>}<textarea className={styles.input} rows={1} maxLength={4000} value={text} onChange={e=>{setText(e.target.value);sendTyping(!!e.target.value)}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}}} placeholder="Message the group…"/><button className={styles.send} disabled={busy||!text.trim()} onClick={send} aria-label="Send message"><Send/></button></div>
+    {showItems&&!reply&&!linkedItem&&<div className={styles.itemPicker} role="menu" aria-label="Choose a plan item">{items.map(item=><button key={item.id} onClick={()=>{setLinkedItem(item);setShowItems(false)}}><Link2/><span>{item.title}</span></button>)}</div>}
+    {error&&<small role="alert">{error}</small>}
+   </div>
+  </section>
+}
