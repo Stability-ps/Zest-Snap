@@ -41,8 +41,8 @@ end $$;
 revoke all on function public.set_shared_member_role(uuid,uuid,text) from public,anon;
 grant execute on function public.set_shared_member_role(uuid,uuid,text) to authenticated;
 
--- A removed member cannot rejoin through an invitation that existed before their removal;
--- the owner has to send a new one. Otherwise unchanged from 20261009090000_shared_security_hardening.
+-- A removed member can rejoin only via an invitation created AFTER removal BY THE OWNER.
+-- Editors can invite other users but cannot reverse an owner's removal decision. Otherwise unchanged from 20261009090000_shared_security_hardening.
 create or replace function public.accept_shared_invite(p_token uuid)
 returns uuid language plpgsql security definer set search_path='' as $$
 declare u uuid:=auth.uid(); inv public.shared_plan_invites%rowtype;
@@ -51,7 +51,7 @@ begin
   select * into inv from public.shared_plan_invites where token=p_token and status='pending' and expires_at>now() for update;
   if not found then raise exception 'invite_unavailable'; end if;
   if inv.invited_email is not null and lower(inv.invited_email)<>lower(coalesce(auth.jwt()->>'email','')) then raise exception 'invite_for_another_account'; end if;
-  if exists(select 1 from public.shared_plan_members where plan_id=inv.plan_id and user_id=u and status='removed' and removed_at>=inv.created_at) then
+  if exists(select 1 from public.shared_plan_members m where m.plan_id=inv.plan_id and m.user_id=u and m.status='removed' and (inv.created_at <= m.removed_at or not exists (select 1 from public.shared_plans p where p.id=inv.plan_id and p.owner_id=inv.created_by))) then
     raise exception 'removed_from_plan';
   end if;
   insert into public.shared_plan_members(plan_id,user_id,role,status)
