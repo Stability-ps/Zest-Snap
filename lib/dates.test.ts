@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MAX_DATE, MIN_DATE, isValidDate, requireValidDate } from "./dates";
+import { MAX_DATE, MIN_DATE, isValidDate, requireValidDate, formatDisplayDate, formatDisplayTime } from "./dates";
 import { validateExtraction, DATE_REVIEW_WARNING } from "./extraction-validation";
 import { validatePlannerItem, type PlannerItem } from "./planner";
 import { validateEvent } from "./events";
@@ -41,4 +41,14 @@ test("Planner, To-Do, reminders, exports and timetables reject out-of-range date
   assert.throws(() => googleCalendarUrl(ev("2026-02-30")), /Check the date/);
   assert.throws(() => toDeviceEvent({ title: "x", date: "2101-01-01", allDay: true }, "UTC"), /Check the date/);
   assert.throws(() => materializeWeeklySchedule([], "2026-09-01", "100720-12-01"), /term start and end dates/);
+});
+
+test("display formatting matches the Planner and never invents a date", () => {
+  assert.equal(formatDisplayDate("2026-10-17", "en-GB"), "17 Oct 2026");
+  assert.equal(formatDisplayDate("2026-10-17", "en-US"), "Oct 17, 2026");
+  assert.equal(formatDisplayDate("", "en-GB"), "");
+  assert.equal(formatDisplayDate("2026-02-30", "en-GB"), "2026-02-30");
+  assert.equal(formatDisplayTime("09:15", "en-GB"), "09:15");
+  assert.equal(formatDisplayTime("18:30:00", "en-US").replace(/\s/g, " "), "6:30 PM");
+  assert.equal(formatDisplayTime("soon", "en-GB"), "soon");
 });
