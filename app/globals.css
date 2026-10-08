@@ -2946,3 +2946,58 @@ html.native .offlinePage { padding-top: calc(24px + var(--zest-safe-top)); paddi
 
 /* Contextual smart follow-up */
 .smartFollowups{margin:16px 0;padding:14px;border:1px solid #dfe7ef;border-radius:18px;background:#f6fffc}.smartFollowupsHead>div{display:flex;align-items:center;gap:9px;margin-bottom:8px}.smartFollowupsHead svg{width:19px;color:#008f7a}.smartFollowupsHead span{display:grid}.smartFollowupsHead b{color:#10233f}.smartFollowupsHead small{color:#64748b;margin-top:1px}.smartFollowupRow{display:grid;grid-template-columns:26px 1fr 34px 34px;gap:8px;align-items:center;padding:10px 0;border-top:1px solid #e1eee9}.smartFollowupRow>svg{width:18px;color:#008f7a}.smartFollowupRow span{display:grid}.smartFollowupRow b{font-size:13px;color:#10233f}.smartFollowupRow small{font-size:11px;color:#64748b;margin-top:2px}.smartFollowupRow button{width:32px;height:32px;border:1px solid #dbe4ec;border-radius:10px;background:#fff;color:#475569;display:grid;place-items:center}.smartFollowupRow button:first-of-type{color:#087f72}.smartFollowupRow button svg{width:16px}
+
+/* Shared collaboration messaging */
+.sharedPlanTabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:14px 0;padding:4px;border-radius:15px;background:#f2f4f7}.sharedPlanTabs button{min-height:40px;border:0;border-radius:11px;background:transparent;color:#667085;font:inherit;font-weight:650;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}.sharedPlanTabs button svg{width:16px;height:16px}.sharedPlanTabs button.active{background:#fff;color:#0b1f3b;box-shadow:0 1px 3px rgba(15,23,42,.08)}.sharedCardMain{position:relative}.sharedUnread{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#0b1f3b;color:#fff;font-size:10px;font-weight:800;margin-top:5px;width:max-content}@media(max-width:640px){.sharedPlanTabs{position:sticky;top:max(8px,env(safe-area-inset-top));z-index:5;backdrop-filter:blur(16px)}}
+
+
+/* iOS shared-plan alignment hardening */
+.sharedPlanPage{width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow-x:clip}
+.sharedPlanWrap{width:100%;max-width:760px;min-width:0;box-sizing:border-box}
+.sharedPlanHeader,.sharedPlanHeader>div{min-width:0;max-width:100%}
+.sharedPlanHeader>div{flex:1}
+.sharedPlanHeader h1,.sharedPlanHeader p{max-width:100%;overflow-wrap:anywhere}
+.sharedPlanTabs,.sharedComposer,.sharedPlanItems{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+@media(max-width:640px){
+  .sharedPlanPage{padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
+  .sharedPlanWrap{margin-left:0;margin-right:0}
+  .sharedPlanHeader{width:100%;max-width:100%;min-width:0}
+  .sharedPlanHeader .button{flex:none;max-width:42%}
+  .sharedPlanHeader p{white-space:normal}
+}
+
+
+/* Shared pages must never become horizontally scrollable on iOS Safari. */
+html:has(.sharedPlanPage),body:has(.sharedPlanPage){max-width:100%;overflow-x:hidden}
+.sharedPlanPage{overflow-x:hidden;overscroll-behavior-x:none;touch-action:pan-y}
+.sharedPlanWrap{position:relative;left:0;right:auto;transform:none}
+@supports (-webkit-touch-callout:none){
+  .sharedPlanPage{width:100vw;max-width:100vw}
+  .sharedPlanWrap{width:100%}
+}
+
+
+/* Keep Shared bottom sheets stable when the iOS keyboard opens.
+   16px inputs prevent Safari/PWA focus zoom; dvh keeps the sheet inside the visual viewport. */
+@media (max-width:640px){
+  .sharedModal{
+    padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));
+    overflow:hidden;
+  }
+  .sharedSheet{
+    width:100%;
+    max-width:620px;
+    max-height:calc(100dvh - 24px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  .sharedSheet input,
+  .sharedComposer input,
+  .sharedComposer select{
+    font-size:16px;
+  }
+  .sharedSheet input:focus{
+    font-size:16px;
+  }
+}

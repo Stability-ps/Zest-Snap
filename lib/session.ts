@@ -84,7 +84,7 @@ const REFERRAL_KEY = "zest-referral-v1";
 export function captureReferral(search = window.location.search) {
   try {
     const code = new URLSearchParams(search).get("ref");
-    if (code && /^[A-Za-z0-9_-]{16,64}$/.test(code))
+    if (code && /^[A-Za-z0-9_-]{6,64}$/.test(code))
       localStorage.setItem(REFERRAL_KEY, JSON.stringify({ code, at: Date.now() }));
   } catch {}
 }
