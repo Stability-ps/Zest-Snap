@@ -24,6 +24,10 @@ create function cron.unschedule(text) returns boolean language sql as $$ delete 
 grant usage on schema public, auth, extensions to authenticated, anon, service_role;
 grant execute on function auth.uid(), auth.jwt() to authenticated, anon, service_role;
 grant all on schema public to service_role;
+-- Supabase grants every new public table and sequence to these roles by default; migrations must revoke what
+-- they don't intend, exactly as in production.
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;
 
 export function migrationFiles() {
