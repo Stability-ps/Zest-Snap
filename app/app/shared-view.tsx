@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarDays, ChevronRight, Link2, MoreVertical, Pencil, Plus, Share2, Trash2, Users, Utensils, GraduationCap } from "lucide-react";
+import { CalendarDays, ChevronRight, Link2, MoreVertical, Pencil, Plus, Share2, Trash2, UserMinus, Users, Utensils, GraduationCap } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { shareTextNatively } from "@/lib/native/share";
 import { sharedErrorMessage } from "@/lib/shared-errors";
 
+type Member = { user_id:string; display_name:string; role:"owner"|"editor"|"viewer" };
 type SharedPlan = { id:string; name:string; kind:string; description:string; owner_id:string; created_at:string; updated_at:string };
 type Unread = { plan_id:string; unread_count:number; last_message_at:string|null; last_message_preview:string|null };
 type Invite = { id:string; plan_id:string; token:string; role:string; status:string; expires_at:string; created_by:string; invited_email:string|null; shared_plans?:{name?:string;kind?:string}|null };
@@ -40,6 +41,9 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
   const [currentUserId,setCurrentUserId]=useState<string|null>(null);
   const [managePlan,setManagePlan]=useState<SharedPlan|null>(null);
   const [manageName,setManageName]=useState("");
+  const [members,setMembers]=useState<Member[]>([]);
+  const [confirmRemove,setConfirmRemove]=useState<Member|null>(null);
+  const [membersError,setMembersError]=useState("");
   const [deletePlan,setDeletePlan]=useState<SharedPlan|null>(null);
   const [managing,setManaging]=useState(false);
 
@@ -111,6 +115,42 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
     }catch(e){onNotice("error",sharedErrorMessage(e,"Could not create the invitation."));}
   }
 
+  useEffect(()=>{
+    if(!managePlan)return;
+    let live=true;
+    createClient().rpc("shared_plan_member_directory",{p_plan:managePlan.id}).then(({data,error})=>{
+      if(!live)return;
+      setConfirmRemove(null);
+      setMembersError(error?sharedErrorMessage(error,"Could not load members."):"");
+      setMembers(error?[]:(data||[]) as Member[]);
+    });
+    return()=>{live=false};
+  },[managePlan]);
+
+  async function changeRole(member:Member,role:"editor"|"viewer"){
+    if(!managePlan||member.role===role)return;
+    setManaging(true);
+    try{
+      const {error}=await createClient().rpc("set_shared_member_role",{p_plan:managePlan.id,p_user:member.user_id,p_role:role});
+      if(error)throw error;
+      setMembers(list=>list.map(m=>m.user_id===member.user_id?{...m,role}:m));
+      onNotice("success",`${member.display_name} is now ${role==="editor"?"an editor":"a viewer"}.`);
+    }catch(e){onNotice("error",sharedErrorMessage(e,"Could not change this member's role."));}
+    finally{setManaging(false);}
+  }
+
+  async function removeMember(member:Member){
+    if(!managePlan)return;
+    setManaging(true);
+    try{
+      const {error}=await createClient().rpc("remove_shared_member",{p_plan:managePlan.id,p_user:member.user_id});
+      if(error)throw error;
+      setMembers(list=>list.filter(m=>m.user_id!==member.user_id));setConfirmRemove(null);
+      onNotice("success",`${member.display_name} was removed from the group.`);
+    }catch(e){onNotice("error",sharedErrorMessage(e,"Could not remove this member."));}
+    finally{setManaging(false);}
+  }
+
   async function renamePlan(){
     if(!managePlan)return;
     const next=manageName.trim();
@@ -159,8 +199,8 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
     <div className="sharedHero"><div><h1>Shared</h1><p>Events, plans and To-Dos you organise together.</p></div><button className="plannerFab" onClick={()=>setCreating(true)} aria-label="Create shared plan"><Plus/></button></div>
     {invites.length>0&&<><h2 className="sharedSectionTitle">Invitations</h2><div className="sharedList">{invites.map(i=><a className="sharedCard" key={i.id} href={`/share/${i.token}`}><span className="sharedIcon"><Link2/></span><span><b>{i.shared_plans?.name||"Shared plan"}</b><small>Invitation · {i.role}</small></span><ChevronRight/></a>)}</div></>}
     <h2 className="sharedSectionTitle">My groups</h2>
-    {loading&&!plans.length?null:loadError&&!plans.length?<div className="sharedEmpty compact"><Users/><h2>Couldn’t load shared plans</h2><p>{loadError}</p><button className="button alt" onClick={load}>Try again</button></div>:plans.length?<div className="sharedList">{plans.map(plan=>{const meta=kinds.find(k=>k.value===plan.kind);const Icon=meta?.icon||Users;return <div className="sharedCard" key={plan.id}><span className="sharedIcon"><Icon/></span><a className="sharedCardMain" href={`/shared/${plan.id}`}><b>{plan.name}</b><small>{unreads[plan.id]?.last_message_preview||`${meta?.label||"Shared"} plan`}</small>{Number(unreads[plan.id]?.unread_count||0)>0&&<span className="sharedUnread">{unreads[plan.id].unread_count>99?"99+":unreads[plan.id].unread_count}</span>}</a><button className="iconButton" onClick={()=>setInvitePlan(plan)} aria-label={`Invite people to ${plan.name}`}><Share2/></button>{plan.owner_id===currentUserId&&<button className="iconButton" onClick={()=>{setManagePlan(plan);setManageName(plan.name)}} aria-label={`Manage ${plan.name}`}><MoreVertical/></button>}</div>})}</div>:<div className="sharedEmpty compact"><Users/><h2>No shared plans yet</h2><p>Create one for family, a class, team, trip, timetable or meals.</p><button className="button alt" onClick={()=>setCreating(true)}><Plus/> Create group</button></div>}
-    {managePlan&&<div className="sharedModal" onClick={()=>!managing&&setManagePlan(null)}><section className="sharedSheet" role="dialog" aria-modal="true" aria-labelledby="manageGroupTitle" onClick={e=>e.stopPropagation()}><div className="sheetHandle"/><h2 id="manageGroupTitle">Manage group</h2><label><span>Group name</span><input autoFocus maxLength={160} value={manageName} onChange={e=>setManageName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void renamePlan()}}/></label><button className="button" disabled={managing||!manageName.trim()} onClick={renamePlan}><Pencil/> Save name</button><button className="button alt dangerButton" disabled={managing} onClick={()=>{setDeletePlan(managePlan);setManagePlan(null)}}><Trash2/> Delete group</button></section></div>}
+    {loading&&!plans.length?null:loadError&&!plans.length?<div className="sharedEmpty compact"><Users/><h2>Couldn’t load shared plans</h2><p>{loadError}</p><button className="button alt" onClick={load}>Try again</button></div>:plans.length?<div className="sharedList">{plans.map(plan=>{const meta=kinds.find(k=>k.value===plan.kind);const Icon=meta?.icon||Users;return <div className="sharedCard" key={plan.id}><span className="sharedIcon"><Icon/></span><a className="sharedCardMain" href={`/shared/${plan.id}`}><b>{plan.name}</b><small>{unreads[plan.id]?.last_message_preview||`${meta?.label||"Shared"} plan`}</small>{Number(unreads[plan.id]?.unread_count||0)>0&&<span className="sharedUnread">{unreads[plan.id].unread_count>99?"99+":unreads[plan.id].unread_count}</span>}</a><button className="iconButton" onClick={()=>setInvitePlan(plan)} aria-label={`Invite people to ${plan.name}`}><Share2/></button>{plan.owner_id===currentUserId&&<button className="iconButton" onClick={()=>{setMembers([]);setMembersError("");setManagePlan(plan);setManageName(plan.name)}} aria-label={`Manage ${plan.name}`}><MoreVertical/></button>}</div>})}</div>:<div className="sharedEmpty compact"><Users/><h2>No shared plans yet</h2><p>Create one for family, a class, team, trip, timetable or meals.</p><button className="button alt" onClick={()=>setCreating(true)}><Plus/> Create group</button></div>}
+    {managePlan&&<div className="sharedModal" onClick={()=>!managing&&setManagePlan(null)}><section className="sharedSheet" role="dialog" aria-modal="true" aria-labelledby="manageGroupTitle" onClick={e=>e.stopPropagation()}><div className="sheetHandle"/><h2 id="manageGroupTitle">Manage group</h2><label><span>Group name</span><input autoFocus maxLength={160} value={manageName} onChange={e=>setManageName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void renamePlan()}}/></label><button className="button" disabled={managing||!manageName.trim()} onClick={renamePlan}><Pencil/> Save name</button><div className="sharedMembers"><h3>Members</h3>{membersError?<p>{membersError}</p>:members.filter(m=>m.role!=="owner").length?members.filter(m=>m.role!=="owner").map(m=><div className="sharedMemberRow" key={m.user_id}><b>{m.display_name}</b>{confirmRemove?.user_id===m.user_id?<span className="sharedMemberActions"><button className="button dangerButton" disabled={managing} onClick={()=>removeMember(m)}>Remove</button><button className="button alt" disabled={managing} onClick={()=>setConfirmRemove(null)}>Cancel</button></span>:<span className="sharedMemberActions"><select aria-label={`Role for ${m.display_name}`} value={m.role} disabled={managing} onChange={e=>changeRole(m,e.target.value as "editor"|"viewer")}><option value="editor">Editor</option><option value="viewer">Viewer</option></select><button className="iconButton" disabled={managing} onClick={()=>setConfirmRemove(m)} aria-label={`Remove ${m.display_name}`}><UserMinus/></button></span>}</div>):<p>No one else has joined yet.</p>}</div><button className="button alt dangerButton" disabled={managing} onClick={()=>{setDeletePlan(managePlan);setManagePlan(null)}}><Trash2/> Delete group</button></section></div>}
     {deletePlan&&<div className="sharedModal" onClick={()=>!managing&&setDeletePlan(null)}><section className="sharedSheet" role="alertdialog" aria-modal="true" aria-labelledby="deleteGroupTitle" onClick={e=>e.stopPropagation()}><div className="sheetHandle"/><h2 id="deleteGroupTitle">Delete “{deletePlan.name}”?</h2><p>This permanently removes the group, its plan items, messages, members and open invitations. This can’t be undone.</p><button className="button dangerSolid" disabled={managing} onClick={removePlan}>{managing?"Deleting…":"Delete group"}</button><button className="button alt" disabled={managing} onClick={()=>setDeletePlan(null)}>Cancel</button></section></div>}
     {invitePlan&&<div className="sharedModal" onClick={()=>setInvitePlan(null)}><section className="sharedSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}><div className="sheetHandle"/><h2>Invite to {invitePlan.name}</h2><p>Share a link with the whole group, or create a personal link only one email address can accept.</p><button className="button" onClick={()=>sharePlan(invitePlan)}><Share2/> Share invite link</button><label><span>Email invitation</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/></label><button className="button alt" disabled={!email.trim()} onClick={inviteByEmail}>Create and send personal invite</button></section></div>}
     {creating&&<div className="sharedModal" onClick={()=>setCreating(false)}><section className="sharedSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}><div className="sheetHandle"/><h2>Create a shared plan</h2><p>Keep it focused. You can invite people after creating it.</p><label><span>Name</span><input autoFocus maxLength={160} value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Sibande family"/></label><div className="sharedKindGrid">{kinds.map(k=>{const Icon=k.icon;return <button key={k.value} className={kind===k.value?"active":""} onClick={()=>setKind(k.value)}><Icon/><span>{k.label}</span></button>})}</div><button className="button" disabled={loading||!name.trim()} onClick={createPlan}>Create plan</button></section></div>}
