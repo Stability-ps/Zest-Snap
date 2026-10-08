@@ -136,7 +136,7 @@ export default async function Overview({ searchParams }: { searchParams: SearchP
         <Card title="Revenue" description="MRR, new subscriptions and cancellations" actions={<Link className="zadm-btn zadm-btn-sm" href="/admin/revenue">Revenue</Link>}>
           {connected ? (
             <>
-              <LineChart data={series} series={[{ key: "revenue", label: "Net revenue", color: SERIES_COLORS[0] }]} format={(n) => fmtMoney(n)} />
+              <LineChart data={series} series={[{ key: "revenue", label: "Net revenue", color: SERIES_COLORS[0] }]} format="money" />
               <div style={{ marginTop: 12 }}><BarChart height={140} data={series} series={[{ key: "new_subs", label: "New subscriptions", color: SERIES_COLORS[1] }, { key: "cancellations", label: "Cancellations", color: SERIES_COLORS[2] }]} /></div>
             </>
           ) : (

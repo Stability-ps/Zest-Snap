@@ -137,3 +137,14 @@ test("every /admin page, route and action is authorised on the server", async ()
     assert.doesNotMatch(src, /NEXT_PUBLIC_[A-Z_]*(SECRET|SERVICE_ROLE)/, f);
   }
 });
+
+test("admin pages never pass functions to client charts (Next.js can't serialise them)", async () => {
+  const { readdirSync, readFileSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const files: string[] = [];
+  const walk = (d: string) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith(".tsx")) files.push(p); } };
+  walk("app/admin");
+  const offenders = files.filter((f) => !readFileSync(f, "utf8").startsWith('"use client"'))
+    .flatMap((f) => [...readFileSync(f, "utf8").matchAll(/<(LineChart|BarChart)\b[^>]*?\b(format|tooltip|onClick|render)=\{\s*\(/g)].map((m) => `${f}: ${m[1]} ${m[2]}`));
+  assert.deepEqual(offenders, []);
+});

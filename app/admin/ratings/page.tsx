@@ -40,7 +40,7 @@ export default async function RatingsPage({ searchParams }: { searchParams: Sear
       </Kpis>
       <Notice>Credits are given for leaving feedback, never for a high score — every rating earns the same reward.</Notice>
       <div className="zadm-grid zadm-grid-21">
-        <Card title="Average rating over time">{ts.error ? <LoadError error={ts.error} /> : <LineChart data={ts.data!} series={[{ key: "rating_avg", label: "Average rating", color: SERIES_COLORS[2] }]} format={(n) => `${n.toFixed(2)} ★`} emptyText="No ratings in this period." />}</Card>
+        <Card title="Average rating over time">{ts.error ? <LoadError error={ts.error} /> : <LineChart data={ts.data!} series={[{ key: "rating_avg", label: "Average rating", color: SERIES_COLORS[2] }]} format="rating" emptyText="No ratings in this period." />}</Card>
         <Card title="Distribution" description={range.label}>
           <BarList data={[5, 4, 3, 2, 1].map((n) => ({ key: String(n), label: `${n} ★`, value: Number(d.distribution?.[String(n)] || 0) }))} empty="No ratings in this period." />
         </Card>

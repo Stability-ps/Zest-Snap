@@ -1,7 +1,15 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fmtMoney } from "@/lib/admin/format";
 
 export type Series = { key: string; label: string; color: string };
+/** How values are shown. A name, not a function: server pages can't pass functions to this client component. */
+export type ChartFormat = "number" | "money" | "rating";
+const FORMATS: Record<ChartFormat, (n: number) => string> = {
+  number: (n) => n.toLocaleString("en-US"),
+  money: (n) => fmtMoney(n),
+  rating: (n) => `${n.toFixed(2)} ★`,
+};
 type Point = Record<string, string | number | null>;
 
 
@@ -88,11 +96,11 @@ function Axes({ w, h, max, data }: { w: number; h: number; max: number; data: Po
   );
 }
 
-export function LineChart({ data, series, height = 220, format = (n) => n.toLocaleString("en-US"), emptyText = "No activity in this period yet." }: {
+export function LineChart({ data, series, height = 220, format = "number", emptyText = "No activity in this period yet." }: {
   data: Point[];
   series: Series[];
   height?: number;
-  format?: (n: number) => string;
+  format?: ChartFormat;
   emptyText?: string;
 }) {
   const [ref, w] = useWidth();
@@ -134,18 +142,18 @@ export function LineChart({ data, series, height = 220, format = (n) => n.toLoca
           </svg>
         )}
         {empty && w > 0 && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--zadm-muted)", fontSize: 13, fontWeight: 600 }}>{emptyText}</div>}
-        {hover !== null && !empty && <Tooltip x={x(hover)} y={Math.min(...series.map((s) => y(Number(data[hover][s.key]) || 0)))} point={data[hover]} series={series} format={format} />}
+        {hover !== null && !empty && <Tooltip x={x(hover)} y={Math.min(...series.map((s) => y(Number(data[hover][s.key]) || 0)))} point={data[hover]} series={series} format={FORMATS[format]} />}
       </div>
     </div>
   );
 }
 
 /** Stacked columns with a 2px surface gap between segments and rounded data-ends. */
-export function BarChart({ data, series, height = 220, format = (n) => n.toLocaleString("en-US"), emptyText = "No activity in this period yet." }: {
+export function BarChart({ data, series, height = 220, format = "number", emptyText = "No activity in this period yet." }: {
   data: Point[];
   series: Series[];
   height?: number;
-  format?: (n: number) => string;
+  format?: ChartFormat;
   emptyText?: string;
 }) {
   const [ref, w] = useWidth();
@@ -188,7 +196,7 @@ export function BarChart({ data, series, height = 220, format = (n) => n.toLocal
         )}
         {empty && w > 0 && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--zadm-muted)", fontSize: 13, fontWeight: 600 }}>{emptyText}</div>}
         {hover !== null && !empty && (
-          <Tooltip x={PAD.left + band * (hover + 0.5)} y={PAD.top + ih - (totals[hover] / max) * ih} point={data[hover]} series={series} format={format} />
+          <Tooltip x={PAD.left + band * (hover + 0.5)} y={PAD.top + ih - (totals[hover] / max) * ih} point={data[hover]} series={series} format={FORMATS[format]} />
         )}
       </div>
     </div>

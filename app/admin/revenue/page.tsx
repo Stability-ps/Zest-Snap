@@ -55,7 +55,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Sear
         <Kpi label="Lifetime value" icon={<Users aria-hidden />} value={null} unavailable="Needs more history" />
       </Kpis>
       <div className="zadm-grid zadm-grid-2">
-        <Card title="Net revenue over time">{ts.error ? <LoadError error={ts.error} /> : <LineChart data={ts.data!} series={[{ key: "revenue", label: "Net revenue", color: SERIES_COLORS[0] }]} format={(n) => fmtMoney(n)} />}</Card>
+        <Card title="Net revenue over time">{ts.error ? <LoadError error={ts.error} /> : <LineChart data={ts.data!} series={[{ key: "revenue", label: "Net revenue", color: SERIES_COLORS[0] }]} format="money" />}</Card>
         <Card title="Revenue by plan">
           <BarList data={d.by_plan.map((p: any) => ({ key: p.plan + p.currency, label: `${p.plan} (${p.currency})`, value: Number(p.gross) }))} format={(n) => fmtNumber(n, 2)} />
         </Card>
