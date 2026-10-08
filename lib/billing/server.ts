@@ -1,8 +1,6 @@
 import "server-only";
 import { serviceClient } from "../supabase/admin";
-import { entitlementFromSubscriber, type RcSubscriber, type StoreEntitlement } from "./entitlements";
-
-const STORE_PROVIDERS = ["app_store", "play_store"];
+import { entitlementFromSubscriber, storePlanChange, type RcSubscriber, type StoreEntitlement } from "./entitlements";
 
 export class BillingNotConfigured extends Error {}
 
@@ -31,36 +29,22 @@ export async function syncStoreEntitlement(userId: string): Promise<{ plan: stri
   const { data: profile } = await db.from("profiles").select("plan").eq("id", userId).maybeSingle();
   if (!profile) throw new Error("account_not_found");
   const { data: existing } = await db.from("subscriptions").select("provider,plan,status").eq("user_id", userId).maybeSingle();
+  const { data: rule } = entitlement.active
+    ? await db.from("plan_rules").select("active").eq("id", entitlement.plan).maybeSingle()
+    : { data: null };
+  const change = storePlanChange(profile.plan, existing, entitlement, !!rule?.active);
   const now = new Date().toISOString();
 
-  if (entitlement.active) {
-    const { data: rule } = await db.from("plan_rules").select("active").eq("id", entitlement.plan).maybeSingle();
-    if (!rule?.active) {
-      console.error(JSON.stringify({ event: "billing_plan_inactive", plan: entitlement.plan }));
-      return { plan: profile.plan, entitlement };
-    }
-    const row = {
-      user_id: userId,
-      provider: entitlement.source,
-      provider_customer_id: userId,
-      provider_subscription_id: entitlement.productId,
-      plan: entitlement.plan,
-      status: entitlement.billingIssue ? "past_due" : entitlement.trial ? "trialing" : "active",
-      current_period_end: entitlement.expiresAt,
-      cancel_at_period_end: !entitlement.willRenew,
-      updated_at: now,
-    };
+  if (change.kind === "activate") {
+    const row = { user_id: userId, provider_customer_id: userId, ...change.subscription, updated_at: now };
     const { error } = await db.from("subscriptions").upsert(row as never, { onConflict: "user_id" });
     if (error) throw new Error("subscription_write_failed");
-    if (profile.plan !== entitlement.plan) await db.from("profiles").update({ plan: entitlement.plan, updated_at: now }).eq("id", userId);
-    return { plan: entitlement.plan, entitlement };
-  }
-
-  // Lapsed store subscription: only downgrade plans that a store subscription granted (never admin or web plans).
-  if (existing && STORE_PROVIDERS.includes(existing.provider || "") && existing.status !== "expired") {
+    if (change.updateProfile) await db.from("profiles").update({ plan: change.plan, updated_at: now }).eq("id", userId);
+  } else if (change.kind === "expire") {
     await db.from("subscriptions").update({ status: "expired", canceled_at: now, updated_at: now } as never).eq("user_id", userId);
-    if (profile.plan === existing.plan) await db.from("profiles").update({ plan: "free", updated_at: now }).eq("id", userId);
-    return { plan: "free", entitlement };
+    if (change.downgradeProfile) await db.from("profiles").update({ plan: "free", updated_at: now }).eq("id", userId);
+  } else if (change.reason === "plan_inactive") {
+    console.error(JSON.stringify({ event: "billing_plan_inactive", plan: entitlement.active ? entitlement.plan : null }));
   }
-  return { plan: profile.plan, entitlement };
+  return { plan: change.plan, entitlement };
 }
