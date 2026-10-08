@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { parseVoicePlanInput, voicePlanInstructions } from "../lib/voice-plan";
 
 test("voice plan input accepts normal text and resolves today's date", () => {
@@ -20,4 +21,15 @@ test("voice instructions explicitly allow live relative dates without inventing 
   assert.match(instructions, /relative dates/i);
   assert.match(instructions, /Do not invent/i);
   assert.match(instructions, /2026-10-07/);
+});
+
+test("Plan with Zest is bounded per account before any AI call", () => {
+  const route = readFileSync("app/api/plan/route.ts", "utf8");
+  const claim = route.indexOf('rpc("claim_voice_plan"');
+  assert.ok(claim > 0, "route must claim a voice-plan allowance");
+  assert.ok(claim < route.indexOf("api.openai.com"), "allowance must be claimed before calling the model");
+  assert.ok(route.indexOf("getUser()") < claim, "allowance is per authenticated account");
+  const sql = readFileSync("supabase/migrations/20261011090000_voice_plan_rate_limit.sql", "utf8");
+  assert.match(sql, /revoke all on function public\.claim_voice_plan\(uuid\) from public, anon, authenticated/);
+  assert.match(sql, /pg_advisory_xact_lock/);
 });

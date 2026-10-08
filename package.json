@@ -34,6 +34,7 @@
     "@capacitor/share": "8.0.3",
     "@capacitor/splash-screen": "8.0.2",
     "@capacitor/status-bar": "8.0.4",
+    "@capgo/capacitor-speech-recognition": "8.3.2",
     "@ebarooni/capacitor-calendar": "8.8.0",
     "@js-temporal/polyfill": "0.5.1",
     "@revenuecat/purchases-capacitor": "13.7.0",

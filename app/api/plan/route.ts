@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { serviceClient } from "@/lib/supabase/admin";
 import { parseVoicePlanInput, voicePlanInstructions } from "@/lib/voice-plan";
 import { validateExtraction } from "@/lib/extraction-validation";
 
@@ -65,6 +66,15 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const code = e instanceof Error ? e.message : "invalid_text";
     return NextResponse.json({ error: code === "invalid_timezone" ? "Check your timezone in Settings." : "Say or type a short plan first." }, { status: 400 });
+  }
+
+  // Every request calls the AI model, so each account gets a bounded hourly allowance (app_limits).
+  try {
+    const { data: allowed, error } = await serviceClient().rpc("claim_voice_plan", { p_user: user.id });
+    if (error) throw error;
+    if (!allowed) return NextResponse.json({ error: "You've planned a lot this hour. Try again a little later." }, { status: 429 });
+  } catch {
+    return NextResponse.json({ error: "Plan with Zest is temporarily unavailable." }, { status: 503 });
   }
 
   let response: Response;
