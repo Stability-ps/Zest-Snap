@@ -131,9 +131,8 @@ export default function SharedView({ signedIn, onSignIn, onNotice }:{
     if(!deletePlan)return;
     setManaging(true);
     try{
-      const db=createClient();
-      const {error}=await db.rpc("delete_shared_plan",{p_plan:deletePlan.id});
-      if(error)throw error;
+      const res=await fetch(`/api/shared/${deletePlan.id}`,{method:"DELETE",headers:{"X-Zest-Action":"delete-shared-plan"}});
+      if(!res.ok)throw new Error((await res.json().catch(()=>null))?.error||"delete_failed");
       setDeletePlan(null);await load();
       onNotice("success","Group deleted.");
     }catch(e){onNotice("error",sharedErrorMessage(e,"Could not delete this group."));}
