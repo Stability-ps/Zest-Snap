@@ -60,7 +60,7 @@ import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planne
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
 import { normalizeDocumentType } from "@/lib/extraction-validation";
-import { MAX_DATE, MIN_DATE, isValidDate } from "@/lib/dates";
+import { MAX_DATE, MIN_DATE, formatDisplayDate, formatDisplayTime, isValidDate } from "@/lib/dates";
 import { monthGrid, plannerFingerprint, plannerReferenceDate, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, mergePlannerWithExternal, type PlannerItem } from "@/lib/planner";
 import {
   STARTUP_STATE_KEY,
@@ -1137,8 +1137,8 @@ export default function App() {
                       <div className="eventMeta">
                         <span>
                           <CalendarDays size={16} />
-                          {event.startDate || "Date needs review"}
-                          {event.startTime ? " · " + event.startTime : ""}
+                          {event.startDate ? formatDisplayDate(event.startDate) : "Date needs review"}
+                          {event.startTime ? " · " + formatDisplayTime(event.startTime) : ""}
                         </span>
                         {event.location && (
                           <span>

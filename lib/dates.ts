@@ -30,3 +30,16 @@ export function requireValidDate(value: unknown, message = DATE_RANGE_MESSAGE): 
   if (!isValidDate(value)) throw new Error(message);
   return value;
 }
+
+/** "8 Oct 2026" in the person's locale, the same format the Planner uses. Invalid input is returned unchanged. */
+export function formatDisplayDate(value: string, locale?: string) {
+  if (!isValidDate(value)) return value;
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(value + "T12:00:00Z"));
+}
+
+/** "09:15" / "9:15 am" in the person's locale. Accepts "HH:MM" or "HH:MM:SS"; anything else is returned unchanged. */
+export function formatDisplayTime(value: string, locale?: string) {
+  const m = /^(\d{2}):(\d{2})(?::\d{2})?$/.exec(value);
+  if (!m) return value;
+  return new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" }).format(new Date(`1970-01-01T${m[1]}:${m[2]}:00Z`));
+}

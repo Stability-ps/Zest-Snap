@@ -639,6 +639,8 @@ button {
 .confidence {
   font-size: 11px;
   height: 26px;
+  white-space: nowrap;
+  flex-shrink: 0;
   padding: 6px 8px;
   border-radius: 999px;
   background: #eaf9f6;
@@ -1705,7 +1707,9 @@ button {
     grid-template-columns: 1fr;
   }
   .eventButtons .button {
-    flex: 1;
+    /* Grow to share the row but keep labels on one line; a button that doesn't fit wraps to the next row. */
+    flex: 1 1 auto;
+    white-space: nowrap;
   }
 }
 
