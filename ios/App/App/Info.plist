@@ -78,9 +78,9 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
-	<string>Zest Snap uses the camera to photograph letters, invitations, bookings and other documents so it can find the dates in them.</string>
+	<string>Zest Snap uses the camera to photograph letters, invitations, bookings and other documents so it can find the dates in them, and to take photos you share in a Shared plan.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Zest Snap uses the microphone only while you speak a plan to Plan with Zest, so it can turn what you say into events and reminders.</string>
+	<string>Zest Snap uses the microphone only while you speak a plan to Plan with Zest, so it can turn what you say into events and reminders, or while you record a voice note in a Shared plan.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Zest Snap turns what you say to Plan with Zest into text so it can suggest events and reminders for you to review.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
