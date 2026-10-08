@@ -62,10 +62,53 @@ test("read markers drive unread counts without leaking other plans",async()=>{
   await as(db,OWNER,`select public.mark_shared_plan_read($1)`,[plan]);
   await as(db,VIEWER,`insert into public.shared_plan_messages(plan_id,sender_id,body) values($1,$2,'New message')`,[plan,VIEWER]);
   const counts=(await as<{plan_id:string;unread_count:bigint}>(db,OWNER,`select * from public.shared_plan_unread_counts()`)).rows;
-  assert.equal(counts.find(r=>r.plan_id===plan)?.unread_count,BigInt(1));
+  assert.equal(Number(counts.find(r=>r.plan_id===plan)?.unread_count),1);
   await as(db,OWNER,`select public.mark_shared_plan_read($1)`,[plan]);
   const after=(await as<{plan_id:string;unread_count:bigint}>(db,OWNER,`select * from public.shared_plan_unread_counts()`)).rows;
-  assert.equal(after.find(r=>r.plan_id===plan)?.unread_count,BigInt(0));
+  assert.equal(Number(after.find(r=>r.plan_id===plan)?.unread_count),0);
   await assert.rejects(as(db,STRANGER,`select public.mark_shared_plan_read($1)`,[plan]),/not_allowed/);
+  await db.close();
+});
+
+test("a member can reply to a message in the same plan",async()=>{
+  const {db,plan}=await setup();
+  const parent=(await as<{id:string}>(db,OWNER,
+    `insert into public.shared_plan_messages(plan_id,sender_id,body) values($1,$2,'Who brings snacks?') returning id`,
+    [plan,OWNER])).rows[0].id;
+  const reply=(await as<{reply_to:string}>(db,VIEWER,
+    `insert into public.shared_plan_messages(plan_id,sender_id,body,reply_to) values($1,$2,'Me',$3) returning reply_to`,
+    [plan,VIEWER,parent])).rows[0];
+  assert.equal(reply.reply_to,parent);
+  await db.close();
+});
+
+test("reactions and item links must belong to the message's own plan",async()=>{
+  const {db,plan}=await setup();
+  const other=(await as<{id:string}>(db,OWNER,`select public.create_shared_plan('Work','team') id`)).rows[0].id;
+  const foreign=(await as<{id:string}>(db,OWNER,
+    `insert into public.shared_plan_messages(plan_id,sender_id,body) values($1,$2,'work only') returning id`,
+    [other,OWNER])).rows[0].id;
+  await assert.rejects(as(db,OWNER,
+    `insert into public.shared_plan_message_reactions(message_id,plan_id,user_id,emoji) values($1,$2,$3,'👍')`,
+    [foreign,plan,OWNER]));
+  await as(db,OWNER,
+    `insert into public.shared_plan_message_reactions(message_id,plan_id,user_id,emoji) values($1,$2,$3,'👍')`,
+    [foreign,other,OWNER]);
+  await db.close();
+});
+
+test("attachments must live in the sender's folder for that plan and are cleared on delete",async()=>{
+  const {db,plan}=await setup();
+  const bad={path:`${plan}/${VIEWER}/x.png`,kind:"photo",name:"x.png"};
+  await assert.rejects(as(db,OWNER,
+    `insert into public.shared_plan_messages(plan_id,sender_id,body,attachment) values($1,$2,'Photo',$3)`,
+    [plan,OWNER,JSON.stringify(bad)]));
+  const good={path:`${plan}/${OWNER}/x.png`,kind:"photo",name:"x.png"};
+  const msg=(await as<{id:string}>(db,OWNER,
+    `insert into public.shared_plan_messages(plan_id,sender_id,body,attachment) values($1,$2,'Photo',$3) returning id`,
+    [plan,OWNER,JSON.stringify(good)])).rows[0].id;
+  await as(db,OWNER,`select public.delete_shared_message($1)`,[msg]);
+  const row=(await as<{attachment:unknown}>(db,OWNER,`select attachment from public.shared_plan_messages where id=$1`,[msg])).rows[0];
+  assert.equal(row.attachment,null);
   await db.close();
 });
