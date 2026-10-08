@@ -93,6 +93,20 @@ test("a removed member cannot rejoin with an earlier invitation but can with a n
   await db.close();
 });
 
+test("an editor cannot restore an owner-removed member using a fresh invitation", async () => {
+  const { db, plan, link, invite } = await setup();
+  await as(db, OWNER, `select public.remove_shared_member($1,$2)`, [plan, VIEWER]);
+  await assert.rejects(as(db, VIEWER, `select public.accept_shared_invite($1)`, [link], email(VIEWER)), /removed_from_plan/);
+  await db.exec(`select pg_sleep(0.01)`);
+  const editorInvite = (await as<{ t: string }>(db, EDITOR,
+    `select public.create_shared_invite($1,null,'viewer') t`, [plan])).rows[0].t;
+  await assert.rejects(as(db, VIEWER, `select public.accept_shared_invite($1)`, [editorInvite], email(VIEWER)), /removed_from_plan/);
+  const ownerInvite = await invite("viewer");
+  await as(db, VIEWER, `select public.accept_shared_invite($1)`, [ownerInvite], email(VIEWER));
+  assert.equal((await as(db, VIEWER, `select * from public.shared_plans`)).rows.length, 1);
+  await db.close();
+});
+
 test("a member who left can still rejoin with the group link", async () => {
   const { db, plan, link, directory } = await setup();
   await as(db, VIEWER, `select public.leave_shared_plan($1)`, [plan]);
