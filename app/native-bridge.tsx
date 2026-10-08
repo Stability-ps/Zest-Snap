@@ -106,6 +106,18 @@ export default function NativeBridge() {
           else App.minimizeApp().catch(() => undefined);
         }),
       );
+      // Native push: refresh this device's token on every launch (registration doubles as token refresh) and open taps.
+      import("@/lib/native/push").then(async ({ attachNativePushListeners, registerNativePush }) => {
+        if (disposed) return;
+        for (const handle of await attachNativePushListeners(open)) listen(handle);
+        await registerNativePush();
+        const { createClient, isSupabaseConfigured } = await import("@/lib/supabase/client");
+        if (disposed || !isSupabaseConfigured()) return;
+        const { data } = createClient().auth.onAuthStateChange((event) => {
+          if (event === "SIGNED_IN") void registerNativePush();
+        });
+        removers.push(() => data.subscription.unsubscribe());
+      }).catch(() => undefined);
       listen(
         App.addListener("appUrlOpen", ({ url }) => {
           const path = inAppPath(url);
@@ -124,6 +136,7 @@ export default function NativeBridge() {
           window.dispatchEvent(new Event("zest-app-resume"));
           await syncAndroidInsets();
           syncReminders();
+          import("@/lib/native/push").then((m) => m.registerNativePush()).catch(() => undefined);
         }),
       );
       listen(

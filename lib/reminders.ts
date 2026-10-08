@@ -209,6 +209,8 @@ export async function enablePushNotifications() {
   if (nativeNotificationsAvailable()) {
     await enableNativeNotifications();
     window.dispatchEvent(new Event("zest-reminders-changed"));
+    // Same OS permission, so this registers for Shared, invitation and briefing pushes without a second prompt.
+    await import("./native/push").then((m) => m.registerNativePush()).catch(() => undefined);
     return true;
   }
   if (!notificationSupport()) throw new Error("This browser can’t show background notifications. Try Chrome on Android or install Zest Snap.");

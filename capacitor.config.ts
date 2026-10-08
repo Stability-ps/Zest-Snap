@@ -64,6 +64,10 @@ const config: CapacitorConfig = {
       smallIcon: "ic_stat_zest",
       iconColor: "#00C6A7",
     },
+    PushNotifications: {
+      // iOS: show Shared messages, invitations and briefings even while the app is open.
+      presentationOptions: ["badge", "sound", "alert"],
+    },
   },
 };
 

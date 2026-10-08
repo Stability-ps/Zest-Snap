@@ -4,6 +4,10 @@
 <dict>
 	<!-- Universal Links. Requires the Associated Domains capability on the app.zestsnap App ID and
 	     https://app.zestsnap.app/.well-known/apple-app-site-association (served when APPLE_TEAM_ID is set). -->
+	<!-- Push Notifications capability. "development" for Xcode builds; App Store/TestFlight export signs with
+	     the distribution profile, which sets "production". -->
+	<key>aps-environment</key>
+	<string>development</string>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:app.zestsnap.app</string>
