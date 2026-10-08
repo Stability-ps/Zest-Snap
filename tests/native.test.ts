@@ -153,10 +153,12 @@ test("no server secrets or service keys can reach the native shell or client bun
     assert.doesNotMatch(src, /SERVICE_ROLE|SUPABASE_SECRET|sb_secret_|REVENUECAT_SECRET|OPENAI_API_KEY|sk_live|-----BEGIN/, f);
   }
   const manifest = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
+  // RECORD_AUDIO is merged in only by the speech-recognition plugin (Plan with Zest voice input).
   for (const p of ["READ_CALENDAR", "WRITE_CALENDAR", "READ_MEDIA_IMAGES", "ACCESS_FINE_LOCATION", "READ_CONTACTS", "RECORD_AUDIO"])
     assert.doesNotMatch(manifest, new RegExp(p), `unexpected permission ${p}`);
   const plist = readFileSync("ios/App/App/Info.plist", "utf8");
-  for (const key of ["NSCameraUsageDescription", "NSPhotoLibraryUsageDescription", "NSCalendarsWriteOnlyAccessUsageDescription"]) assert.match(plist, new RegExp(key));
+  for (const key of ["NSCameraUsageDescription", "NSPhotoLibraryUsageDescription", "NSCalendarsWriteOnlyAccessUsageDescription", "NSMicrophoneUsageDescription", "NSSpeechRecognitionUsageDescription"])
+    assert.match(plist, new RegExp(key));
   assert.doesNotMatch(plist, /We need access/i);
 });
 
@@ -214,4 +216,13 @@ test("the Universal Links file stays 404 until a Team ID is set, then names the 
   } finally {
     if (previous === undefined) delete process.env.APPLE_TEAM_ID; else process.env.APPLE_TEAM_ID = previous;
   }
+});
+
+test("Plan with Zest voice uses a native recogniser in the apps, linked through Swift Package Manager on iOS", () => {
+  const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+  assert.ok(pkg.dependencies["@capgo/capacitor-speech-recognition"], "native speech plugin must be a dependency");
+  assert.ok(readFileSync("node_modules/@capgo/capacitor-speech-recognition/Package.swift", "utf8").length > 0);
+  const page = readFileSync("app/app/page.tsx", "utf8");
+  assert.match(page, /hasNativeSpeech\(\)/);
+  assert.match(page, /You can still type your plan/);
 });

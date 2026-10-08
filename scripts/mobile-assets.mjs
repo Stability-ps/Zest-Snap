@@ -47,4 +47,15 @@ const notification = `
   <path d="M80 150v-42c0-16 12-28 28-28h42M362 80h42c16 0 28 12 28 28v42M432 362v42c0 16-12 28-28 28h-42M150 432h-42c-16 0-28-12-28-28v-42" fill="none" stroke="#FFFFFF" stroke-width="24" stroke-linecap="round"/>
 `;
 await sharp(svg(notification), { density: 600 }).resize(96, 96).png().toFile(`${out}/notification-icon.png`);
-console.log("approved Zest Snap scan/calendar brand sources written to", out);
+// Google Play listing art: 512×512 icon (Play applies its own mask) and the 1024×500 feature graphic.
+mkdirSync("mobile/store", { recursive: true });
+await sharp(svg(`<rect width="512" height="512" fill="${NAVY}"/>${mark}`), { density: 1200 })
+  .resize(512, 512).flatten({ background: NAVY }).png().toFile("mobile/store/play-icon-512.png");
+const feature = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500">
+  <rect width="1024" height="500" fill="${NAVY}"/>
+  <g transform="translate(70 70) scale(0.703)">${mark}</g>
+  <text x="470" y="232" font-family="Helvetica, Arial, sans-serif" font-size="76" font-weight="700" fill="#FFFFFF">Zest <tspan fill="#00C6A7">Snap</tspan></text>
+  <text x="472" y="300" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#CBD5E1">Anything with a date becomes actionable.</text>
+</svg>`);
+await sharp(feature, { density: 300 }).resize(1024, 500).flatten({ background: NAVY }).png().toFile("mobile/store/feature-graphic-1024x500.png");
+console.log("approved Zest Snap scan/calendar brand sources written to", out, "and mobile/store");

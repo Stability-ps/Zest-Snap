@@ -39,6 +39,7 @@ Consequences to keep in mind:
 | Billing | `lib/native/billing.ts`, `lib/billing/*`, `/api/billing/*` | not connected (honest copy) | App Store / Google Play via RevenueCat, verified server-side |
 | Permissions | `lib/native/permissions.ts` + first-party `ZestNative` plugin | — | status, recovery copy, “Open Settings” |
 | Haptics | `lib/native/haptics.ts` | — | scan done, to-do completed, calendar add, purchase |
+| Voice (Plan with Zest) | `lib/native/speech.ts` | Web Speech API where the browser has it; typing otherwise | system recogniser via `@capgo/capacitor-speech-recognition` (mic + speech permission on first use) |
 
 Never sniff user agents — always use `runtime()` / `isNative()` / `hasPlugin()`.
 
@@ -190,7 +191,9 @@ source (App Store / Google Play / web). Support tickets and problem reports incl
 - Navigation is limited to the app's own host; other sites open in the system browser.
 - Minimal permissions — Android: INTERNET, CAMERA, READ_EXTERNAL_STORAGE (≤ Android 12), POST_NOTIFICATIONS,
   RECEIVE_BOOT_COMPLETED, SCHEDULE_EXACT_ALARM (opt-in), VIBRATE (+ BILLING / network state from plugins).
-  No calendar, contacts, location, microphone or broad media permissions. iOS purpose strings are specific.
+  RECORD_AUDIO is added only by the speech plugin and requested the first time someone taps the mic in Plan with Zest.
+  No calendar, contacts, location or broad media permissions. iOS purpose strings are specific (camera, photos, calendar
+  write-only, microphone and speech recognition for Plan with Zest).
 - Tokens are not logged; the session stays in WebView cookie storage (OS-sandboxed, excluded from backups).
 
 ## Store readiness checklist

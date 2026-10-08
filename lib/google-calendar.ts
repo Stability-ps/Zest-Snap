@@ -64,3 +64,11 @@ export function googleCalendarUrl(event: ExtractedEvent, fallbackTimezone = "UTC
 
   return "https://calendar.google.com/calendar/render?" + params.toString();
 }
+
+export function googlePlannerEventId(plannerItemId: string) {
+  const compact = plannerItemId.toLowerCase().replaceAll("-", "");
+  if (!/^[0-9a-f]{32}$/.test(compact)) throw new Error("planner_item_not_found");
+  // Google Calendar custom event IDs accept base32hex characters (0-9, a-v).
+  // A UUID contains only 0-9/a-f, so this is stable and safe across retries/races.
+  return `a${compact}`;
+}

@@ -25,6 +25,13 @@ export function storeName() {
   return runtime() === "ios" ? "App Store" : runtime() === "android" ? "Google Play" : "web";
 }
 
+/** The store's own subscription page, where people change or cancel a plan bought in the app. */
+export function manageSubscriptionUrl() {
+  if (runtime() === "ios") return "https://apps.apple.com/account/subscriptions";
+  if (runtime() === "android") return "https://play.google.com/store/account/subscriptions?package=app.zestsnap";
+  return null;
+}
+
 let configuredFor: string | null = null;
 // Returned wrapped: awaiting a bare Capacitor plugin proxy would call `.then()` on it.
 async function purchases(userId: string) {

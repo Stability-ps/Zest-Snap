@@ -8,7 +8,7 @@ interface ZestNativePlugin {
 }
 const ZestNative = registerPlugin<ZestNativePlugin>("ZestNative");
 
-export type PermissionName = "camera" | "photos" | "notifications" | "calendar";
+export type PermissionName = "camera" | "photos" | "notifications" | "calendar" | "microphone";
 export type PermissionStatus = "granted" | "denied" | "prompt" | "unsupported";
 
 /** Opens this app's page in the system Settings so a blocked permission can be re-enabled. */
@@ -24,9 +24,9 @@ export async function openAppSettings() {
 
 /** Human, platform-specific recovery copy for a blocked permission. */
 export function blockedPermissionHelp(name: PermissionName) {
-  const what = { camera: "Camera", photos: "Photos", notifications: "Notifications", calendar: "Calendars" }[name];
+  const what = { camera: "Camera", photos: "Photos", notifications: "Notifications", calendar: "Calendars", microphone: "Microphone" }[name];
   return runtime() === "ios"
-    ? `${what} access is off for Zest Snap. Open Settings › Zest Snap and turn on ${what}.`
+    ? `${what} access is off for Zest Snap. Open Settings › Zest Snap and turn on ${name === "microphone" ? "Microphone and Speech Recognition" : what}.`
     : runtime() === "android"
       ? `${what} permission is blocked for Zest Snap. Open Settings › Apps › Zest Snap › Permissions to allow it.`
       : `${what} is blocked in your browser settings for this site.`;
