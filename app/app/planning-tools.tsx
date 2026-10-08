@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarRange, ChefHat, GraduationCap, Plus, Sparkles, X } from "lucide-react";
+import { ChefHat, GraduationCap, Plus, Sparkles, X } from "lucide-react";
 import { mealPlannerItem, timetablePlannerItems, type TimetableClassInput } from "@/lib/planning-expansion";
 import { sharedPlannerStore } from "@/lib/planner-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";

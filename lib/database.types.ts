@@ -189,6 +189,7 @@ export type Database = {
         Returns: undefined;
       };
       create_referral: { Args: Record<string, never>; Returns: string };
+      claim_voice_plan: { Args: { p_user: string }; Returns: boolean };
     };
     Enums: { plan_code: PlanCode };
     CompositeTypes: Record<string, never>;
