@@ -122,7 +122,7 @@ export default function SharedChat({planId,me,members,items}:{planId:string;me:s
  async function remove(m:Message){
    if(m.sender_id!==me||m.deleted_at||!window.confirm("Delete this message?"))return;
    const {error:e}=await db.rpc("delete_shared_message",{p_message:m.id});
-   if(!e){await load();await broadcast("message",{plan_id:planId});}
+   if(!e){if(m.attachment?.path)await db.storage.from("shared-chat").remove([m.attachment.path]);await load();await broadcast("message",{plan_id:planId});}
  }
  function replyMessage(id:string|null){return id?messages.find(m=>m.id===id)||null:null}
  function itemFor(id:string|null){return id?items.find(i=>i.id===id)||null:null}
