@@ -1,0 +1,107 @@
+{
+  "_comment": "Each repository migration and the production version(s) that applied the same change (verified 2026-10-08, see supabase/MIGRATION_HISTORY.md). [] = not recorded in production's history although its objects exist there; \"pending\" = not yet applied to production.",
+  "files": {
+    "20261002_initial_product_schema.sql": [
+      "20261003025156"
+    ],
+    "20261003011650_launch_readiness.sql": [
+      "20261003025423",
+      "20261003025432",
+      "20261003025444",
+      "20261003025455",
+      "20261003025504",
+      "20261003025511",
+      "20261003025521"
+    ],
+    "20261003032148_harden_admin_rls_helper.sql": [
+      "20261003032148",
+      "20261003025545"
+    ],
+    "20261003032406_refund_failed_scan_reservations.sql": [
+      "20261003032406"
+    ],
+    "20261003032602_atomic_scan_completion.sql": [
+      "20261003032602"
+    ],
+    "20261003035914_planner_rewards_push.sql": [
+      "20261003035914"
+    ],
+    "20261003040228_harden_referral_rpc.sql": [
+      "20261003040228"
+    ],
+    "20261003090500_feature_flags_policy_cleanup.sql": [],
+    "20261003181004_enable_scheduled_web_push.sql": [
+      "20261003181004"
+    ],
+    "20261003181025_schedule_reminder_push_delivery.sql": [
+      "20261003181025"
+    ],
+    "20261003202050_rebalance_rewards_for_growth.sql": [
+      "20261003202050"
+    ],
+    "20261003204243_device_identity_and_credit_abuse_controls.sql": [
+      "20261003204243"
+    ],
+    "20261004120000_production_hardening.sql": [],
+    "20261004143000_google_calendar_connections.sql": [
+      "20261004124120"
+    ],
+    "20261004173500_planner_google_sync.sql": [
+      "20261004173604"
+    ],
+    "20261005090000_admin_console.sql": [],
+    "20261006090000_native_platform_analytics.sql": [
+      "20261005040942"
+    ],
+    "20261007090000_native_reminder_delivery.sql": [
+      "20261005042830"
+    ],
+    "20261007134000_planning_expansion_flows.sql": [
+      "20261007112301"
+    ],
+    "20261007180000_short_referral_codes.sql": [
+      "20261007182332"
+    ],
+    "20261008090000_shared_plans.sql": [
+      "20261006103107"
+    ],
+    "20261008100000_shared_finish.sql": [
+      "20261006103110"
+    ],
+    "20261008110000_daily_briefings_assignments.sql": [
+      "20261006103115"
+    ],
+    "20261009090000_shared_security_hardening.sql": [
+      "20261007082158"
+    ],
+    "20261010090000_shared_plan_deletion.sql": [
+      "20261007094218"
+    ],
+    "20261010110000_validate_date_ranges.sql": [
+      "20261007100938"
+    ],
+    "20261010120000_shared_messaging.sql": [
+      "20261007191852",
+      "20261007191917"
+    ],
+    "20261011090000_voice_plan_rate_limit.sql": [
+      "20261007120903"
+    ],
+    "20261011100000_rls_initplan_planning_tables.sql": [
+      "20261007121829"
+    ],
+    "20261011110000_shared_message_push.sql": [
+      "20261007202841"
+    ],
+    "20261011120000_shared_chat_media.sql": [
+      "20261007203236"
+    ],
+    "20261012090000_shared_message_policy_scope.sql": [
+      "20261008093537"
+    ],
+    "20261015090000_reconcile_production_drift.sql": [
+      "20261003025538"
+    ],
+    "20261015100000_revoke_unused_table_privileges.sql": "pending"
+  }
+}
