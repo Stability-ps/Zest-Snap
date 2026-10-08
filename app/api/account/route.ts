@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { serviceClient } from "@/lib/supabase/admin";
+import { removeSharedChatFiles, sharedChatFiles } from "@/lib/shared-chat-files";
 export async function DELETE(req: Request) {
   if (
     req.headers.get("origin") !== new URL(req.url).origin ||
@@ -25,6 +26,21 @@ export async function DELETE(req: Request) {
         .remove(files.map((f) => `${user.id}/${f.name}`));
       if (error) throw error;
     }
+    // Plans this user owns are deleted by cascade with everyone's messages; in other plans only their own
+    // messages go, so only their own uploads are removed there.
+    const [owned, joined] = await Promise.all([
+      admin.from("shared_plans").select("id").eq("owner_id", user.id),
+      admin.from("shared_plan_members").select("plan_id").eq("user_id", user.id),
+    ]);
+    if (owned.error) throw owned.error;
+    if (joined.error) throw joined.error;
+    const ownedIds = new Set((owned.data ?? []).map((p) => p.id as string));
+    const chatFiles: string[] = [];
+    for (const id of ownedIds) chatFiles.push(...(await sharedChatFiles(admin, id)));
+    for (const m of joined.data ?? []) {
+      if (!ownedIds.has(m.plan_id)) chatFiles.push(...(await sharedChatFiles(admin, m.plan_id, user.id)));
+    }
+    await removeSharedChatFiles(admin, chatFiles);
     await db.auth.signOut({ scope: "global" });
     const { error } = await admin.auth.admin.deleteUser(user.id);
     if (error) throw error;
