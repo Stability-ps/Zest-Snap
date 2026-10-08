@@ -52,3 +52,10 @@ test("with Supabase's default privileges, browser roles keep only the privileges
   assert.deepEqual(await privs("product_feedback", "authenticated"), ["SELECT"]);
   await db.close();
 });
+
+test("a fresh database gives the Free plan 3 AI scans a month, as production does", async () => {
+  const db = await migratedDb();
+  const free = (await db.query<{ n: number }>(`select monthly_scans n from public.plan_rules where id='free'`)).rows[0];
+  assert.equal(free.n, 3);
+  await db.close();
+});

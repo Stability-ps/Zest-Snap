@@ -102,6 +102,7 @@
     "20261015090000_reconcile_production_drift.sql": [
       "20261003025538"
     ],
-    "20261015100000_revoke_unused_table_privileges.sql": "pending"
+    "20261015100000_revoke_unused_table_privileges.sql": "pending",
+    "20261015120000_free_plan_three_scans.sql": "pending"
   }
 }

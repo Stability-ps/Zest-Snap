@@ -21,7 +21,7 @@ Production (`rnlqsaaoywqrvokoysei`) was migrated with Supabase MCP `apply_migrat
 | `calendar_connections`: production replaced the original table with the OAuth-token table; a fresh build kept the original (`create table if not exists`) | A new environment couldn't store Google Calendar tokens and had a per-user policy on the table | `20261015090000` (no-op in production) |
 | Two indexes only in production (`advisor_performance_fixes`) | — | `20261015090000` |
 | Supabase default privileges gave `anon`/`authenticated` write privileges on RPC-only tables; RLS was the only barrier | Defense in depth only; nothing reachable through the API | `20261015100000` (**changes production**), and the test database now applies Supabase's default privileges so tests see production's privilege picture |
-| Free plan: seed says 10 scans/month, production is 3 (set in Admin → Plans) | A new environment would give 10 | Data, not schema: set it in Admin → Plans after creating an environment |
+| Free plan: seed says 10 scans/month, production is 3 (set in Admin → Plans) | A new environment would give 10 | `20261015120000` sets 3 where the seed value 10 is still in place (no-op in production) |
 
 ## Security issue found in the production history
 
@@ -43,7 +43,7 @@ Production's record of `20261003181004 enable_scheduled_web_push` contains the *
    supabase migration repair --status reverted <versions printed>
    supabase migration repair --status applied  <versions printed>
    ```
-4. Check: `supabase migration list` shows local = remote for every applied file, and `supabase db push --dry-run` lists only the `"pending"` files (`20261015100000`, plus any later ones).
+4. Check: `supabase migration list` shows local = remote for every applied file, and `supabase db push --dry-run` lists only the `"pending"` files (`20261015100000`, `20261015120000`, plus any later ones).
 5. `supabase db push`, then run `scripts/schema-fingerprint.sql` on production and compare it with a fresh build.
 6. In `migration-history.json`, change `"pending"` to `[]` for the files just pushed. From then on every new migration goes through `supabase db push`, so filenames and production versions stay identical.
 
