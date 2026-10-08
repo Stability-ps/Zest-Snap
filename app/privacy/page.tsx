@@ -66,22 +66,30 @@ export default function Privacy() {
           the Planner items you choose in your Google Calendar and to show your
           Google events alongside your Planner while you view it (those events
           are not saved by Zest Snap); disconnect at any time in Settings.
-          Reminders, the optional Daily Briefing and Shared plan message alerts
-          are delivered as notifications you turn on. In the iOS and Android
-          apps, reminders are scheduled on your device. In a browser or the
+          Reminders, the optional Daily Briefing and Shared plan notifications
+          (new messages, invitations to your account, tasks assigned to you, and
+          changes to or cancellation of items assigned to you) are delivered as
+          notifications you turn on. In the iOS and Android apps, reminders are
+          scheduled on your device; other notifications are sent through Apple
+          Push Notification service (iOS) or Firebase Cloud Messaging
+          (Android), and Zest Snap stores a device token for each phone you
+          sign in on, which is removed when you sign out. In a browser or the
           installed web app, notifications are sent through your browser’s
-          push service (for example Apple, Google or Mozilla), and their text
-          can include item titles or, for Shared messages, the sender’s name,
-          the plan name and the first 140 characters of the message. You can
-          turn notifications off in your device or browser settings. Zest Snap
-          does not send marketing messages.
+          push service (for example Apple, Google or Mozilla). Notification
+          text can include item titles, plan names and people’s display names
+          and, for Shared messages, the first 140 characters of the message.
+          You can turn notifications off in your device or browser settings.
+          Zest Snap does not send marketing messages.
         </p>
         <h2>Shared plans</h2>
         <p>
           When you share an event or plan, its members can see its items, the
           group’s member list with display names and roles, and who is
-          assigned to each task. Owners can rename the group and revoke
-          invitation links; members can leave at any time. An invitation sent
+          assigned to each task. Owners can rename the group, revoke invitation
+          links, change a member between editor and viewer, and remove members;
+          members can leave at any time. A removed member immediately loses
+          access to the plan, its messages and its files, their tasks are
+          unassigned, and they can rejoin only through a new invitation. An invitation sent
           to an email address stores that address so only that account can
           accept it. Invitation links can be opened by
           anyone who has them until they expire or are revoked, and before
@@ -103,8 +111,8 @@ export default function Privacy() {
           You can edit or delete your own messages. Deleting a message replaces
           its text with “Message deleted”, removes its reactions and deletes
           its attachment; the sender and time of the message remain. Leaving a
-          plan does not delete messages you sent there; the group can still see
-          them. When the owner deletes a plan, its items, members, invitations,
+          plan, or being removed from it, does not delete messages you sent
+          there; the group can still see them. When the owner deletes a plan, its items, members, invitations,
           messages and stored files are deleted for everyone. Anything a member
           has already downloaded or copied is outside Zest’s deletion
           control.
@@ -138,7 +146,9 @@ export default function Privacy() {
           recognition on Android and in Chrome), Apple (speech recognition on
           Apple devices and App Store purchases), Google Play (purchases on
           Android), RevenueCat (subscription status, when in-app purchases are
-          available) and browser push services (web notifications). Vercel,
+          available), Apple Push Notification service and Firebase Cloud
+          Messaging (app notifications) and browser push services (web
+          notifications). Vercel,
           OpenAI and other providers may process data outside your country,
           including in the United States.
         </p>
