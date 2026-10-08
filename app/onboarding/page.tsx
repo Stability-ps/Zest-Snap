@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   Globe2,
   CalendarDays,
@@ -8,6 +8,8 @@ import {
   ArrowRight,
   Check,
 } from "lucide-react";
+
+const noSubscribe = () => () => {};
 
 const steps = [
   {
@@ -33,6 +35,9 @@ const steps = [
 ];
 
 export default function Onboarding() {
+  // Browser-only values: the server snapshot is empty so the prerendered HTML and first client render agree.
+  const language = useSyncExternalStore(noSubscribe, () => navigator.language, () => "");
+  const timeZone = useSyncExternalStore(noSubscribe, () => Intl.DateTimeFormat().resolvedOptions().timeZone, () => "");
   const [step, setStep] = useState(0);
   const current = steps[step];
   const Icon = current.icon;
@@ -60,19 +65,11 @@ export default function Onboarding() {
           <div className="settingPreview">
             <div>
               <span>Detected language</span>
-              <b>
-                {typeof navigator !== "undefined"
-                  ? navigator.language
-                  : "English"}
-              </b>
+              <b>{language || "…"}</b>
             </div>
             <div>
               <span>Detected timezone</span>
-              <b>
-                {typeof Intl !== "undefined"
-                  ? Intl.DateTimeFormat().resolvedOptions().timeZone
-                  : "UTC"}
-              </b>
+              <b>{timeZone || "…"}</b>
             </div>
           </div>
         )}

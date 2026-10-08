@@ -937,7 +937,8 @@ export default function App() {
             )}
             <section className="appIntro homeHero">
               <div className="homeGreeting" style={greetingReady ? undefined : { visibility: "hidden" }}>
-                {greeting(timezone)}
+                {/* /app is prerendered, so the time of day is only known in the browser; render it after mount. */}
+                {greetingReady ? greeting(timezone) : "Hello"}
                 {displayName ? `, ${displayName.split(" ")[0]}` : ""} <span aria-hidden="true">👋</span>
               </div>
               <h1>What do you want to remember?</h1>
