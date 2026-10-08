@@ -101,3 +101,20 @@ test("a member who left can still rejoin with the group link", async () => {
   assert.ok((await directory(OWNER)).some((m) => m.user_id === VIEWER));
   await db.close();
 });
+
+test("a removed member can no longer read or add the plan's chat files", async () => {
+  const { db, plan } = await setup();
+  // Supabase's own grants on storage (the test database only emulates the schema); RLS decides access.
+  await db.exec(`grant usage on schema storage to authenticated; grant select, insert, delete on storage.objects to authenticated`);
+  await db.exec(`insert into storage.objects(bucket_id,name) values('shared-chat','${plan}/${OWNER}/photo.jpg')`);
+  const files = (user: string) => as(db, user, `select name from storage.objects where bucket_id='shared-chat'`);
+  assert.equal((await files(EDITOR)).rows.length, 1, "members see the plan's files");
+  assert.equal((await files(STRANGER)).rows.length, 0);
+
+  await as(db, OWNER, `select public.remove_shared_member($1,$2)`, [plan, EDITOR]);
+
+  assert.equal((await files(EDITOR)).rows.length, 0, "a removed member must lose file access immediately");
+  await assert.rejects(as(db, EDITOR, `insert into storage.objects(bucket_id,name) values('shared-chat',$1)`, [`${plan}/${EDITOR}/late.jpg`]));
+  assert.equal((await files(VIEWER)).rows.length, 1, "other members keep access");
+  await db.close();
+});
