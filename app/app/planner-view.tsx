@@ -66,6 +66,8 @@ type Props = {
   request?: PlannerRequest;
   onNotice?: (kind: "success" | "error", message: string) => void;
   onSignIn?: () => void;
+  /** Reports the visible tab, so the bottom nav highlights Reminders however it was opened. */
+  onTabChange?: (tab: Tab) => void;
 };
 
 function emptyItem(timezone: string, date = todayDate(timezone)): PlannerItem {
@@ -93,12 +95,13 @@ function emptyItem(timezone: string, date = todayDate(timezone)): PlannerItem {
 const dateKeyIn = (iso: string, timezone: string) =>
   new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: timezone }).format(new Date(iso));
 
-export default function PlannerView({ identity, timezone, locale, signedIn, request, onNotice, onSignIn }: Props) {
+export default function PlannerView({ identity, timezone, locale, signedIn, request, onNotice, onSignIn, onTabChange }: Props) {
   const [store, setStore] = useState<PlannerStore | null>(null);
   const [items, setItems] = useState<PlannerItem[]>([]);
   const [googleItems, setGoogleItems] = useState<PlannerItem[]>([]);
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
   const [tab, setTab] = useState<Tab>(request?.tab || "today");
+  useEffect(() => onTabChange?.(tab), [tab, onTabChange]);
   const [selectedDate, setSelectedDate] = useState(() => todayDate(timezone));
   const [month, setMonth] = useState(() => {
     const [y, m] = todayDate(timezone).split("-").map(Number);
