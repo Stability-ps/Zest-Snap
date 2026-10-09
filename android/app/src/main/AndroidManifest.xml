@@ -10,6 +10,10 @@
         android:roundIcon="@mipmap/zest_launcher_round_v6"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <!-- Firebase Cloud Messaging defaults for pushes shown while the app is closed. -->
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_zest" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/zest_teal" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="zest-shared" />
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"

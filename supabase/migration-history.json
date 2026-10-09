@@ -105,6 +105,7 @@
     ],
     "20261015100000_revoke_unused_table_privileges.sql": "pending",
     "20261015110000_admin_shared_usage_grant.sql": "pending",
-    "20261015120000_free_plan_three_scans.sql": "pending"
+    "20261015120000_free_plan_three_scans.sql": "pending",
+    "20261016090000_native_push.sql": "pending"
   }
 }

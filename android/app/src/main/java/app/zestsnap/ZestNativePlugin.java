@@ -51,4 +51,17 @@ public class ZestNativePlugin extends Plugin {
             call.reject("Could not read system insets");
         }
     }
+
+    /**
+     * Whether Firebase was configured at build time. The google-services Gradle plugin generates the google_app_id
+     * string only when android/app/google-services.json exists; without it FirebaseMessaging.getInstance() throws
+     * and Capacitor turns that into a crash, so the web layer must not call PushNotifications.register().
+     */
+    @PluginMethod
+    public void getPushConfiguration(PluginCall call) {
+        int id = getContext().getResources().getIdentifier("google_app_id", "string", getContext().getPackageName());
+        JSObject result = new JSObject();
+        result.put("firebase", id != 0);
+        call.resolve(result);
+    }
 }

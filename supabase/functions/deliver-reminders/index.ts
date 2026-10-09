@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import webpush from "npm:web-push@3.6.7";
+import { createNativeSender, nativeConfigFromEnv, type NativeMessage, type NativeToken } from "../_shared/native-push.ts";
 
 // Source of truth for the live function. Supersedes live version 2 (2026-10-04), which already fixed the
 // subscription query to select failure_count; that fix is kept below together with the relation-shape and
@@ -31,6 +32,29 @@ Deno.serve(async (req: Request) => {
   }
 
   webpush.setVapidDetails("mailto:hello@zestsnap.app", cfg.public_key, cfg.private_key);
+
+  // Native push (iOS/Android apps). Platforms without credentials in the Edge Function secrets are skipped.
+  const native = createNativeSender(nativeConfigFromEnv((name) => Deno.env.get(name)));
+  const nativeTokens = async (userId: string) =>
+    ((await db.from("native_push_tokens").select("id,platform,token,environment,failure_count").eq("user_id", userId)).data || []) as (NativeToken & { failure_count: number })[];
+  const sendNative = async (tokens: (NativeToken & { failure_count: number })[], message: NativeMessage) => {
+    let delivered = false, error = "";
+    for (const t of tokens) {
+      const r = await native.send(t, message);
+      if (r.ok) {
+        delivered = true;
+        await db.from("native_push_tokens").update({ last_success_at: new Date().toISOString(), failure_count: 0, ...(r.environment ? { environment: r.environment } : {}) }).eq("id", t.id);
+      } else if (r.invalid) {
+        await db.from("native_push_tokens").delete().eq("id", t.id);
+        error = r.error || "native_token_invalid";
+      } else {
+        error = r.error || "native_push_failed";
+        if (r.error !== "native_push_unconfigured") await db.from("native_push_tokens").update({ failure_count: Math.min((t.failure_count || 0) + 1, 1000) }).eq("id", t.id);
+      }
+    }
+    if (error && !delivered) log("native_push_failed", { reason: error });
+    return { delivered, error };
+  };
   const { data: due, error: claimError } = await db.rpc("claim_due_reminders", { p_limit: 100 });
   if (claimError) {
     log("reminder_claim_failed", { code: claimError.code });
@@ -40,14 +64,17 @@ Deno.serve(async (req: Request) => {
   let sent = 0, failed = 0;
   for (const reminder of due || []) {
     const { data: detail } = await db.from("reminders")
-      .select("id,label,planner_item_id,planner_items(title,type)")
+      .select("id,label,planner_item_id,scheduled_at,device_armed_for,planner_items(title,type)")
       .eq("id", reminder.id).single();
     const item = one<Item>(detail?.planner_items as Item | Item[] | null);
     const title = detail?.label || item?.title || "Planner reminder";
     const { data: subs } = await db.from("push_subscriptions")
       .select("id,endpoint,keys,failure_count").eq("user_id", reminder.user_id);
+    // A reminder a phone has armed as a local notification must not also arrive as a native push.
+    const armedOnDevice = !!detail?.device_armed_for && detail.device_armed_for === detail.scheduled_at;
+    const tokens = armedOnDevice ? [] : await nativeTokens(reminder.user_id);
 
-    if (!subs?.length) {
+    if (!subs?.length && !tokens.length) {
       await db.rpc("complete_push_reminder", { p_id: reminder.id, p_ok: false, p_error: "no_push_subscription" });
       failed++;
       continue;
@@ -55,7 +82,7 @@ Deno.serve(async (req: Request) => {
 
     let delivered = false;
     let lastError = "push_failed";
-    for (const sub of subs as Sub[]) {
+    for (const sub of (subs || []) as Sub[]) {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: sub.keys },
@@ -77,7 +104,16 @@ Deno.serve(async (req: Request) => {
         else await db.from("push_subscriptions").update({ failure_count: Math.min((sub.failure_count || 0) + 1, 1000) }).eq("id", sub.id);
       }
     }
-    await db.rpc("complete_push_reminder", { p_id: reminder.id, p_ok: delivered, p_error: delivered ? null : lastError });
+    let via = "web_push";
+    if (tokens.length) {
+      const r = await sendNative(tokens, {
+        title: "Zest Snap reminder", body: title, url: `/app?view=planner&tab=reminders&reminderId=${reminder.id}`,
+        tag: "zest-reminder-" + reminder.id, channel: "zest-reminders", data: { reminderId: String(reminder.id) },
+      });
+      if (r.delivered && !delivered) via = "native_push";
+      if (r.delivered) delivered = true; else if (r.error) lastError = r.error;
+    }
+    await db.rpc("complete_push_reminder", { p_id: reminder.id, p_ok: delivered, p_error: delivered ? null : lastError, p_via: via });
     if (delivered) sent++; else { failed++; log("reminder_delivery_failed", { reminderId: reminder.id, reason: lastError }); }
   }
   if (due?.length) log("reminder_run", { claimed: due.length, sent, failed });
@@ -113,8 +149,9 @@ Deno.serve(async (req: Request) => {
         db.from("push_subscriptions").select("id,endpoint,keys,failure_count").eq("user_id",briefing.user_id),
       ]);
       if (plannerRes.error || sharedRes.error || subsRes.error) throw new Error("briefing_query_failed");
-      // Nothing can be delivered without a web push subscription; retrying every minute would not change that.
-      if (!subsRes.data?.length) { await db.rpc("complete_daily_briefing",{p_user:briefing.user_id,p_ok:true}); log("briefing_no_subscription"); continue; }
+      const tokens = await nativeTokens(briefing.user_id);
+      // Nothing can be delivered without a push subscription or app token; retrying every minute would not change that.
+      if (!subsRes.data?.length && !tokens.length) { await db.rpc("complete_daily_briefing",{p_user:briefing.user_id,p_ok:true}); log("briefing_no_subscription"); continue; }
       const personal = (plannerRes.data || []).filter((x:any)=>briefing.include_todos || x.type==="event");
       const shared = (sharedRes.data || []).filter((x:any)=>briefing.include_meals || x.item_type!=="meal");
       const all = [...personal,...shared] as any[];
@@ -129,6 +166,13 @@ Deno.serve(async (req: Request) => {
           }),{TTL:21600,urgency:"normal"});
           delivered=true;
         } catch { /* regular reminder delivery will clean dead subscriptions */ }
+      }
+      if (tokens.length) {
+        const r = await sendNative(tokens, {
+          title: `Today · ${all.length} ${all.length===1?"item":"items"}`, body, url: "/app?view=calendar&tab=upcoming",
+          tag: "zest-daily-briefing-" + day, channel: "zest-briefing",
+        });
+        if (r.delivered) delivered = true;
       }
       await db.rpc("complete_daily_briefing",{p_user:briefing.user_id,p_ok:delivered});
       if(delivered)briefingsSent++;else briefingsFailed++;
@@ -153,11 +197,12 @@ Deno.serve(async (req: Request) => {
         db.from("push_subscriptions").select("id,endpoint,keys,failure_count").eq("user_id",job.recipient_id),
       ]);
       if (subsError) throw new Error("subscription_query_failed");
+      const tokens = await nativeTokens(job.recipient_id);
       if (!message || message.deleted_at || !plan) {
         await db.rpc("complete_shared_message_push",{p_id:job.id,p_ok:true,p_error:null});
         continue;
       }
-      if (!subs?.length) {
+      if (!subs?.length && !tokens.length) {
         await db.rpc("complete_shared_message_push",{p_id:job.id,p_ok:false,p_error:"no_push_subscription"});
         messagePushFailed++;
         continue;
@@ -173,7 +218,7 @@ Deno.serve(async (req: Request) => {
       const url = `/shared/${job.plan_id}?tab=messages`;
       let delivered = false;
       let lastError = "push_failed";
-      for (const sub of subs as Sub[]) {
+      for (const sub of (subs || []) as Sub[]) {
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: sub.keys },
@@ -197,6 +242,13 @@ Deno.serve(async (req: Request) => {
           else await db.from("push_subscriptions").update({ failure_count: Math.min((sub.failure_count || 0) + 1, 1000) }).eq("id", sub.id);
         }
       }
+      if (tokens.length) {
+        const r = await sendNative(tokens, {
+          title: `${senderName} · ${plan.name}`, body, url, tag: "zest-shared-message-" + job.plan_id, channel: "zest-shared",
+          data: { kind: "shared-message", planId: String(job.plan_id), messageId: String(job.message_id) },
+        });
+        if (r.delivered) delivered = true; else if (r.error) lastError = r.error;
+      }
       await db.rpc("complete_shared_message_push",{p_id:job.id,p_ok:delivered,p_error:delivered?null:lastError});
       if (delivered) messagePushSent++; else messagePushFailed++;
     } catch {
@@ -206,5 +258,43 @@ Deno.serve(async (req: Request) => {
   }
   if (messagePushClaimed) log("shared_message_push_run",{claimed:messagePushClaimed,sent:messagePushSent,failed:messagePushFailed});
 
-  return Response.json({ ok: true, claimed: due?.length || 0, sent, failed, briefingsClaimed: briefings?.length || 0, briefingsSent, briefingsFailed, messagePushClaimed, messagePushSent, messagePushFailed });
+  // Shared invitations and Planner updates (written by database triggers into notification_queue).
+  let notificationsClaimed = 0, notificationsSent = 0, notificationsFailed = 0;
+  const { data: queued, error: queueError } = await db.rpc("claim_notifications", { p_limit: 100 });
+  if (queueError) log("notification_claim_failed", { code: queueError.code });
+  for (const n of queued || []) {
+    notificationsClaimed++;
+    try {
+      const [{ data: subs }, tokens] = await Promise.all([
+        db.from("push_subscriptions").select("id,endpoint,keys,failure_count").eq("user_id", n.recipient_id),
+        nativeTokens(n.recipient_id),
+      ]);
+      let delivered = false, lastError = subs?.length || tokens.length ? "push_failed" : "no_push_subscription";
+      const tag = `zest-${n.kind}-${n.id}`;
+      for (const sub of (subs || []) as Sub[]) {
+        try {
+          await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys },
+            JSON.stringify({ title: n.title, body: n.body, url: n.url, tag, kind: n.kind }), { TTL: 86400, urgency: "high" });
+          delivered = true;
+        } catch (e) {
+          const status = Number((e as { statusCode?: number }).statusCode || 0);
+          lastError = status ? "push_http_" + status : "push_send_failed";
+          if (status === 404 || status === 410) await db.from("push_subscriptions").delete().eq("id", sub.id);
+        }
+      }
+      if (tokens.length) {
+        const r = await sendNative(tokens, { title: n.title, body: n.body, url: n.url, tag, channel: "zest-shared", data: { kind: n.kind } });
+        if (r.delivered) delivered = true; else if (r.error) lastError = r.error;
+      }
+      // Someone with notifications off has nothing to retry; record it once rather than retrying five times.
+      await db.rpc("complete_notification", { p_id: n.id, p_ok: delivered || lastError === "no_push_subscription", p_error: delivered ? null : lastError });
+      if (delivered) notificationsSent++; else notificationsFailed++;
+    } catch {
+      notificationsFailed++;
+      await db.rpc("complete_notification", { p_id: n.id, p_ok: false, p_error: "notification_failed" });
+    }
+  }
+  if (notificationsClaimed) log("notification_run", { claimed: notificationsClaimed, sent: notificationsSent, failed: notificationsFailed });
+
+  return Response.json({ ok: true, claimed: due?.length || 0, sent, failed, briefingsClaimed: briefings?.length || 0, briefingsSent, briefingsFailed, messagePushClaimed, messagePushSent, messagePushFailed, notificationsClaimed, notificationsSent, notificationsFailed, native: native.configured });
 });

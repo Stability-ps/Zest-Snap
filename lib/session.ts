@@ -61,6 +61,8 @@ export function activeUser() {
 
 /** Signs out, stops this device receiving the account's notifications and removes its cached data. */
 export async function signOut() {
+  // Native apps: detach this device's push token while the session can still authorise it.
+  await import("./native/push").then((m) => m.unregisterNativePush()).catch(() => undefined);
   if (isSupabaseConfigured()) {
     const db = createClient();
     try {
