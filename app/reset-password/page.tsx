@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 export default function Reset() {
   const [message, setMessage] = useState(""),
@@ -7,7 +8,9 @@ export default function Reset() {
   return (
     <main className="authPage">
       <div className="authCard">
-        <h1>Reset password</h1>
+        <div className="authBrandRow"><Link href="https://zestsnap.app" className="brand">Zest <span>Snap</span></Link><div className="eyebrow">ACCOUNT SECURITY</div></div>
+        <h1>Reset your password.</h1>
+        <p className="authIntro">Choose a new password to secure your Zest Snap account.</p>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -44,22 +47,22 @@ export default function Reset() {
           }}
         >
           <label>
-            New password
-            <input
+            <span>New password</span>
+            <div><input
               type="password"
               name="password"
               required
               minLength={8}
               autoComplete="new-password"
-            />
+              placeholder="At least 8 characters"
+            /></div>
           </label>
-          <button className="button" disabled={busy}>
+          <button className="button authSubmit" disabled={busy}>
             Update password
           </button>
         </form>
-        <p role="status">{message}</p>
-        <a href="/login?mode=forgot">Request a new link</a> ·{" "}
-        <a href="/app">Open Zest Snap</a>
+        {message && <p className="authMessage" role="status">{message}</p>}
+        <div className="authLinks"><a className="authSwitch" href="/login?mode=forgot">Request a new link</a><a className="authSwitch" href="/app">Open Zest Snap</a></div>
       </div>
     </main>
   );
