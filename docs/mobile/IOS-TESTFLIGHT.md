@@ -55,6 +55,11 @@ Connect + 1)`. CI sets it at build time only; nothing is committed back. Change 
    gh secret set ASC_PRIVATE_KEY --env testflight --repo Stability-ps/Zest-Snap < ~/Downloads/AuthKey_XXXXXXXXXX.p8
    ```
    Then delete the downloaded `.p8` (or keep it only in a password manager). Never commit it.
+   Set `ASC_PRIVATE_KEY` from the file (`< AuthKey_….p8`) rather than pasting it. The workflow validates the key before
+   any App Store Connect call (`node scripts/ios/asc.mjs install-key`): it accepts the `.p8` as downloaded or the same
+   text on one line with literal `\n` escapes, and rejects anything else with a message naming the problem (quoted,
+   base64-encoded, missing `-----BEGIN PRIVATE KEY-----`, not EC P-256, …) without printing the key. Those formats
+   otherwise fail inside OpenSSL as `error:1E08010C:DECODER routines::unsupported`.
 3. **Internal TestFlight group** — App Store Connect › Zest Snap › TestFlight › Internal Testing. Every internal group
    receives CI builds; to limit it, set the repository variable `TESTFLIGHT_GROUPS` (comma-separated group names).
    Turning on the group's *Automatic distribution* is optional — the workflow adds each build to the group itself.

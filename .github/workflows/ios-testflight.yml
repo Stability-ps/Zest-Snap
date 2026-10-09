@@ -78,7 +78,9 @@ jobs:
             exit 1
           fi
           umask 077
-          printf '%s\n' "$ASC_PRIVATE_KEY" > "$RUNNER_TEMP/AuthKey.p8"
+          # Validates the key (multiline .p8, or the same text with literal \n escapes) and writes a canonical .p8
+          # for asc.mjs and xcodebuild. A malformed secret fails here with a message that never includes the key.
+          node scripts/ios/asc.mjs install-key "$RUNNER_TEMP/AuthKey.p8"
           echo "ASC_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
 
       - name: Check App Store Connect access

@@ -1,6 +1,7 @@
 // App Store Connect API helper for the iOS TestFlight workflow (.github/workflows/ios-testflight.yml).
 // No dependencies: the API token is an ES256 JWT signed with node:crypto.
 //
+//   node scripts/ios/asc.mjs install-key <path>            → validates $ASC_PRIVATE_KEY and writes it to <path> as a .p8 (mode 600)
 //   node scripts/ios/asc.mjs check                         → verifies the key, the app and the TestFlight groups
 //   node scripts/ios/asc.mjs next-build                    → prints the next safe CFBundleVersion
 //   node scripts/ios/asc.mjs distribute <build> <version>  → waits for processing, adds the build to internal groups
@@ -9,16 +10,69 @@
 // optional TESTFLIGHT_GROUPS (comma-separated internal group names; default: every internal group),
 // optional WHAT_TO_TEST. The key is never printed.
 import { createPrivateKey, sign } from "node:crypto";
-import { readFileSync, appendFileSync } from "node:fs";
+import { readFileSync, appendFileSync, writeFileSync, chmodSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const API = "https://api.appstoreconnect.apple.com/v1";
 export const BUNDLE_ID = "app.zestsnap";
 
-export function token({ keyId, issuerId, privateKeyPem, now = Math.floor(Date.now() / 1000) }) {
+/** A problem with the App Store Connect private key. Messages describe the format only, never the key. */
+export class AscKeyError extends Error {}
+
+const HEADER = "-----BEGIN PRIVATE KEY-----";
+const FOOTER = "-----END PRIVATE KEY-----";
+const fail = (problem) => {
+  throw new AscKeyError(`ASC_PRIVATE_KEY ${problem} Store the contents of the AuthKey_<KEY_ID>.p8 file exactly as downloaded (docs/mobile/IOS-TESTFLIGHT.md).`);
+};
+
+/**
+ * Validates an App Store Connect API private key and returns it as a canonical .p8 (PKCS#8 PEM, 64-character lines)
+ * plus the parsed KeyObject. Accepts the file as downloaded (any line endings, surrounding whitespace, indentation or
+ * re-wrapped lines) and, because it is unambiguous, the same text on one line with literal "\n" escapes.
+ * Everything else is rejected: quoted or base64-encoded secrets, a body without its header, other PEM types (SEC1,
+ * encrypted, RSA, certificates) and keys that are not EC P-256. Errors never include key material.
+ */
+export function normalizeAscPrivateKey(raw) {
+  if (typeof raw !== "string" || !raw.trim()) fail("is empty.");
+  let text = raw.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").trim();
+  if (/^(["'`]).*\1$/s.test(text)) fail("is wrapped in quotes.");
+  if (/\\[rn]/.test(text)) {
+    if (text.includes("\n")) fail("mixes real line breaks with literal \\n escapes.");
+    text = text.replace(/\\r\\n|\\n/g, "\n").trim();
+  }
+  const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+  const label = /^-----BEGIN ([A-Z0-9 ]+)-----$/.exec(lines[0] ?? "")?.[1];
+  if (!label) {
+    const decoded = /^[A-Za-z0-9+/=]+$/.test(lines.join("")) ? Buffer.from(lines.join(""), "base64").toString("latin1") : "";
+    if (decoded.startsWith("-----BEGIN")) fail("is base64-encoded; store the .p8 text itself, not base64 of it.");
+    if (lines.length === 1 && /^-----BEGIN [A-Z0-9 ]+----- /.test(lines[0])) fail("has spaces where its line breaks should be.");
+    fail(`does not start with ${HEADER}.`);
+  }
+  if (label !== "PRIVATE KEY") fail(`is a "${label}" PEM block, not an App Store Connect .p8 key (${HEADER}).`);
+  if (lines.at(-1) !== FOOTER) fail(`does not end with ${FOOTER}.`);
+  const body = lines.slice(1, -1);
+  if (body.some((line) => line.startsWith("-----"))) fail("contains more than one PEM block.");
+  const base64 = body.join("");
+  if (!base64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64) || base64.length % 4) fail("has a damaged key body (not valid base64).");
+  const der = Buffer.from(base64, "base64");
+  if (der.toString("base64") !== base64) fail("has a damaged key body (not valid base64).");
+  const pem = `${HEADER}\n${base64.match(/.{1,64}/g).join("\n")}\n${FOOTER}\n`;
+  let key;
+  try {
+    key = createPrivateKey({ key: pem, format: "pem" });
+  } catch {
+    fail("could not be read as a PKCS#8 private key (the file may be truncated or edited).");
+  }
+  if (key.asymmetricKeyType !== "ec" || key.asymmetricKeyDetails?.namedCurve !== "prime256v1")
+    fail(`is ${key.asymmetricKeyType === "ec" ? `an EC ${key.asymmetricKeyDetails?.namedCurve} key` : `a ${key.asymmetricKeyType?.toUpperCase()} key`}; App Store Connect API keys are EC P-256 (ES256).`);
+  return { pem, key };
+}
+
+export function token({ keyId, issuerId, privateKey, privateKeyPem, now = Math.floor(Date.now() / 1000) }) {
   const b64 = (v) => Buffer.from(typeof v === "string" ? v : JSON.stringify(v)).toString("base64url");
   const input = `${b64({ alg: "ES256", kid: keyId, typ: "JWT" })}.${b64({ iss: issuerId, iat: now, exp: now + 15 * 60, aud: "appstoreconnect-v1" })}`;
-  const signature = sign("sha256", Buffer.from(input), { key: createPrivateKey(privateKeyPem), dsaEncoding: "ieee-p1363" });
+  const key = privateKey ?? normalizeAscPrivateKey(privateKeyPem).key;
+  const signature = sign("sha256", Buffer.from(input), { key, dsaEncoding: "ieee-p1363" });
   return `${input}.${signature.toString("base64url")}`;
 }
 
@@ -48,11 +102,12 @@ export function repoBuildNumber(pbxproj = readFileSync("ios/App/App.xcodeproj/pr
 
 function client() {
   for (const name of ["ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_PATH", "ASC_APP_ID"]) if (!process.env[name]) throw new Error(`${name} is not set`);
-  const privateKeyPem = readFileSync(process.env.ASC_KEY_PATH, "utf8");
+  // Validated once, before any request, so a bad key fails with a clear message instead of an OpenSSL code.
+  const { key: privateKey } = normalizeAscPrivateKey(readFileSync(process.env.ASC_KEY_PATH, "utf8"));
   return async function api(path, init = {}) {
     const res = await fetch(path.startsWith("http") ? path : API + path, {
       ...init,
-      headers: { Authorization: `Bearer ${token({ keyId: process.env.ASC_KEY_ID, issuerId: process.env.ASC_ISSUER_ID, privateKeyPem })}`, "Content-Type": "application/json", ...init.headers },
+      headers: { Authorization: `Bearer ${token({ keyId: process.env.ASC_KEY_ID, issuerId: process.env.ASC_ISSUER_ID, privateKey })}`, "Content-Type": "application/json", ...init.headers },
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -131,15 +186,36 @@ async function distribute(api, buildNumber, version) {
   summary(`### ✅ Zest Snap ${version} (${buildNumber}) is on TestFlight\n\nInternal groups: ${groups.map((g) => g.attributes.name).join(", ")}`);
 }
 
+/** Validates $ASC_PRIVATE_KEY and writes the canonical .p8 for this script and xcodebuild -authenticationKeyPath. */
+function installKey(path) {
+  if (!path) throw new Error("Usage: install-key <path>");
+  const { pem } = normalizeAscPrivateKey(process.env.ASC_PRIVATE_KEY ?? "");
+  writeFileSync(path, pem, { mode: 0o600 });
+  chmodSync(path, 0o600);
+  console.log("App Store Connect key: valid EC P-256 private key (.p8 format).");
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const [command, ...args] = process.argv.slice(2);
   const commands = { check, "next-build": nextBuild, distribute };
-  if (!commands[command]) {
-    console.error("Usage: node scripts/ios/asc.mjs check | next-build | distribute <build> <version>");
-    process.exit(2);
-  }
-  commands[command](client(), ...args).catch((error) => {
+  const report = (error) => {
     console.error(`::error::${error.message}`);
     process.exit(1);
-  });
+  };
+  if (command === "install-key") {
+    try {
+      installKey(...args);
+    } catch (error) {
+      report(error);
+    }
+  } else if (!commands[command]) {
+    console.error("Usage: node scripts/ios/asc.mjs install-key <path> | check | next-build | distribute <build> <version>");
+    process.exit(2);
+  } else {
+    try {
+      commands[command](client(), ...args).catch(report);
+    } catch (error) {
+      report(error);
+    }
+  }
 }
