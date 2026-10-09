@@ -85,7 +85,7 @@ export default function Reset() {
                 <span>New password</span>
                 <div>
                   <input type={showPassword ? "text" : "password"} name="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="Enter a new password" aria-describedby="password-requirements" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 5, display: "flex" }}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button>
+                  <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowPassword((visible) => !visible); }} aria-label={showPassword ? "Hide password" : "Show password"} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 5, display: "flex" }}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button>
                 </div>
               </label>
               <div id="password-requirements" style={{ fontSize: 12, color: "#526176" }}>
@@ -99,7 +99,7 @@ export default function Reset() {
                 <span>Confirm new password</span>
                 <div>
                   <input type={showConfirmation ? "text" : "password"} name="confirmation" required value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="new-password" placeholder="Enter the password again" />
-                  <button type="button" onClick={() => setShowConfirmation(!showConfirmation)} aria-label={showConfirmation ? "Hide confirmation" : "Show confirmation"} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 5, display: "flex" }}>{showConfirmation ? <EyeOff size={19} /> : <Eye size={19} />}</button>
+                  <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowConfirmation((visible) => !visible); }} aria-label={showConfirmation ? "Hide confirmation" : "Show confirmation"} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 5, display: "flex" }}>{showConfirmation ? <EyeOff size={19} /> : <Eye size={19} />}</button>
                 </div>
                 {confirmation && <span style={{ marginTop: 6, color: matches ? "#087f68" : "#b45309" }}>{matches ? "Passwords match" : "Passwords do not match yet"}</span>}
               </label>
