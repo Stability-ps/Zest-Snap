@@ -22,6 +22,10 @@ const config: CapacitorConfig = {
   webDir: "mobile/www",
   server: {
     url: serverUrl,
+    // Capacitor only keeps navigations that start with server.url inside the WebView and hands every other
+    // top-level navigation to Safari. server.url ends in /app, so without this /settings, /login,
+    // /reset-password and /auth/callback opened Safari (and sign-in landed in Safari, not the app).
+    allowNavigation: [hostname],
     cleartext: protocol === "http:",
     // Branded offline / retry page bundled in the app, shown instead of a raw WebView error.
     errorPath: "offline.html",

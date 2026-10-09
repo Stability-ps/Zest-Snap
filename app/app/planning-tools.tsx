@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChefHat, GraduationCap, Plus, Sparkles, X } from "lucide-react";
-import { mealPlannerItem, timetablePlannerItems, type TimetableClassInput } from "@/lib/planning-expansion";
+import { mealPlannerItem, newTimetableItems, timetablePlannerItems, toggleWeekday, type TimetableClassInput } from "@/lib/planning-expansion";
 import { sharedPlannerStore } from "@/lib/planner-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -12,6 +12,10 @@ type Props = {
   signedIn: boolean;
   onNotice?: (kind: "success" | "error", message: string) => void;
 };
+
+const WEEKDAYS = [
+  ["M", "Monday"], ["T", "Tuesday"], ["W", "Wednesday"], ["T", "Thursday"], ["F", "Friday"], ["S", "Saturday"], ["S", "Sunday"],
+] as const;
 
 const isoToday = () => new Date().toISOString().slice(0, 10);
 const plusDays = (date: string, days: number) => {
@@ -23,6 +27,8 @@ const plusDays = (date: string, days: number) => {
 export default function PlanningTools({ identity, timezone, signedIn, onNotice }: Props) {
   const [open, setOpen] = useState<"timetable" | "meals" | null>(null);
   const [busy, setBusy] = useState(false);
+  // State updates land after the next render, so a quick double tap could start two saves; the ref can't.
+  const saving = useRef(false);
   const [termStart, setTermStart] = useState(isoToday());
   const [termEnd, setTermEnd] = useState(plusDays(isoToday(), 70));
   const [scheduleTitle, setScheduleTitle] = useState("My timetable");
@@ -38,13 +44,16 @@ export default function PlanningTools({ identity, timezone, signedIn, onNotice }
   const notify = (k: "success" | "error", m: string) => onNotice?.(k, m);
 
   async function saveTimetable() {
-    if (busy) return;
+    if (saving.current) return;
+    saving.current = true;
     setBusy(true);
     try {
       const valid = classes.filter((x) => x.subject.trim());
-      const items = timetablePlannerItems({ title: scheduleTitle, termStart, termEnd, timezone, classes: valid });
-      if (items.length > 400) throw new Error("This timetable creates too many events. Shorten the term or reduce repeating days.");
+      const all = timetablePlannerItems({ title: scheduleTitle, termStart, termEnd, timezone, classes: valid });
+      if (all.length > 400) throw new Error("This timetable creates too many events. Shorten the term or reduce repeating days.");
       const store = await sharedPlannerStore(identity);
+      const items = newTimetableItems(all, store.loadCached());
+      if (!items.length) throw new Error("These classes are already in your Planner.");
       for (const item of items) await store.upsert(item);
       if (signedIn && isSupabaseConfigured()) {
         const db = createClient();
@@ -63,15 +72,17 @@ export default function PlanningTools({ identity, timezone, signedIn, onNotice }
           if (saved.error) throw saved.error;
         }
       }
-      notify("success", `${items.length} recurring classes added to Planner.`);
+      const skipped = all.length - items.length;
+      notify("success", `${items.length} recurring class${items.length === 1 ? "" : "es"} added to Planner.${skipped ? ` ${skipped} already there were skipped.` : ""}`);
       setOpen(null);
     } catch (e) {
       notify("error", e instanceof Error ? e.message : "Timetable could not be saved.");
-    } finally { setBusy(false); }
+    } finally { saving.current = false; setBusy(false); }
   }
 
   async function saveMeal() {
-    if (busy) return;
+    if (saving.current) return;
+    saving.current = true;
     setBusy(true);
     try {
       const item = mealPlannerItem({ title: mealTitle, mealDate, mealType, startTime: mealTime }, timezone);
@@ -103,7 +114,7 @@ export default function PlanningTools({ identity, timezone, signedIn, onNotice }
       setOpen(null);
     } catch (e) {
       notify("error", e instanceof Error ? e.message : "Meal could not be saved.");
-    } finally { setBusy(false); }
+    } finally { saving.current = false; setBusy(false); }
   }
 
   return (
@@ -115,6 +126,7 @@ export default function PlanningTools({ identity, timezone, signedIn, onNotice }
         <button type="button" onClick={() => setOpen("timetable")}><GraduationCap /><span><b>Timetable</b><small>Create recurring classes</small></span></button>
         <button type="button" onClick={() => setOpen("meals")}><ChefHat /><span><b>Meals</b><small>Plan meals into your week</small></span></button>
       </div>
+      {open && <div className="planningToolBackdrop" onClick={() => setOpen(null)} aria-hidden="true" />}
       {open === "timetable" && (
         <div className="planningToolSheet" role="dialog" aria-modal="true" aria-label="Create timetable">
           <div className="planningToolSheetHead"><div><GraduationCap /><b>Create timetable</b></div><button onClick={() => setOpen(null)} aria-label="Close"><X /></button></div>
@@ -123,10 +135,11 @@ export default function PlanningTools({ identity, timezone, signedIn, onNotice }
           {classes.map((c, i) => <div className="planningClass" key={i}>
             <input aria-label="Subject" placeholder="Subject" value={c.subject} onChange={(e) => setClasses(v => v.map((x,n)=>n===i?{...x,subject:e.target.value}:x))} />
             <div className="planningToolGrid"><input aria-label="Start time" type="time" value={c.startTime} onChange={(e)=>setClasses(v=>v.map((x,n)=>n===i?{...x,startTime:e.target.value}:x))}/><input aria-label="End time" type="time" value={c.endTime} onChange={(e)=>setClasses(v=>v.map((x,n)=>n===i?{...x,endTime:e.target.value}:x))}/></div>
-            <div className="weekdayPicker">{["M","T","W","T","F","S","S"].map((d,n)=><button type="button" key={n} className={c.weekdays.includes(n+1)?"active":""} onClick={()=>setClasses(v=>v.map((x,j)=>j===i?{...x,weekdays:x.weekdays.includes(n+1)?x.weekdays.filter(q=>q!==n+1):[...x.weekdays,n+1]}:x))}>{d}</button>)}</div>
+            <div className="weekdayPicker" role="group" aria-label="Repeats on">{WEEKDAYS.map(([d,name],n)=><button type="button" key={n} aria-label={name} aria-pressed={c.weekdays.includes(n+1)} className={c.weekdays.includes(n+1)?"active":""} onClick={()=>setClasses(v=>v.map((x,j)=>j===i?{...x,weekdays:toggleWeekday(x.weekdays,n+1)}:x))}>{d}</button>)}</div>
+            {!c.weekdays.length && <p className="planningHint">Choose at least one day.</p>}
           </div>)}
           <button className="planningAddRow" type="button" onClick={()=>setClasses(v=>[...v,{subject:"",weekdays:[1],startTime:"08:00",endTime:"09:00",location:""}])}><Plus /> Add class</button>
-          <button className="primaryButton" disabled={busy || !classCount} onClick={saveTimetable}>{busy ? "Adding…" : "Add recurring classes"}</button>
+          <button className="primaryButton" disabled={busy || !classCount || classes.some((c) => c.subject.trim() && !c.weekdays.length)} onClick={saveTimetable}>{busy ? "Adding…" : "Add recurring classes"}</button>
         </div>
       )}
       {open === "meals" && (
