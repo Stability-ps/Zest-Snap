@@ -35,6 +35,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [name, setName] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [signedInAs, setSignedInAs] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -125,6 +126,11 @@ export default function LoginPage() {
     const password = mode === "signup" ? signupPassword : String(form.get("password") || "");
     if (mode === "signup" && !validPassword(password)) {
       setMessage("Complete the required password rules before creating your account.");
+      setBusy(false);
+      return;
+    }
+    if (mode === "signup" && password !== confirmPassword) {
+      setMessage("Passwords do not match.");
       setBusy(false);
       return;
     }
@@ -283,13 +289,20 @@ export default function LoginPage() {
               </label>
             )}
 
+            {mode === "signup" && (
+              <label>
+                <span>Confirm password</span>
+                <div><Lock size={18} /><input type="password" required autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} /></div>
+                {confirmPassword && <small role="status" style={{ color: signupPassword === confirmPassword ? "#047857" : "#b91c1c" }}>{signupPassword === confirmPassword ? "Passwords match" : "Passwords do not match"}</small>}
+              </label>
+            )}
             {message && (
               <div className="authMessage" role="status" aria-live="polite">
                 {message}
               </div>
             )}
 
-            <button className="button authSubmit" disabled={busy || (mode === "signup" && !validPassword(signupPassword))}>
+            <button className="button authSubmit" disabled={busy || (mode === "signup" && (!validPassword(signupPassword) || signupPassword !== confirmPassword))}>
               {busy ? (
                 <Loader2 className="spin" />
               ) : (
