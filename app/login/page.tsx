@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { safeAuthNext } from "@/lib/auth";
+import { PasswordStrength, validPassword } from "@/app/password-strength";
 import { captureReferral, claimPendingReferral, registerDevice, setActiveUser, signOut } from "@/lib/session";
 
 type Mode = "login" | "signup" | "forgot";
@@ -33,6 +34,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [name, setName] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
   const [signedInAs, setSignedInAs] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export default function LoginPage() {
       case "email_address_invalid":
         return "Enter a valid email address.";
       case "weak_password":
-        return "Choose a stronger password with at least 8 characters.";
+        return "Choose a stronger password that meets all required rules.";
       case "over_email_send_rate_limit":
         return "Too many emails were requested. Wait a little and try again.";
       case "signup_disabled":
@@ -120,7 +122,12 @@ export default function LoginPage() {
     setMessage("");
     const form = new FormData(e.currentTarget);
     const email = String(form.get("email") || "");
-    const password = String(form.get("password") || "");
+    const password = mode === "signup" ? signupPassword : String(form.get("password") || "");
+    if (mode === "signup" && !validPassword(password)) {
+      setMessage("Complete the required password rules before creating your account.");
+      setBusy(false);
+      return;
+    }
 
     const supabase = createClient();
     try {
@@ -267,16 +274,11 @@ export default function LoginPage() {
                 <span>Password</span>
                 <div>
                   <Lock size={18} />
-                  <input
-                    name="password"
-                    type="password"
-                    required
-                    minLength={8}
-                    placeholder="At least 8 characters"
-                    autoComplete={
-                      mode === "signup" ? "new-password" : "current-password"
-                    }
-                  />
+                  {mode === "signup" ? (
+                    <PasswordStrength value={signupPassword} onChange={setSignupPassword} />
+                  ) : (
+                    <input name="password" type="password" required autoComplete="current-password" />
+                  )}
                 </div>
               </label>
             )}
@@ -287,7 +289,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button className="button authSubmit" disabled={busy}>
+            <button className="button authSubmit" disabled={busy || (mode === "signup" && !validPassword(signupPassword))}>
               {busy ? (
                 <Loader2 className="spin" />
               ) : (
