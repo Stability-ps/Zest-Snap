@@ -291,17 +291,17 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
 
   return (
     <section className="plannerRoot">
-      <div className="plannerHero">
+      {tab !== "reminders" && <div className="plannerHero">
         <div>
           <h1>Your planner</h1>
           <p>Events, tasks and deadlines — organised in Zest.</p>
         </div>
         <div className="plannerHeroActions">
+          {/* The hero is hidden on the Reminders page, so this button is only ever shown un-pressed. */}
           <button
-            className={`plannerReminderButton ${tab === "reminders" ? "active" : ""}`}
+            className="plannerReminderButton"
             onClick={() => setTab("reminders")}
             aria-label={pendingCount ? `Open reminders, ${pendingCount} active` : "Open reminders"}
-            aria-pressed={tab === "reminders"}
           >
             <Bell />
             {pendingCount > 0 && <span aria-hidden="true">{pendingCount}</span>}
@@ -310,7 +310,7 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
             <Plus />
           </button>
         </div>
-      </div>
+      </div>}
       {tab !== "reminders" && (
         <div className="plannerTabs" role="tablist" aria-label="Planner views">
           {(["today", "upcoming", "calendar"] as Tab[]).map((v) => (
@@ -767,7 +767,7 @@ function RemindersPage({
           </span>
           <span>
             <Clock3 aria-hidden="true" />{" "}
-            {r.status === "sent" ? "Delivered" : r.status === "failed" ? "Couldn’t be delivered" : r.offsetMinutes === 0 ? "At time" : r.offsetMinutes ? formatOffset(r.offsetMinutes) + " before" : "Scheduled"}
+            {r.status === "sent" ? "Sent to notification service" : r.status === "failed" ? "Couldn’t be delivered" : r.offsetMinutes === 0 ? "At time" : r.offsetMinutes ? formatOffset(r.offsetMinutes) + " before" : "Scheduled"}
           </span>
         </div>
         <div className="reminderCardMenu">
