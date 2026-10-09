@@ -5,10 +5,12 @@ import { authLinkDestination, authLinkErrorFrom, authLinkErrorStatus, safeAuthNe
 
 /**
  * PKCE links (`?code=`). Kept for links sent before the email templates moved to token_hash links
- * (/auth/confirm) and for Supabase redirects that carry an error.
+ * (/auth/confirm) and for Supabase redirects that carry an error. token_hash links sent here are forwarded.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  // token_hash links that were pointed here (#83) are verified by /auth/confirm, like every newer email link.
+  if (url.searchParams.has("token_hash")) return NextResponse.redirect(new URL(`/auth/confirm${url.search}`, url.origin));
   const result = (status: string) => NextResponse.redirect(new URL(`/auth/confirmed?status=${status}`, url.origin));
   const linkError = authLinkErrorFrom(url.searchParams);
   if (linkError) return result(linkError);

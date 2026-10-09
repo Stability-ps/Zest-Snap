@@ -110,3 +110,10 @@ test("auth redirects that fall back to the Site URL go to the auth screens, not 
   assert.equal((await hit("https://app.zestsnap.app/")).headers.get("location"), "https://app.zestsnap.app/app");
   assert.equal((await hit("https://zestsnap.app/?ref=abc123")).headers.get("location"), null);
 });
+
+test("token_hash links sent to /auth/callback (#83 format) are forwarded to /auth/confirm unchanged", async () => {
+  const { GET } = await import("../app/auth/callback/route");
+  const res = await GET(new Request("https://app.zestsnap.app/auth/callback?token_hash=abc123&type=recovery"));
+  assert.equal(res.status, 307);
+  assert.equal(res.headers.get("location"), "https://app.zestsnap.app/auth/confirm?token_hash=abc123&type=recovery");
+});

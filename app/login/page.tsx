@@ -172,7 +172,7 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin + "/auth/callback?next=" + encodeURIComponent(nextPath()),
+          emailRedirectTo: window.location.origin + "/auth/callback?next=/auth/verified",
           data: {
             display_name: cleanName,
             full_name: cleanName,
