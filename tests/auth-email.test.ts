@@ -117,3 +117,11 @@ test("token_hash links sent to /auth/callback (#83 format) are forwarded to /aut
   assert.equal(res.status, 307);
   assert.equal(res.headers.get("location"), "https://app.zestsnap.app/auth/confirm?token_hash=abc123&type=recovery");
 });
+
+test("password rules: 8+ characters, upper, lower and special required; a number is optional", async () => {
+  const { passwordChecks, validPassword } = await import("../app/password-strength");
+  for (const weak of ["", "abc", "abcdefg!", "ABCDEFG!", "Abcdefgh", "Abcdef!", "Abcdefg 1"]) assert.equal(validPassword(weak), false, weak);
+  for (const ok of ["Abcdefg!", "Abcdefgh123!", "Zest-Snap"]) assert.equal(validPassword(ok), true, ok);
+  assert.equal(passwordChecks("Abcdefg!")[4].ok, false);
+  assert.equal(passwordChecks("Abcdefg1!")[4].ok, true);
+});

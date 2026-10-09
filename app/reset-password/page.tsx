@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { claimPendingReferral, registerDevice, setActiveUser } from "@/lib/session";
 import { useCompactAuthCard } from "../auth/compact";
+import { PasswordStrength, validPassword } from "@/app/password-strength";
 
 /** Reached from a password reset link (signed in by the link's recovery session). */
 export default function Reset() {
@@ -15,24 +16,13 @@ export default function Reset() {
   const card = useCompactAuthCard();
   const [password, setPassword] = useState(""),
     [confirmation, setConfirmation] = useState(""),
-    [showPassword, setShowPassword] = useState(false),
     [showConfirmation, setShowConfirmation] = useState(false);
-  const checks = [
-    { label: "At least 8 characters", passed: password.length >= 8 },
-    { label: "One uppercase letter", passed: /[A-Z]/.test(password) },
-    { label: "One lowercase letter", passed: /[a-z]/.test(password) },
-    { label: "One number", passed: /\d/.test(password) },
-    { label: "One special character", passed: /[^A-Za-z0-9]/.test(password) },
-  ];
-  const passed = checks.filter((check) => check.passed).length;
-  const valid = passed === checks.length;
-  const strength = !password ? "" : passed <= 2 ? "Weak" : passed <= 4 ? "Good" : "Strong";
   const matches = confirmation.length > 0 && confirmation === password;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    if (!valid) return setMessage("Please meet all password requirements before continuing.");
+    if (!validPassword(password)) return setMessage("Complete the required password rules shown above.");
     if (!matches) return setMessage("The passwords do not match.");
     setBusy(true);
     try {
@@ -119,18 +109,8 @@ export default function Reset() {
             <form onSubmit={submit}>
               <label>
                 <span>New password</span>
-                <div>
-                  <input type={showPassword ? "text" : "password"} name="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="Enter a new password" aria-describedby="password-requirements" />
-                  <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowPassword((visible) => !visible); }} aria-label={showPassword ? "Hide password" : "Show password"} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 5, display: "flex" }}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button>
-                </div>
+                <PasswordStrength value={password} onChange={setPassword} />
               </label>
-              <div id="password-requirements" style={{ fontSize: 12, color: "#526176" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, marginBottom: 6 }}><span>Password strength</span><span aria-live="polite">{strength || "Not entered"}</span></div>
-                <div role="meter" aria-label="Password strength" aria-valuemin={0} aria-valuemax={5} aria-valuenow={passed} style={{ display: "flex", gap: 5, marginBottom: 10 }}>
-                  {[1, 2, 3, 4, 5].map((n) => <span key={n} style={{ flex: 1, height: 5, borderRadius: 4, background: n <= passed ? (passed <= 2 ? "#dc6b61" : passed <= 4 ? "#e3a13b" : "#0d9488") : "#e5e7eb" }} />)}
-                </div>
-                {checks.map((check) => <div key={check.label} style={{ marginTop: 4, color: check.passed ? "#087f68" : "#64748b" }}>{check.passed ? "✓" : "○"} {check.label}</div>)}
-              </div>
               <label>
                 <span>Confirm new password</span>
                 <div>
@@ -144,7 +124,7 @@ export default function Reset() {
                   {message}
                 </div>
               )}
-              <button className="button authSubmit" type="submit" disabled={busy || !valid || !matches}>
+              <button className="button authSubmit" type="submit" disabled={busy || !validPassword(password) || !matches}>
                 {busy ? "Updating…" : "Update password"}
               </button>
             </form>

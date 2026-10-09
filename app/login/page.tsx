@@ -7,6 +7,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { PENDING_NEXT_KEY, authLinkErrorFrom, isExistingAccountSignup, safeAuthNext } from "@/lib/auth";
 import { ResendVerification } from "../auth/resend-verification";
 import { useCompactAuthCard } from "../auth/compact";
+import { PasswordStrength, validPassword } from "@/app/password-strength";
 import { captureReferral, claimPendingReferral, registerDevice, setActiveUser, signOut } from "@/lib/session";
 
 type Mode = "login" | "signup" | "forgot";
@@ -36,6 +37,8 @@ export default function LoginPage() {
   const card = useCompactAuthCard();
   const [message, setMessage] = useState("");
   const [name, setName] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [signedInAs, setSignedInAs] = useState<string | null | undefined>(undefined);
   // Email awaiting verification: after sign-up, or a sign-in refused with email_not_confirmed.
   const [pendingEmail, setPendingEmail] = useState("");
@@ -90,7 +93,7 @@ export default function LoginPage() {
       case "email_address_invalid":
         return "Enter a valid email address.";
       case "weak_password":
-        return "Choose a stronger password with at least 8 characters.";
+        return "Choose a stronger password that meets all required rules.";
       case "over_email_send_rate_limit":
         return "Too many emails were requested. Wait a little and try again.";
       case "signup_disabled":
@@ -132,7 +135,17 @@ export default function LoginPage() {
     setMessage("");
     const form = new FormData(e.currentTarget);
     const email = String(form.get("email") || "");
-    const password = String(form.get("password") || "");
+    const password = mode === "signup" ? signupPassword : String(form.get("password") || "");
+    if (mode === "signup" && !validPassword(password)) {
+      setMessage("Complete the required password rules before creating your account.");
+      setBusy(false);
+      return;
+    }
+    if (mode === "signup" && password !== confirmPassword) {
+      setMessage("Passwords do not match.");
+      setBusy(false);
+      return;
+    }
 
     const supabase = createClient();
     try {
@@ -307,22 +320,24 @@ export default function LoginPage() {
             {mode !== "forgot" && (
               <label>
                 <span>Password</span>
-                <div>
-                  <Lock size={18} />
-                  <input
-                    name="password"
-                    type="password"
-                    required
-                    minLength={8}
-                    placeholder="At least 8 characters"
-                    autoComplete={
-                      mode === "signup" ? "new-password" : "current-password"
-                    }
-                  />
-                </div>
+                {mode === "signup" ? (
+                  <PasswordStrength value={signupPassword} onChange={setSignupPassword} icon={<Lock size={18} />} />
+                ) : (
+                  <div>
+                    <Lock size={18} />
+                    <input name="password" type="password" required autoComplete="current-password" />
+                  </div>
+                )}
               </label>
             )}
 
+            {mode === "signup" && (
+              <label>
+                <span>Confirm password</span>
+                <div><Lock size={18} /><input type="password" required autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} /></div>
+                {confirmPassword && <small role="status" style={{ color: signupPassword === confirmPassword ? "#047857" : "#b91c1c" }}>{signupPassword === confirmPassword ? "Passwords match" : "Passwords do not match"}</small>}
+              </label>
+            )}
             {message && (
               <div className="authMessage" role="status" aria-live="polite">
                 {message}
@@ -330,7 +345,7 @@ export default function LoginPage() {
             )}
             {mode === "login" && pendingEmail && <ResendVerification email={pendingEmail} />}
 
-            <button className="button authSubmit" disabled={busy}>
+            <button className="button authSubmit" disabled={busy || (mode === "signup" && (!validPassword(signupPassword) || signupPassword !== confirmPassword))}>
               {busy ? (
                 <Loader2 className="spin" />
               ) : (
