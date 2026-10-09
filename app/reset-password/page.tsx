@@ -4,6 +4,7 @@ import { PasswordStrength, validPassword } from "@/app/password-strength";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 export default function Reset() {
   const [password, setPassword] = useState(""),
+    [confirmPassword, setConfirmPassword] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   return (
@@ -19,6 +20,10 @@ export default function Reset() {
             }
             if (!validPassword(password)) {
               setMessage("Complete the required password rules shown above.");
+              return;
+            }
+            if (password !== confirmPassword) {
+              setMessage("Passwords do not match.");
               return;
             }
             setBusy(true);
@@ -46,7 +51,12 @@ export default function Reset() {
             New password
             <PasswordStrength value={password} onChange={setPassword} />
           </label>
-          <button className="button" disabled={busy || !validPassword(password)}>
+          <label>
+            Confirm new password
+            <input type="password" required autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            {confirmPassword && <small role="status" style={{ color: password === confirmPassword ? "#047857" : "#b91c1c" }}>{password === confirmPassword ? "Passwords match" : "Passwords do not match"}</small>}
+          </label>
+          <button className="button" disabled={busy || !validPassword(password) || password !== confirmPassword}>
             Update password
           </button>
         </form>
