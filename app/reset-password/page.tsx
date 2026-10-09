@@ -1,19 +1,22 @@
 "use client";
-
-import { FormEvent, useState } from "react";
-import Link from "next/link";
-import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { ArrowRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { claimPendingReferral, registerDevice, setActiveUser } from "@/lib/session";
+import { useCompactAuthCard } from "../auth/compact";
 
+/** Reached from a password reset link (signed in by the link's recovery session). */
 export default function Reset() {
-  const [password, setPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [success, setSuccess] = useState(false);
-
+  const [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false),
+    // undefined = checking; null = no recovery session (link not used, expired or opened elsewhere)
+    [userId, setUserId] = useState<string | null | undefined>(undefined),
+    [done, setDone] = useState(false);
+  const card = useCompactAuthCard();
+  const [password, setPassword] = useState(""),
+    [confirmation, setConfirmation] = useState(""),
+    [showPassword, setShowPassword] = useState(false),
+    [showConfirmation, setShowConfirmation] = useState(false);
   const checks = [
     { label: "At least 8 characters", passed: password.length >= 8 },
     { label: "One uppercase letter", passed: /[A-Z]/.test(password) },
@@ -29,56 +32,89 @@ export default function Reset() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    if (!valid) {
-      setMessage("Please meet all password requirements before continuing.");
-      return;
-    }
-    if (!matches) {
-      setMessage("The passwords do not match.");
-      return;
-    }
-    if (!isSupabaseConfigured()) {
-      setMessage("Cloud accounts are not active.");
-      return;
-    }
+    if (!valid) return setMessage("Please meet all password requirements before continuing.");
+    if (!matches) return setMessage("The passwords do not match.");
     setBusy(true);
     try {
       const { error } = await createClient().auth.updateUser({ password });
       if (!error) {
-        setSuccess(true);
+        setDone(true);
         setPassword("");
         setConfirmation("");
-      } else if (error.code === "weak_password") {
-        setMessage("This password was rejected as too weak. Please choose another.");
-      } else if (error.code === "same_password") {
-        setMessage("Choose a password you have not used for this account.");
-      } else {
-        setMessage("This reset link could not be used. Request a fresh link and try again.");
-      }
+      } else
+        setMessage(
+          error.code === "weak_password"
+            ? "This password was rejected as too weak. Please choose another."
+            : error.code === "same_password"
+              ? "Choose a password you haven’t used for this account."
+              : "This link could not be used. Request a new reset link.",
+        );
     } catch {
-      setMessage("Connection unavailable. Please try again.");
+      setMessage("Connection unavailable. Try again.");
     } finally {
       setBusy(false);
     }
   }
 
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return setUserId(null);
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => setUserId(data.user?.id || null))
+      .catch(() => setUserId(null));
+  }, []);
+
+  async function continueToApp() {
+    if (!userId) return;
+    setBusy(true);
+    setActiveUser(userId);
+    await Promise.allSettled([registerDevice(), claimPendingReferral()]);
+    window.location.assign(new URL("/app", window.location.origin).href);
+  }
+
   return (
     <main className="authPage">
-      <div className="authCard">
+      <div {...card}>
         <div className="authBrandRow">
-          <Link href="https://zestsnap.app" className="brand">Zest <span>Snap</span></Link>
-          <div className="eyebrow">ACCOUNT SECURITY</div>
+          <span className="brand">
+            Zest <span>Snap</span>
+          </span>
+          <div className="eyebrow">PASSWORD HELP</div>
         </div>
-        {success ? (
-          <div role="status" aria-live="polite">
-            <CheckCircle2 size={40} color="#0d9488" aria-hidden="true" />
-            <h1 style={{ marginTop: 14 }}>Password updated.</h1>
-            <p className="authIntro">Your password has been changed successfully. You can now sign in with your new password.</p>
-            <Link className="button authSubmit" style={{ marginTop: 24 }} href="/login">Sign in to Zest Snap</Link>
-          </div>
+        {userId === undefined ? (
+          <p className="authIntro" role="status">
+            Checking your reset link…
+          </p>
+        ) : done ? (
+          <>
+            <CheckCircle2 className="authResultIcon" size={44} aria-hidden />
+            <h1>Password updated.</h1>
+            <p className="authIntro" role="status">
+              Use your new password next time you sign in.
+            </p>
+            <button className="button authSubmit" onClick={continueToApp} disabled={busy}>
+              Continue to Zest Snap <ArrowRight size={17} />
+            </button>
+          </>
+        ) : !userId ? (
+          <>
+            <h1>This reset link can’t be used.</h1>
+            <p className="authIntro">
+              It has expired, was already used, or was opened in a different browser. Request a new link and open the
+              newest email.
+            </p>
+            <a className="button authSubmit" href="/login?mode=forgot">
+              Request a new reset link <ArrowRight size={17} />
+            </a>
+            <div className="authLinks">
+              <a className="authSwitch" href="/login">
+                Back to sign in
+              </a>
+            </div>
+          </>
         ) : (
           <>
-            <h1>Reset your password.</h1>
+            <h1>Choose a new password.</h1>
             <p className="authIntro">Choose a strong new password to secure your Zest Snap account.</p>
             <form onSubmit={submit}>
               <label>
@@ -103,12 +139,19 @@ export default function Reset() {
                 </div>
                 {confirmation && <span style={{ marginTop: 6, color: matches ? "#087f68" : "#b45309" }}>{matches ? "Passwords match" : "Passwords do not match yet"}</span>}
               </label>
-              <button className="button authSubmit" type="submit" disabled={busy || !valid || !matches} style={{ opacity: busy || !valid || !matches ? 0.55 : 1, cursor: busy || !valid || !matches ? "not-allowed" : "pointer" }}>{busy ? "Updating…" : "Update password"}</button>
+              {message && (
+                <div className="authMessage" role="alert" aria-live="polite">
+                  {message}
+                </div>
+              )}
+              <button className="button authSubmit" type="submit" disabled={busy || !valid || !matches}>
+                {busy ? "Updating…" : "Update password"}
+              </button>
             </form>
-            {message && <p className="authMessage" role="alert">{message}</p>}
             <div className="authLinks">
-              <a className="authSwitch" href="/login?mode=forgot">Request a new link</a>
-              <a className="authSwitch" href="/app">Open Zest Snap</a>
+              <a className="authSwitch" href="/login?mode=forgot">
+                Request a new link
+              </a>
             </div>
           </>
         )}
