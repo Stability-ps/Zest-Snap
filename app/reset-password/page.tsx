@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
+import { PasswordStrength, validPassword } from "@/app/password-strength";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 export default function Reset() {
-  const [message, setMessage] = useState(""),
+  const [password, setPassword] = useState(""),
+    [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   return (
     <main className="authPage">
@@ -15,11 +17,8 @@ export default function Reset() {
               setMessage("Cloud accounts are not active.");
               return;
             }
-            const password = String(
-              new FormData(e.currentTarget).get("password"),
-            );
-            if (password.length < 8) {
-              setMessage("Choose a password with at least 8 characters.");
+            if (!validPassword(password)) {
+              setMessage("Complete the required password rules shown above.");
               return;
             }
             setBusy(true);
@@ -45,15 +44,9 @@ export default function Reset() {
         >
           <label>
             New password
-            <input
-              type="password"
-              name="password"
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
+            <PasswordStrength value={password} onChange={setPassword} />
           </label>
-          <button className="button" disabled={busy}>
+          <button className="button" disabled={busy || !validPassword(password)}>
             Update password
           </button>
         </form>
