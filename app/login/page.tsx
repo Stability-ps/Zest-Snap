@@ -127,7 +127,7 @@ export default function LoginPage() {
       if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo:
-            window.location.origin + "/auth/callback?next=/reset-password",
+            window.location.origin + "/reset-password",
         });
         setMessage(
           error
@@ -159,7 +159,7 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin + "/auth/callback?next=/auth/verified",
+          emailRedirectTo: window.location.origin + "/auth/verified",
           data: {
             display_name: cleanName,
             full_name: cleanName,
