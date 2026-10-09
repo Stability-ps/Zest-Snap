@@ -216,6 +216,8 @@ test("Reminders: bell opens a standalone Reminders page, add while inside Remind
   await expect(page.getByRole("heading", { name: "Reminders" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Your planner" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Open reminders/ })).toHaveCount(0);
+  await expect(page.getByRole("navigation").getByRole("button", { name: "Reminders" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation").getByRole("button", { name: "Planner" })).not.toHaveAttribute("aria-current", "page");
   await page.getByRole("button", { name: "Add reminder" }).click();
   await page.getByLabel("Remind me to").fill("Renew passport");
   await page.getByLabel("Date").fill("2031-03-04");
