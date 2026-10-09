@@ -3062,3 +3062,11 @@ html:has(.sharedPlanPage),body:has(.sharedPlanPage){max-width:100%;overflow-x:hi
   opacity: 1;
   background: color-mix(in srgb, var(--navy) 55%, #fff);
 }
+/* Small phones: keep the five bottom-nav labels (375pt iPhone SE/mini and below) and the Reminders filters
+   (320pt, Display Zoom) on one line instead of breaking mid-word. */
+@media (max-width: 389px) {
+  .bottomNav button, .bottomNav > a { padding-left: 1px; padding-right: 1px; white-space: nowrap; font-size: 11px; letter-spacing: -0.2px; }
+}
+@media (max-width: 350px) {
+  .reminderFilters button { font-size: 11px; padding: 0 2px; white-space: nowrap; letter-spacing: -0.1px; }
+}

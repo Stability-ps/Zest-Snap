@@ -127,6 +127,7 @@ export default function App() {
   const [installed, setInstalled] = useState(false);
   const [plannerVisited, setPlannerVisited] = useState(false);
   const [plannerRequest, setPlannerRequest] = useState<PlannerRequest>({ nonce: 0 });
+  const [plannerTab, setPlannerTab] = useState<string>();
   const lastRefresh = useRef(0);
   const router = useRouter();
   // The static HTML can't know who is signed in, so the greeting stays invisible until identity is known.
@@ -1259,6 +1260,7 @@ export default function App() {
               locale={locale}
               signedIn={mode === "cloud"}
               request={plannerRequest}
+              onTabChange={setPlannerTab}
               onSignIn={goToSignUp}
               onNotice={(kind, message) => (kind === "success" ? (setError(""), setSuccess(message)) : showError(message))}
             />
@@ -1513,9 +1515,9 @@ export default function App() {
 
       <nav className="bottomNav" aria-label="Main">
         <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
-        <NavButton active={view === "calendar" && plannerRequest.tab !== "reminders"} label="Planner" onClick={() => openView("calendar", { tab: "today" })} icon={<CalendarDays />} />
+        <NavButton active={view === "calendar" && (plannerTab ?? plannerRequest.tab) !== "reminders"} label="Planner" onClick={() => openView("calendar", { tab: "today" })} icon={<CalendarDays />} />
         <NavButton active={view === "todo"} label="To-do" onClick={() => openView("todo")} icon={<span className="todoNavGlyph"><Check /></span>} />
-        <NavButton active={view === "calendar" && plannerRequest.tab === "reminders"} label="Reminders" onClick={() => openView("calendar", { tab: "reminders" })} icon={<Bell />} />
+        <NavButton active={view === "calendar" && (plannerTab ?? plannerRequest.tab) === "reminders"} label="Reminders" onClick={() => openView("calendar", { tab: "reminders" })} icon={<Bell />} />
         <NavButton active={view === "shared"} label="Shared" onClick={() => openView("shared")} icon={<UsersRound />} />
       </nav>
     </main>
