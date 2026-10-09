@@ -17,6 +17,7 @@ export function GET() {
             components: [
               { "/": "/app*" },
               { "/": "/auth/callback*" },
+              { "/": "/auth/confirm*", comment: "Email verification and password reset links" },
               { "/": "/reset-password*" },
               { "/": "/login*" },
               { "/": "/settings*" },

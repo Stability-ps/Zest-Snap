@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 
 export function passwordChecks(value: string) {
@@ -15,8 +15,12 @@ export function passwordChecks(value: string) {
 export function validPassword(value: string) {
   return passwordChecks(value).slice(0, 4).every((check) => check.ok);
 }
-export function PasswordStrength({ value, onChange, name = "password" }: {
-  value: string; onChange: (value: string) => void; name?: string;
+/**
+ * Password field plus live rules. Renders two siblings for an auth-form <label>: the field row (styled like every
+ * other auth field) and the rules panel below it.
+ */
+export function PasswordStrength({ value, onChange, name = "password", icon }: {
+  value: string; onChange: (value: string) => void; name?: string; icon?: ReactNode;
 }) {
   const [visible, setVisible] = useState(false);
   const checks = passwordChecks(value);
@@ -25,21 +29,21 @@ export function PasswordStrength({ value, onChange, name = "password" }: {
   const label = ["Enter a password", "Weak", "Strong", "Very strong"][level];
   const color = ["#94a3b8", "#dc5757", "#0d9488", "#047857"][level];
   return (
-    <div className="zestPassword">
-      <div style={{ position: "relative" }}>
+    <>
+      <div>
+        {icon}
         <input name={name} type={visible ? "text" : "password"} required minLength={8}
           autoComplete="new-password" value={value} onChange={(e) => onChange(e.target.value)}
-          aria-describedby={name + "-requirements"} style={{ paddingRight: 48, width: "100%" }} />
-        <button type="button" onClick={() => setVisible(!visible)}
+          aria-describedby={name + "-requirements"} />
+        <button type="button" onPointerDown={(e) => e.preventDefault()} onClick={() => setVisible(!visible)}
           aria-label={visible ? "Hide password" : "Show password"}
-          style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
-            border: 0, background: "transparent", cursor: "pointer", color: "#64748b", padding: 6 }}>
+          style={{ border: 0, background: "transparent", cursor: "pointer", color: "#64748b", padding: 5, display: "flex" }}>
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </div>
-      <div id={name + "-requirements"} style={{ marginTop: 12, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+      <div id={name + "-requirements"} className="passwordRules">
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "#334155" }}>
-          <span>Password strength</span><span style={{ color }}>{label}</span>
+          <span>Password strength</span><span style={{ color }} aria-live="polite">{label}</span>
         </div>
         <div aria-hidden="true" style={{ display: "flex", gap: 5, marginTop: 8, marginBottom: 12 }}>
           {[1,2,3].map((n) => <div key={n} style={{ height: 5, flex: 1, borderRadius: 8, background: n <= level ? color : "#e2e8f0", transition: "background .2s" }} />)}
@@ -51,6 +55,6 @@ export function PasswordStrength({ value, onChange, name = "password" }: {
           </div>)}
         </div>
       </div>
-    </div>
+    </>
   );
 }
