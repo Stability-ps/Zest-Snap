@@ -1,5 +1,6 @@
 import { hasPlugin, runtime } from "./runtime";
 import { inAppPath } from "./deep-links";
+import { nativePushConfigured } from "./permissions";
 
 /**
  * Native push (APNs on iOS, Firebase Cloud Messaging on Android) for Shared messages, invitations,
@@ -82,7 +83,7 @@ export async function saveNativePushToken(token: string) {
  * just asked for them). Returns false when push isn't available, e.g. a build without Firebase configured.
  */
 export async function registerNativePush({ prompt = false } = {}) {
-  if (!nativePushAvailable()) return false;
+  if (!nativePushAvailable() || !(await nativePushConfigured())) return false;
   try {
     const { PushNotifications } = await load();
     let permission = await PushNotifications.checkPermissions();

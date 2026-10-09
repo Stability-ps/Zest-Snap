@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, createPublicKey, verify } from "node:crypto";
+import { readFileSync } from "node:fs";
 import {
   apnsPayload, createNativeSender, fcmMessage, fcmTokenIsDead, nativeConfigFromEnv, signJwt,
   type NativeMessage, type NativeToken,
@@ -120,4 +121,14 @@ test("Android foreground pushes are skipped only for the screen already open", (
   assert.equal(shouldShowInForeground("/shared/p1?tab=messages", "/shared/p2", ""), true);
   assert.equal(shouldShowInForeground("/app?view=calendar&tab=upcoming", "/app", "?view=planner"), true);
   assert.equal(shouldShowInForeground("/app?view=calendar&tab=upcoming", "/app", "?view=calendar&tab=upcoming"), false);
+});
+
+test("Android never calls PushNotifications.register() unless Firebase was configured at build time", () => {
+  // Without google-services.json FirebaseMessaging.getInstance() throws and Capacitor rethrows it: an app crash.
+  const push = readFileSync("lib/native/push.ts", "utf8");
+  const guard = push.indexOf("nativePushConfigured()"), register = push.indexOf("PushNotifications.register()");
+  assert.ok(guard > 0 && guard < register, "registerNativePush must check nativePushConfigured() before register()");
+  assert.equal((push.match(/PushNotifications\.register\(\)/g) || []).length, 1, "register() is only called from registerNativePush");
+  const java = readFileSync("android/app/src/main/java/app/zestsnap/ZestNativePlugin.java", "utf8");
+  assert.match(java, /getPushConfiguration[\s\S]*getIdentifier\("google_app_id", "string"/);
 });

@@ -5,6 +5,8 @@ import { isNative, runtime } from "./runtime";
 interface ZestNativePlugin {
   openAppSettings(): Promise<void>;
   getSystemInsets(): Promise<{ top: number; right: number; bottom: number; left: number }>;
+  /** Android only. */
+  getPushConfiguration(): Promise<{ firebase: boolean }>;
 }
 const ZestNative = registerPlugin<ZestNativePlugin>("ZestNative");
 
@@ -61,5 +63,19 @@ export async function nativeSystemInsets() {
     return await ZestNative.getSystemInsets();
   } catch {
     return null;
+  }
+}
+
+/**
+ * Android builds without google-services.json crash in PushNotifications.register(), so push is only registered
+ * when Firebase was configured at build time. iOS needs no check: missing APNs setup reports a registration error.
+ */
+export async function nativePushConfigured() {
+  if (!isNative()) return false;
+  if (runtime() !== "android") return true;
+  try {
+    return (await ZestNative.getPushConfiguration()).firebase === true;
+  } catch {
+    return false;
   }
 }
