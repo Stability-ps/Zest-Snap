@@ -74,7 +74,7 @@ test("Planner navigation: back button, deep links and warm return", async ({ pag
   await page.goto("/app");
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await expect(page).toHaveURL(/view=planner/);
-  await expect(page.getByRole("navigation").getByRole("button")).toHaveText(["Home", "Planner", "To-do", "Shared"]);
+  await expect(page.getByRole("navigation").getByRole("button")).toHaveText(["Home", "Planner", "To-do", "Reminders", "Shared"]);
   await page.getByRole("button", { name: /rewards/i }).first().click();
   await expect(page).toHaveURL(/view=rewards/);
   await page.goBack();
@@ -209,13 +209,13 @@ test("offline: the installed shell opens and private responses are never cached"
   expect(paths.some((p) => /^\/(api|admin|auth|login)/.test(p))).toBeFalsy();
 });
 
-test("Reminders: bell shows active state, add while inside Reminders, View day works", async ({ page }) => {
+test("Reminders: bell opens a standalone Reminders page, add while inside Reminders, View day works", async ({ page }) => {
   await page.goto("/app?view=planner");
-  const bell = page.getByRole("button", { name: /Open reminders/ });
-  await expect(bell).toHaveAttribute("aria-pressed", "false");
-  await bell.click();
-  await expect(bell).toHaveAttribute("aria-pressed", "true");
-  await expect(bell).toHaveClass(/active/);
+  await page.getByRole("button", { name: /Open reminders/ }).click();
+  // The Planner hero (and its bell) is hidden so it can't overlap the Reminders header on phones.
+  await expect(page.getByRole("heading", { name: "Reminders" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your planner" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Open reminders/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Add reminder" }).click();
   await page.getByLabel("Remind me to").fill("Renew passport");
   await page.getByLabel("Date").fill("2031-03-04");
