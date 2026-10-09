@@ -515,7 +515,8 @@ button {
 }
 .bottomNav button,
 .bottomNav > a {
-  width: 88px;
+  width: min(88px, 20%);
+  min-width: 0;
   border: 0;
   background: none;
   color: #77869a;
@@ -639,6 +640,8 @@ button {
 .confidence {
   font-size: 11px;
   height: 26px;
+  white-space: nowrap;
+  flex-shrink: 0;
   padding: 6px 8px;
   border-radius: 999px;
   background: #eaf9f6;
@@ -791,7 +794,7 @@ button {
     bottom: 78px;
   }
   .bottomNav button {
-    width: 76px;
+    width: min(76px, 20%);
   }
 }
 
@@ -1399,6 +1402,28 @@ button {
   padding: 10px 12px;
   border-radius: 10px;
 }
+.authResend {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.authSecondary {
+  background: #fff;
+  color: var(--blue);
+  border: 1.5px solid currentColor;
+}
+.authSecondary:disabled {
+  opacity: 0.65;
+}
+.authResultIcon {
+  color: #00a88e;
+  margin-bottom: 4px;
+}
+a.authSwitch {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
 @media (max-width: 520px) {
   .authPage {
     place-items: start center;
@@ -1705,7 +1730,9 @@ button {
     grid-template-columns: 1fr;
   }
   .eventButtons .button {
-    flex: 1;
+    /* Grow to share the row but keep labels on one line; a button that doesn't fit wraps to the next row. */
+    flex: 1 1 auto;
+    white-space: nowrap;
   }
 }
 
@@ -2326,30 +2353,30 @@ dialog::backdrop {
 .settingsStorageDetails{display:grid;gap:14px}.storageStatus{display:grid!important;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:11px;padding:14px!important;border:1px solid #e4ecef;border-radius:16px;background:#f9fcfc}.storageStatusIcon{width:42px;height:42px;border-radius:13px;background:#e9f9f5;color:var(--teal);display:grid;place-items:center}.storageStatusIcon svg{width:21px}.storageStatus small,.storageStatus b{display:block}.storageStatus small{color:var(--muted);font-size:11px}.storageStatus b{font-size:16px}.storageStatus strong{font-size:11px;border-radius:999px;padding:6px 8px;white-space:nowrap}.storageStatus strong.safe{background:#e7f8f3;color:#087865}.storageStatus strong.warning{background:#fff3df;color:#95600b}.storageFacts{border:1px solid #e4ecef;border-radius:16px;overflow:hidden}.storageFacts>div{display:flex!important;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px!important;border-bottom:1px solid #edf1f4}.storageFacts>div:last-child{border-bottom:0}.storageFacts span{font-size:13px;color:#607285}.storageFacts b{font-size:12px;text-align:right}.settingsStorageDetails>p{margin:0!important;color:var(--muted);font-size:12px;line-height:1.45}.settingsStorageDetails>.button{text-align:center}
 
 
-/* Mobile auth keyboard/focus polish */
+/* Mobile auth keyboard/focus polish (authCompact is set once a text field is focused; see app/auth/compact.ts). */
 @media(max-width:520px) and (max-height:760px){
-  .authCard:focus-within{padding-top:18px}
-  .authCard:focus-within .authBrandRow{margin-bottom:18px}
-  .authCard:focus-within h1{font-size:34px;line-height:1.02;margin-bottom:12px}
-  .authCard:focus-within .authIntro{font-size:15px;line-height:1.4;margin-bottom:20px}
-  .authCard:focus-within form{gap:14px}
-  .authCard:focus-within .authLinks,.authCard:focus-within .authDivider,.authCard:focus-within .authDeviceButton,.authCard:focus-within .authFine{margin-top:12px}
+  .authCard.authCompact{padding-top:18px}
+  .authCard.authCompact .authBrandRow{margin-bottom:18px}
+  .authCard.authCompact h1{font-size:34px;line-height:1.02;margin-bottom:12px}
+  .authCard.authCompact .authIntro{font-size:15px;line-height:1.4;margin-bottom:20px}
+  .authCard.authCompact form{gap:14px}
+  .authCard.authCompact .authLinks,.authCard.authCompact .authDivider,.authCard.authCompact .authDeviceButton,.authCard.authCompact .authFine{margin-top:12px}
 }
 
 
 /* Keep the primary auth action comfortably above Android's on-screen keyboard. */
 @media(max-width:520px){
-  .authCard:focus-within{padding:12px 22px 14px}
-  .authCard:focus-within .authBrandRow{margin-bottom:10px}
-  .authCard:focus-within h1{font-size:30px;line-height:1.02;margin:0 0 6px}
-  .authCard:focus-within .authIntro{font-size:14px;line-height:1.3;margin:0 0 10px}
-  .authCard:focus-within form{margin-top:10px;gap:8px}
-  .authCard:focus-within label{gap:4px}
-  .authCard:focus-within label>div,.authCard:focus-within .authSubmit{min-height:44px}
-  .authCard:focus-within .authLinks{margin-top:4px}
-  .authCard:focus-within .authDivider{margin:3px 0}
-  .authCard:focus-within .authDeviceButton{min-height:40px}
-  .authCard:focus-within .authFine{margin-top:7px}
+  .authCard.authCompact{padding:12px 22px 14px}
+  .authCard.authCompact .authBrandRow{margin-bottom:10px}
+  .authCard.authCompact h1{font-size:30px;line-height:1.02;margin:0 0 6px}
+  .authCard.authCompact .authIntro{font-size:14px;line-height:1.3;margin:0 0 10px}
+  .authCard.authCompact form{margin-top:10px;gap:8px}
+  .authCard.authCompact label{gap:4px}
+  .authCard.authCompact label>div,.authCard.authCompact .authSubmit{min-height:44px}
+  .authCard.authCompact .authLinks{margin-top:4px}
+  .authCard.authCompact .authDivider{margin:3px 0}
+  .authCard.authCompact .authDeviceButton{min-height:40px}
+  .authCard.authCompact .authFine{margin-top:7px}
 }
 
 /* Auth inputs: use the outer Zest field as the only focus indicator. */
@@ -2940,7 +2967,7 @@ html.native .offlinePage { padding-top: calc(24px + var(--zest-safe-top)); paddi
 .planningTools{margin:18px 0 6px;padding:16px;border:1px solid var(--border,#dfe7ef);border-radius:20px;background:linear-gradient(180deg,#fff,#f8fbfd)}
 .planningToolsHeader>div{display:flex;gap:10px;align-items:center}.planningToolsHeader svg{width:20px;color:#008f7a}.planningToolsHeader b{display:block;color:#10233f}.planningToolsHeader span{display:block;font-size:12px;color:#64748b;margin-top:2px}
 .planningToolCards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}.planningToolCards>button{display:flex;align-items:center;gap:10px;text-align:left;padding:13px;border:1px solid #dfe7ef;border-radius:15px;background:#fff;color:#10233f}.planningToolCards svg{width:21px;color:#008f7a}.planningToolCards span{display:grid}.planningToolCards small{color:#64748b;margin-top:2px}
-.planningToolSheet{position:fixed;z-index:90;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,520px);max-height:88dvh;overflow:auto;background:#fff;border-radius:24px 24px 0 0;padding:20px;box-shadow:0 -20px 60px #0b1f3b2b}.planningToolSheetHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.planningToolSheetHead>div{display:flex;gap:9px;align-items:center;font-size:18px;color:#10233f}.planningToolSheetHead>button{border:0;background:#f1f5f9;border-radius:10px;padding:7px}.planningToolSheet label{display:grid;gap:6px;margin:11px 0;font-size:12px;font-weight:700;color:#475569}.planningToolSheet input,.planningToolSheet select{width:100%;min-height:45px;border:1px solid #d9e3ec;border-radius:12px;padding:10px 12px;background:#fff;color:#10233f;font:inherit}.planningToolGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.planningClass{padding:12px;border:1px solid #e2e8f0;border-radius:15px;margin:10px 0;background:#f8fafc}.weekdayPicker{display:flex;gap:5px;margin-top:9px}.weekdayPicker button{width:32px;height:32px;border-radius:999px;border:1px solid #dbe4ec;background:#fff;color:#64748b}.weekdayPicker button.active{background:#0b1f3b;color:#fff;border-color:#0b1f3b}.planningAddRow{display:flex;gap:6px;align-items:center;border:0;background:transparent;color:#087f72;font-weight:700;padding:8px 0}.planningAddRow svg{width:17px}.planningToolSheet .primaryButton{width:100%;min-height:50px;border:0;border-radius:14px;background:#0b1f3b;color:#fff;font-weight:800;margin-top:12px}.planningToolSheet .primaryButton:disabled{opacity:.45}
+.planningToolBackdrop{position:fixed;inset:0;z-index:89;background:rgba(4,16,31,.42)}.planningHint{margin:6px 0 0;font-size:12px;color:#b42318}.planningToolSheet{position:fixed;z-index:90;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,520px);max-height:88dvh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#fff;border-radius:24px 24px 0 0;padding:20px;box-shadow:0 -20px 60px #0b1f3b2b}.planningToolSheetHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.planningToolSheetHead>div{display:flex;gap:9px;align-items:center;font-size:18px;color:#10233f}.planningToolSheetHead>button{border:0;background:#f1f5f9;border-radius:10px;padding:7px}.planningToolSheet label{display:grid;gap:6px;margin:11px 0;font-size:12px;font-weight:700;color:#475569}.planningToolSheet input,.planningToolSheet select{width:100%;min-height:45px;border:1px solid #d9e3ec;border-radius:12px;padding:10px 12px;background:#fff;color:#10233f;font:inherit}.planningToolGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.planningClass{padding:12px;border:1px solid #e2e8f0;border-radius:15px;margin:10px 0;background:#f8fafc}.weekdayPicker{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-top:9px}.weekdayPicker button{min-width:0;height:44px;padding:0;border-radius:999px;border:1px solid #dbe4ec;background:#fff;color:#64748b;font:inherit;font-weight:700;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.weekdayPicker button.active{background:#0b1f3b;color:#fff;border-color:#0b1f3b}.planningAddRow{display:flex;gap:6px;align-items:center;border:0;background:transparent;color:#087f72;font-weight:700;padding:8px 0}.planningAddRow svg{width:17px}.planningToolSheet .primaryButton{width:100%;min-height:50px;border:0;border-radius:14px;background:#0b1f3b;color:#fff;font-weight:800;margin-top:12px}.planningToolSheet .primaryButton:disabled{opacity:.45}
 @media(max-width:420px){.planningToolCards{grid-template-columns:1fr}.planningToolSheet{padding-bottom:max(22px,env(safe-area-inset-bottom))}}
 
 
@@ -3000,4 +3027,38 @@ html:has(.sharedPlanPage),body:has(.sharedPlanPage){max-width:100%;overflow-x:hi
   .sharedSheet input:focus{
     font-size:16px;
   }
+}
+.sharedMembers{display:grid;gap:8px}.sharedMembers h3{margin:4px 0 0;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.sharedMembers p{margin:0;color:var(--muted)}.sharedMemberRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb)}.sharedMemberRow b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sharedMemberActions{display:flex;align-items:center;gap:8px;flex-shrink:0}.sharedMemberActions select{border:1px solid var(--border,#d7dce2);background:var(--surface,#fff);color:inherit;border-radius:11px;padding:9px 10px;font-size:16px}.sharedMemberActions .button{padding:9px 14px;min-height:0}
+
+/* iOS zooms the whole page when a field under 16px is focused and leaves it zoomed after the keyboard closes,
+   so sheets look oversized and the Planner calendar runs off the screen. iOS-only (WebKit touch callout), so
+   desktop typography is unchanged; !important because many sheet rules set smaller field sizes. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  /* iOS gives native date/time fields an intrinsic minimum width wider than a half-width column on phones,
+     so they spilled out of the Timetable, Meals and Add to Planner rows. */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+}
+.planningToolGrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.planningToolGrid > label { min-width: 0; }
+/* The sticky Save sits over the scrolling form; a translucent disabled state let fields show through it. */
+.plannerSheet .sheetSave:disabled {
+  opacity: 1;
+  background: color-mix(in srgb, var(--navy) 55%, #fff);
 }

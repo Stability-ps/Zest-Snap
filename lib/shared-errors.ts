@@ -8,6 +8,10 @@ const MESSAGES: Record<string, string> = {
   member_not_found: "Tasks can only be assigned to people in this plan.",
   assignee_can_only_complete: "You can tick off tasks assigned to you, but only editors can change them.",
   owner_cannot_leave: "The owner can't leave their own plan.",
+  owner_only: "Only the plan owner can manage members.",
+  owner_role_fixed: "The owner's role can't be changed.",
+  invalid_role: "Members can be editors or viewers.",
+  removed_from_plan: "You were removed from this plan. Ask the owner for a new invitation.",
   invalid_name: "Give this shared plan a name.",
 };
 

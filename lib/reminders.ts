@@ -205,6 +205,25 @@ const VAPID_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
   "BLfn6Z34FtBgi3t9IqHP9gtUjk9RXxoh7Msm7r8YDdj-_8v8V8Tv1KZJyqVAPrhRygU3MRWaKE-Zvv84JFI-Ekw";
 
+/** True when a subscription was made with a different VAPID public key (the key was rotated). */
+export function boundToOtherKey(sub: Pick<PushSubscription, "options">, publicKey = VAPID_PUBLIC_KEY) {
+  const bound = sub.options?.applicationServerKey;
+  if (!bound) return false;
+  const a = new Uint8Array(bound), b = key(publicKey);
+  return a.length !== b.length || a.some((v, i) => v !== b[i]);
+}
+
+/**
+ * The device's subscription for the current VAPID key. A subscription bound to a rotated key can never receive
+ * pushes again, so it is replaced; permission is already granted, so this doesn't prompt.
+ */
+async function currentSubscription(reg: ServiceWorkerRegistration) {
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub || !boundToOtherKey(sub)) return sub;
+  await sub.unsubscribe().catch(() => false);
+  return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key(VAPID_PUBLIC_KEY) });
+}
+
 export async function enablePushNotifications() {
   if (nativeNotificationsAvailable()) {
     await enableNativeNotifications();
@@ -221,7 +240,7 @@ export async function enablePushNotifications() {
   if (permission !== "granted") throw new Error("Notification permission was not granted.");
   const reg = await registration();
   if (!reg) throw new Error("Zest Snap is still installing. Reload and try again.");
-  const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key(VAPID_PUBLIC_KEY) }));
+  const sub = (await currentSubscription(reg)) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key(VAPID_PUBLIC_KEY) }));
   const { error } = await db.rpc("register_push_subscription", { p_endpoint: sub.endpoint, p_keys: sub.toJSON().keys || {} });
   if (error) throw new Error("Notifications couldn’t be connected to your account. Try again.");
   return true;
@@ -237,6 +256,6 @@ export async function syncPushSubscription() {
   const db = await signedIn();
   if (!db) return;
   const reg = await registration();
-  const sub = await reg?.pushManager.getSubscription();
+  const sub = reg && (await currentSubscription(reg).catch(() => null));
   if (sub) await db.rpc("register_push_subscription", { p_endpoint: sub.endpoint, p_keys: sub.toJSON().keys || {} });
 }

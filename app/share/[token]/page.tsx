@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams,useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { googleCalendarUrl } from "@/lib/google-calendar";
+import { formatDisplayDate, formatDisplayTime } from "@/lib/dates";
 
 type Preview={plan_name:string;plan_kind:string;role:string;expires_at:string;item:any};
 
@@ -31,5 +32,5 @@ export default function SharedInvitePage(){
  if(loading)return <main className="shareLanding"><Loader2 className="spin"/><p>Opening invitation…</p></main>;
  if(error&&!preview)return <main className="shareLanding"><div className="shareInviteCard"><h1>Invitation unavailable</h1><p>{error}</p><Link className="button" href="/app">Go to Zest Snap</Link></div></main>;
  const item=preview?.item;
- return <main className="shareLanding"><section className="shareInviteCard"><div className="shareInviteIcon"><Users/></div><span className="eyebrow">SHARED WITH YOU</span><h1>{preview?.plan_name}</h1><p>You’ve been invited as {preview?.role==="editor"?"a collaborator":"a viewer"}.</p>{item&&<div className="shareEventPreview"><b>{item.title}</b>{item.start_date&&<span><CalendarDays/> {item.start_date}{item.start_time?` · ${String(item.start_time).slice(0,5)}`:""}</span>}{item.location&&<small>{item.location}</small>}</div>}<button className="button" disabled={busy} onClick={accept}>{busy?<Loader2 className="spin"/>:<Check/>} Accept in Zest</button>{item?.start_date&&<button className="button alt" onClick={addCalendar}><CalendarDays/> Add to my calendar</button>}{error&&<p className="supportFormError" role="alert">{error}</p>}<small className="shareInviteFoot">You can view the invitation before signing in. A Zest account is only needed for live shared updates.</small></section></main>;
+ return <main className="shareLanding"><section className="shareInviteCard"><div className="shareInviteIcon"><Users/></div><span className="eyebrow">SHARED WITH YOU</span><h1>{preview?.plan_name}</h1><p>You’ve been invited as {preview?.role==="editor"?"a collaborator":"a viewer"}.</p>{item&&<div className="shareEventPreview"><b>{item.title}</b>{item.start_date&&<span><CalendarDays/> {formatDisplayDate(item.start_date)}{item.start_time?` · ${formatDisplayTime(String(item.start_time))}`:""}</span>}{item.location&&<small>{item.location}</small>}</div>}<button className="button" disabled={busy} onClick={accept}>{busy?<Loader2 className="spin"/>:<Check/>} Accept in Zest</button>{item?.start_date&&<button className="button alt" onClick={addCalendar}><CalendarDays/> Add to my calendar</button>}{error&&<p className="supportFormError" role="alert">{error}</p>}<small className="shareInviteFoot">You can view the invitation before signing in. A Zest account is only needed for live shared updates.</small></section></main>;
 }

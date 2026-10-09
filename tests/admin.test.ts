@@ -420,3 +420,20 @@ test("reminders armed on a native device are recorded as delivered on the device
   ]);
   await db.close();
 });
+
+test("the owner can call every admin function: none is unreachable because of a missing grant", async () => {
+  const db = await seed();
+  const fns = (await db.query<Row>(`select p.proname, p.pronargs from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname like 'admin\\_%'`)).rows;
+  const denied: string[] = [];
+  for (const f of fns) {
+    const args = Array.from({ length: f.pronargs }, () => "null").join(",");
+    // Null arguments may be rejected as invalid input; only a privilege error means the function can't be reached.
+    await as(db, OWNER, `select public.${f.proname}(${args})`).catch((e: Error) => {
+      if (/permission denied/.test(e.message)) denied.push(f.proname);
+    });
+  }
+  assert.deepEqual(denied, []);
+  assert.equal(typeof (await call(db, OWNER, "admin_shared_usage", [FROM, TO])).plans_created, "number");
+  await db.close();
+});

@@ -4,7 +4,9 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { safeAuthNext } from "@/lib/auth";
+import { PENDING_NEXT_KEY, authLinkErrorFrom, isExistingAccountSignup, safeAuthNext } from "@/lib/auth";
+import { ResendVerification } from "../auth/resend-verification";
+import { useCompactAuthCard } from "../auth/compact";
 import { captureReferral, claimPendingReferral, registerDevice, setActiveUser, signOut } from "@/lib/session";
 
 type Mode = "login" | "signup" | "forgot";
@@ -31,9 +33,14 @@ export default function LoginPage() {
   const configured = isSupabaseConfigured();
   const [mode, setMode] = useState<Mode>("login");
   const [busy, setBusy] = useState(false);
+  const card = useCompactAuthCard();
   const [message, setMessage] = useState("");
   const [name, setName] = useState("");
   const [signedInAs, setSignedInAs] = useState<string | null | undefined>(undefined);
+  // Email awaiting verification: after sign-up, or a sign-in refused with email_not_confirmed.
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [checkEmail, setCheckEmail] = useState(false);
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     captureReferral();
@@ -47,10 +54,13 @@ export default function LoginPage() {
         .then(({ data }) => setSignedInAs(data.user ? data.user.email || "your account" : null))
         .catch(() => setSignedInAs(null));
     else setSignedInAs(null);
-    if (q.has("error"))
-      setMessage(
-        "This link has expired or could not be verified. Request a new link and use the same browser.",
-      );
+    // Older links, or Supabase redirects that land here with an error, go to the result screen.
+    const linkError = authLinkErrorFrom(q) || authLinkErrorFrom(new URLSearchParams(window.location.hash.slice(1)));
+    if (linkError) {
+      window.location.replace(`/auth/confirmed?status=${linkError}`);
+      return;
+    }
+    if (q.get("verified") === "1") setMessage("Your email is verified. Sign in to continue.");
   }, [configured]);
 
   async function switchAccount() {
@@ -62,6 +72,8 @@ export default function LoginPage() {
 
   function changeMode(next: Mode) {
     setMessage("");
+    setPendingEmail("");
+    setCheckEmail(false);
     setMode(next);
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   }
@@ -72,9 +84,9 @@ export default function LoginPage() {
       case "invalid_credentials":
         return "Incorrect email or password. Check your email address and password, then try again.";
       case "email_not_confirmed":
-        return "Confirm your email first, then come back and sign in.";
+        return "Verify your email first. Use the link we sent you, or resend it below.";
       case "user_already_exists":
-        return "An account already exists for this email. Sign in instead.";
+        return "An account already exists for this email. Sign in instead, or reset your password if you’ve forgotten it.";
       case "email_address_invalid":
         return "Enter a valid email address.";
       case "weak_password":
@@ -143,6 +155,7 @@ export default function LoginPage() {
           password,
         });
         if (error || !data.user) {
+          if (error?.code === "email_not_confirmed") setPendingEmail(email);
           setMessage(authErrorMessage(error?.code, error?.message));
           return;
         }
@@ -159,7 +172,7 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin + "/auth/callback?next=" + encodeURIComponent(nextPath()),
+          emailRedirectTo: window.location.origin + "/auth/callback?next=/auth/verified",
           data: {
             display_name: cleanName,
             full_name: cleanName,
@@ -168,16 +181,24 @@ export default function LoginPage() {
           },
         },
       });
-      if (error) {
+      if (error && error.code !== "user_already_exists") {
         setMessage(authErrorMessage(error.code, error.message));
+        return;
+      }
+      if (error || isExistingAccountSignup(data.user)) {
+        // Already registered and verified: Supabase sends nothing, so guide them to sign in.
+        setMode("login");
+        setMessage("An account already exists for this email. Sign in instead, or reset your password if you’ve forgotten it.");
         return;
       }
       if (data.session && data.user) {
         await afterSignIn(data.user.id);
       } else {
-        setMessage(
-          "Check your email to confirm your Zest Snap account, then sign in.",
-        );
+        try {
+          if (nextPath() !== "/app") localStorage.setItem(PENDING_NEXT_KEY, nextPath());
+        } catch {}
+        setPendingEmail(email);
+        setCheckEmail(true);
       }
     } catch (error) {
       setMessage(
@@ -194,7 +215,7 @@ export default function LoginPage() {
 
   return (
     <main className="authPage">
-      <div className="authCard">
+      <div {...card}>
         <div className="authBrandRow">
           <Link href="https://zestsnap.app" className="brand">
             Zest <span>Snap</span>
@@ -221,6 +242,25 @@ export default function LoginPage() {
               </a>
               <button className="authSwitch" onClick={switchAccount} disabled={busy}>
                 Sign out and use another account
+              </button>
+            </div>
+          </>
+        ) : checkEmail ? (
+          <>
+            <h1>Verify your email.</h1>
+            <p className="authIntro" role="status">
+              Check your email to verify your Zest Snap account.
+            </p>
+            <p className="authIntro">
+              We sent a link to <b>{pendingEmail}</b>. It expires in an hour. Can’t find it? Check spam or promotions.
+            </p>
+            <ResendVerification email={pendingEmail} />
+            <div className="authLinks">
+              <button className="authSwitch" onClick={() => changeMode("login")}>
+                Already verified? Sign in
+              </button>
+              <button className="authSwitch" onClick={() => changeMode("signup")}>
+                Use a different email
               </button>
             </div>
           </>
@@ -253,6 +293,8 @@ export default function LoginPage() {
                 <Mail size={18} />
                 <input
                   name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   type="email"
                   required
                   autoComplete="email"
@@ -286,6 +328,7 @@ export default function LoginPage() {
                 {message}
               </div>
             )}
+            {mode === "login" && pendingEmail && <ResendVerification email={pendingEmail} />}
 
             <button className="button authSubmit" disabled={busy}>
               {busy ? (

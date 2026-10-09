@@ -300,3 +300,18 @@ test("the report-only CSP raises no violations across the main views", async ({ 
   }
   expect(violations).toEqual([]);
 });
+
+test("prerendered pages hydrate without mismatches (time of day, locale and timezone are browser-only)", async ({ browser }) => {
+  // A timezone and locale unlike the server's, so anything rendered at build time would differ.
+  const context = await browser.newContext({ timezoneId: "Pacific/Auckland", locale: "fr-FR" });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  for (const path of ["/app", "/onboarding"]) {
+    await page.goto(path);
+    await page.waitForTimeout(800);
+  }
+  await expect(page.locator(".settingPreview")).toContainText("Pacific/Auckland");
+  expect(errors.filter((e) => /418|Hydration|hydrat/i.test(e))).toEqual([]);
+  await context.close();
+});

@@ -60,7 +60,7 @@ import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planne
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
 import { normalizeDocumentType } from "@/lib/extraction-validation";
-import { MAX_DATE, MIN_DATE, isValidDate } from "@/lib/dates";
+import { MAX_DATE, MIN_DATE, formatDisplayDate, formatDisplayTime, isValidDate } from "@/lib/dates";
 import { monthGrid, plannerFingerprint, plannerReferenceDate, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, mergePlannerWithExternal, type PlannerItem } from "@/lib/planner";
 import {
   STARTUP_STATE_KEY,
@@ -937,7 +937,8 @@ export default function App() {
             )}
             <section className="appIntro homeHero">
               <div className="homeGreeting" style={greetingReady ? undefined : { visibility: "hidden" }}>
-                {greeting(timezone)}
+                {/* /app is prerendered, so the time of day is only known in the browser; render it after mount. */}
+                {greetingReady ? greeting(timezone) : "Hello"}
                 {displayName ? `, ${displayName.split(" ")[0]}` : ""} <span aria-hidden="true">👋</span>
               </div>
               <h1>What do you want to remember?</h1>
@@ -1136,8 +1137,8 @@ export default function App() {
                       <div className="eventMeta">
                         <span>
                           <CalendarDays size={16} />
-                          {event.startDate || "Date needs review"}
-                          {event.startTime ? " · " + event.startTime : ""}
+                          {event.startDate ? formatDisplayDate(event.startDate) : "Date needs review"}
+                          {event.startTime ? " · " + formatDisplayTime(event.startTime) : ""}
                         </span>
                         {event.location && (
                           <span>
@@ -1512,8 +1513,9 @@ export default function App() {
 
       <nav className="bottomNav" aria-label="Main">
         <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
-        <NavButton active={view === "calendar"} label="Planner" onClick={() => openView("calendar")} icon={<CalendarDays />} />
+        <NavButton active={view === "calendar" && plannerRequest.tab !== "reminders"} label="Planner" onClick={() => openView("calendar", { tab: "today" })} icon={<CalendarDays />} />
         <NavButton active={view === "todo"} label="To-do" onClick={() => openView("todo")} icon={<span className="todoNavGlyph"><Check /></span>} />
+        <NavButton active={view === "calendar" && plannerRequest.tab === "reminders"} label="Reminders" onClick={() => openView("calendar", { tab: "reminders" })} icon={<Bell />} />
         <NavButton active={view === "shared"} label="Shared" onClick={() => openView("shared")} icon={<UsersRound />} />
       </nav>
     </main>
