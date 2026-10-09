@@ -1513,8 +1513,9 @@ export default function App() {
 
       <nav className="bottomNav" aria-label="Main">
         <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
-        <NavButton active={view === "calendar"} label="Planner" onClick={() => openView("calendar")} icon={<CalendarDays />} />
+        <NavButton active={view === "calendar" && plannerRequest.tab !== "reminders"} label="Planner" onClick={() => openView("calendar")} icon={<CalendarDays />} />
         <NavButton active={view === "todo"} label="To-do" onClick={() => openView("todo")} icon={<span className="todoNavGlyph"><Check /></span>} />
+        <NavButton active={view === "calendar" && plannerRequest.tab === "reminders"} label="Reminders" onClick={() => openView("calendar", { tab: "reminders" })} icon={<Bell />} />
         <NavButton active={view === "shared"} label="Shared" onClick={() => openView("shared")} icon={<UsersRound />} />
       </nav>
     </main>
