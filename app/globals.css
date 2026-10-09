@@ -515,7 +515,8 @@ button {
 }
 .bottomNav button,
 .bottomNav > a {
-  width: 88px;
+  width: min(88px, 20%);
+  min-width: 0;
   border: 0;
   background: none;
   color: #77869a;
@@ -793,7 +794,7 @@ button {
     bottom: 78px;
   }
   .bottomNav button {
-    width: 76px;
+    width: min(76px, 20%);
   }
 }
 
