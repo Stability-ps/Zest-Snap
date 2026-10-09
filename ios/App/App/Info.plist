@@ -84,7 +84,9 @@
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Zest Snap turns what you say to Plan with Zest into text so it can suggest events and reminders for you to review.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Zest Snap opens the photo you choose so it can find the dates, deadlines and events in it.</string>
+	<string>Zest Snap opens the photo you choose so it can find the dates, deadlines and events in it, or share it in a Shared plan.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Zest Snap saves an image to your photo library only when you choose to save one.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>Zest Snap adds the events and deadlines you choose to your calendar. You confirm each one before it is saved.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
