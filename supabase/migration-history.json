@@ -99,12 +99,16 @@
     "20261012090000_shared_message_policy_scope.sql": [
       "20261008093537"
     ],
-    "20261013090000_shared_member_management.sql": "pending",
+    "20261013090000_shared_member_management.sql": [
+      "20261008220539"
+    ],
     "20261015090000_reconcile_production_drift.sql": [
       "20261003025538"
     ],
     "20261015100000_revoke_unused_table_privileges.sql": "pending",
-    "20261015110000_admin_shared_usage_grant.sql": "pending",
+    "20261015110000_admin_shared_usage_grant.sql": [
+      "20261008153146"
+    ],
     "20261015120000_free_plan_three_scans.sql": "pending"
   }
 }
