@@ -106,6 +106,14 @@ keep-rules for Capacitor and plugins in `android/app/proguard-rules.pro`.
 iOS: set the Team in Xcode › Signing & Capabilities (automatic signing), then Product › Archive → Distribute → TestFlight,
 or `npm run mobile:build:ios` on a Mac with signing configured. No signing material is committed.
 
+From the command line (no Apple ID in Xcode needed): create an App Store Connect API team key with the Admin role
+(Users and Access › Integrations › Team Keys), keep the `.p8` outside the repository, bump the build with
+`npm run mobile:version`, then run
+`ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_PATH=~/.zest-snap-signing/AuthKey_….p8 scripts/ios-testflight.sh`.
+It archives with automatic, cloud-managed signing (team `D64PWXTUJ5`) and uploads with
+`ios/ExportOptions-TestFlight.plist`; Xcode creates the App Store profile itself and no certificate is created on or
+exported to the Mac. Without an account or key, `xcodebuild archive` fails with "No Accounts" / "No profiles for 'app.zestsnap'".
+
 ## Deep links & auth
 
 - Custom scheme: `zestsnap://app?view=planner`, `zestsnap://settings` (Android + iOS).
