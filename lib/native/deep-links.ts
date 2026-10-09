@@ -4,7 +4,7 @@
  * app to foreign sites. Pure, so it is unit-tested.
  */
 const HOSTS = new Set(["app.zestsnap.app", "zestsnap.app", "www.zestsnap.app"]);
-const ALLOWED = /^\/(app|login|settings|onboarding|reset-password|auth\/callback|privacy|terms|share|shared)(\/|$)/;
+const ALLOWED = /^\/(app|login|settings|onboarding|reset-password|auth\/(?:callback|confirm|confirmed)|privacy|terms|share|shared)(\/|$)/;
 
 export function inAppPath(raw: string): string | null {
   let url: URL;
@@ -29,5 +29,5 @@ export function inAppPath(raw: string): string | null {
 
 /** Routes that must be loaded by the server (they exchange auth codes or set cookies). */
 export function needsFullNavigation(path: string) {
-  return path.startsWith("/auth/callback") || path.startsWith("/reset-password");
+  return path.startsWith("/auth/") || path.startsWith("/reset-password");
 }
