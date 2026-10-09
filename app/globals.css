@@ -515,7 +515,8 @@ button {
 }
 .bottomNav button,
 .bottomNav > a {
-  width: 88px;
+  width: min(88px, 20%);
+  min-width: 0;
   border: 0;
   background: none;
   color: #77869a;
@@ -793,7 +794,7 @@ button {
     bottom: 78px;
   }
   .bottomNav button {
-    width: 76px;
+    width: min(76px, 20%);
   }
 }
 
@@ -2944,7 +2945,7 @@ html.native .offlinePage { padding-top: calc(24px + var(--zest-safe-top)); paddi
 .planningTools{margin:18px 0 6px;padding:16px;border:1px solid var(--border,#dfe7ef);border-radius:20px;background:linear-gradient(180deg,#fff,#f8fbfd)}
 .planningToolsHeader>div{display:flex;gap:10px;align-items:center}.planningToolsHeader svg{width:20px;color:#008f7a}.planningToolsHeader b{display:block;color:#10233f}.planningToolsHeader span{display:block;font-size:12px;color:#64748b;margin-top:2px}
 .planningToolCards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}.planningToolCards>button{display:flex;align-items:center;gap:10px;text-align:left;padding:13px;border:1px solid #dfe7ef;border-radius:15px;background:#fff;color:#10233f}.planningToolCards svg{width:21px;color:#008f7a}.planningToolCards span{display:grid}.planningToolCards small{color:#64748b;margin-top:2px}
-.planningToolSheet{position:fixed;z-index:90;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,520px);max-height:88dvh;overflow:auto;background:#fff;border-radius:24px 24px 0 0;padding:20px;box-shadow:0 -20px 60px #0b1f3b2b}.planningToolSheetHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.planningToolSheetHead>div{display:flex;gap:9px;align-items:center;font-size:18px;color:#10233f}.planningToolSheetHead>button{border:0;background:#f1f5f9;border-radius:10px;padding:7px}.planningToolSheet label{display:grid;gap:6px;margin:11px 0;font-size:12px;font-weight:700;color:#475569}.planningToolSheet input,.planningToolSheet select{width:100%;min-height:45px;border:1px solid #d9e3ec;border-radius:12px;padding:10px 12px;background:#fff;color:#10233f;font:inherit}.planningToolGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.planningClass{padding:12px;border:1px solid #e2e8f0;border-radius:15px;margin:10px 0;background:#f8fafc}.weekdayPicker{display:flex;gap:5px;margin-top:9px}.weekdayPicker button{width:32px;height:32px;border-radius:999px;border:1px solid #dbe4ec;background:#fff;color:#64748b}.weekdayPicker button.active{background:#0b1f3b;color:#fff;border-color:#0b1f3b}.planningAddRow{display:flex;gap:6px;align-items:center;border:0;background:transparent;color:#087f72;font-weight:700;padding:8px 0}.planningAddRow svg{width:17px}.planningToolSheet .primaryButton{width:100%;min-height:50px;border:0;border-radius:14px;background:#0b1f3b;color:#fff;font-weight:800;margin-top:12px}.planningToolSheet .primaryButton:disabled{opacity:.45}
+.planningToolBackdrop{position:fixed;inset:0;z-index:89;background:rgba(4,16,31,.42)}.planningHint{margin:6px 0 0;font-size:12px;color:#b42318}.planningToolSheet{position:fixed;z-index:90;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,520px);max-height:88dvh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#fff;border-radius:24px 24px 0 0;padding:20px;box-shadow:0 -20px 60px #0b1f3b2b}.planningToolSheetHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.planningToolSheetHead>div{display:flex;gap:9px;align-items:center;font-size:18px;color:#10233f}.planningToolSheetHead>button{border:0;background:#f1f5f9;border-radius:10px;padding:7px}.planningToolSheet label{display:grid;gap:6px;margin:11px 0;font-size:12px;font-weight:700;color:#475569}.planningToolSheet input,.planningToolSheet select{width:100%;min-height:45px;border:1px solid #d9e3ec;border-radius:12px;padding:10px 12px;background:#fff;color:#10233f;font:inherit}.planningToolGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.planningClass{padding:12px;border:1px solid #e2e8f0;border-radius:15px;margin:10px 0;background:#f8fafc}.weekdayPicker{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-top:9px}.weekdayPicker button{min-width:0;height:44px;padding:0;border-radius:999px;border:1px solid #dbe4ec;background:#fff;color:#64748b;font:inherit;font-weight:700;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.weekdayPicker button.active{background:#0b1f3b;color:#fff;border-color:#0b1f3b}.planningAddRow{display:flex;gap:6px;align-items:center;border:0;background:transparent;color:#087f72;font-weight:700;padding:8px 0}.planningAddRow svg{width:17px}.planningToolSheet .primaryButton{width:100%;min-height:50px;border:0;border-radius:14px;background:#0b1f3b;color:#fff;font-weight:800;margin-top:12px}.planningToolSheet .primaryButton:disabled{opacity:.45}
 @media(max-width:420px){.planningToolCards{grid-template-columns:1fr}.planningToolSheet{padding-bottom:max(22px,env(safe-area-inset-bottom))}}
 
 
@@ -3006,3 +3007,36 @@ html:has(.sharedPlanPage),body:has(.sharedPlanPage){max-width:100%;overflow-x:hi
   }
 }
 .sharedMembers{display:grid;gap:8px}.sharedMembers h3{margin:4px 0 0;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.sharedMembers p{margin:0;color:var(--muted)}.sharedMemberRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb)}.sharedMemberRow b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sharedMemberActions{display:flex;align-items:center;gap:8px;flex-shrink:0}.sharedMemberActions select{border:1px solid var(--border,#d7dce2);background:var(--surface,#fff);color:inherit;border-radius:11px;padding:9px 10px;font-size:16px}.sharedMemberActions .button{padding:9px 14px;min-height:0}
+
+/* iOS zooms the whole page when a field under 16px is focused and leaves it zoomed after the keyboard closes,
+   so sheets look oversized and the Planner calendar runs off the screen. iOS-only (WebKit touch callout), so
+   desktop typography is unchanged; !important because many sheet rules set smaller field sizes. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  /* iOS gives native date/time fields an intrinsic minimum width wider than a half-width column on phones,
+     so they spilled out of the Timetable, Meals and Add to Planner rows. */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+}
+.planningToolGrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.planningToolGrid > label { min-width: 0; }
+/* The sticky Save sits over the scrolling form; a translucent disabled state let fields show through it. */
+.plannerSheet .sheetSave:disabled {
+  opacity: 1;
+  background: color-mix(in srgb, var(--navy) 55%, #fff);
+}

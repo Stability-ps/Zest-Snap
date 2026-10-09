@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import type { PlannerItem } from "./planner";
+import { plannerFingerprint, type PlannerItem } from "./planner";
 
 export type TimetableClassInput = {
   subject: string;
@@ -74,6 +74,25 @@ export function timetablePlannerItems(input: TimetableScheduleInput): PlannerIte
     }
   }
   return out;
+}
+
+/** Selects or clears one ISO weekday (Monday=1 … Sunday=7), keeping the list sorted and unique. */
+export function toggleWeekday(weekdays: number[], day: number): number[] {
+  const set = new Set(weekdays.filter((d) => d >= 1 && d <= 7));
+  if (set.has(day)) set.delete(day);
+  else if (day >= 1 && day <= 7) set.add(day);
+  return [...set].sort((a, b) => a - b);
+}
+
+/** Drops classes already in the Planner (or repeated in the batch), so saving a timetable twice adds nothing. */
+export function newTimetableItems(items: PlannerItem[], existing: PlannerItem[]): PlannerItem[] {
+  const seen = new Set(existing.filter((x) => x.status !== "cancelled").map(plannerFingerprint));
+  return items.filter((item) => {
+    const key = plannerFingerprint(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function mealPlannerItem(entry: MealEntryInput, timezone: string): PlannerItem {
