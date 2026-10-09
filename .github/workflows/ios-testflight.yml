@@ -1,0 +1,132 @@
+name: iOS TestFlight
+
+# Releases a TestFlight build of the native shell. Never runs on ordinary pushes or pull requests:
+# start it from Actions › iOS TestFlight › Run workflow (on main), or push a tag like ios-v1.0.1-9 on a main commit.
+# Every run must pass the CI checks and be approved for the "testflight" environment before anything is signed.
+# Signing uses the team's cloud-managed Apple Distribution certificate via the App Store Connect API key:
+# no certificate or private key is stored in GitHub, and no new Apple identity is created.
+on:
+  workflow_dispatch:
+    inputs:
+      what_to_test:
+        description: "What to Test (shown to testers; defaults to the commit subject)"
+        required: false
+  push:
+    tags: ["ios-v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  # One upload at a time, so build numbers can never collide. Queued runs wait instead of being cancelled.
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: Release source is on main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Only main (or a tag on main) can be released
+        run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF ($GITHUB_SHA) is not on main. TestFlight builds are only made from merged, approved changes."
+            exit 1
+          fi
+
+  tests:
+    name: CI checks
+    needs: guard
+    uses: ./.github/workflows/ci.yml
+
+  testflight:
+    name: Build, sign and upload to TestFlight
+    needs: tests
+    runs-on: macos-26
+    timeout-minutes: 90
+    environment: testflight
+    env:
+      ASC_APP_ID: "6820771548"
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      TESTFLIGHT_GROUPS: ${{ vars.TESTFLIGHT_GROUPS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Select Xcode
+        run: |
+          xcode="${{ vars.XCODE_PATH }}"
+          [ -n "$xcode" ] || xcode=$(printf '%s\n' /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Install App Store Connect API key
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_PRIVATE_KEY" ]; then
+            echo "::error::Set ASC_KEY_ID, ASC_ISSUER_ID and ASC_PRIVATE_KEY in the testflight environment (see docs/mobile/IOS-TESTFLIGHT.md)."
+            exit 1
+          fi
+          umask 077
+          printf '%s\n' "$ASC_PRIVATE_KEY" > "$RUNNER_TEMP/AuthKey.p8"
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+
+      - name: Check App Store Connect access
+        run: node scripts/ios/asc.mjs check
+
+      - name: Choose build number
+        id: version
+        run: |
+          build=$(node scripts/ios/asc.mjs next-build)
+          version=$(grep -m1 -oE 'MARKETING_VERSION = [0-9.]+' ios/App/App.xcodeproj/project.pbxproj | cut -d' ' -f3)
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Zest Snap $version ($build) from ${GITHUB_SHA::7}"
+
+      - name: Sync native project (production server URL)
+        run: node scripts/mobile-sync.mjs ios
+
+      - name: Build, sign and upload
+        run: bash scripts/ios/testflight-build.sh "${{ steps.version.outputs.build }}" upload
+
+      - name: Distribute to internal TestFlight testers
+        env:
+          WHAT_TO_TEST: ${{ inputs.what_to_test }}
+        run: |
+          [ -n "$WHAT_TO_TEST" ] || WHAT_TO_TEST="$(git log -1 --format=%s) (${GITHUB_SHA::7})"
+          export WHAT_TO_TEST
+          node scripts/ios/asc.mjs distribute "${{ steps.version.outputs.build }}" "${{ steps.version.outputs.version }}"
+
+      - name: Report failure
+        if: failure()
+        run: |
+          {
+            echo "### ❌ TestFlight release failed"
+            echo
+            echo "Zest Snap ${{ steps.version.outputs.version }} (${{ steps.version.outputs.build }}) from \`${GITHUB_SHA::7}\`. See the failed step above; logs are attached as the ios-build-logs artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-logs
+          path: |
+            ios/build/*.log
+            ios/build/export/*.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Remove API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
