@@ -1326,6 +1326,9 @@ button {
   border-color: #77cfc0;
   box-shadow: 0 0 0 3px rgba(0, 198, 167, 0.09);
 }
+/* Live password rules under the signup/reset password field (app/password-strength.tsx). */
+.authCard label > .passwordRules { display: block; min-height: 0; margin-top: 10px; padding: 14px; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; box-shadow: none; }
+.authCard label:focus-within > .passwordRules { border-color: #e2e8f0; box-shadow: none; }
 .authCard label svg {
   color: #7a8da0;
   flex: none;
@@ -3062,6 +3065,3 @@ html:has(.sharedPlanPage),body:has(.sharedPlanPage){max-width:100%;overflow-x:hi
   opacity: 1;
   background: color-mix(in srgb, var(--navy) 55%, #fff);
 }
-/* Live password rules under the signup/reset password field (app/password-strength.tsx). */
-.authCard label > .passwordRules { display: block; min-height: 0; margin-top: 10px; padding: 14px; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; box-shadow: none; }
-.authCard label:focus-within > .passwordRules { border-color: #e2e8f0; box-shadow: none; }
