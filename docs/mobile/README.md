@@ -103,8 +103,8 @@ for an upload-key reset (Play App Signing keeps the app signing key, so the app 
 Use **Play App Signing**; this key is only the upload key. Release builds use R8 (`minifyEnabled`, `shrinkResources`) with
 keep-rules for Capacitor and plugins in `android/app/proguard-rules.pro`.
 
-iOS: set the Team in Xcode › Signing & Capabilities (automatic signing), then Product › Archive → Distribute → TestFlight,
-or `npm run mobile:build:ios` on a Mac with signing configured. No signing material is committed.
+iOS: TestFlight builds are made by GitHub Actions (Actions › iOS TestFlight › Run workflow) — see
+[IOS-TESTFLIGHT.md](IOS-TESTFLIGHT.md). Manually: Xcode › Product › Archive → Distribute → TestFlight. No signing material is committed.
 
 ## Deep links & auth
 
