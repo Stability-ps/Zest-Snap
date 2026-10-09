@@ -297,11 +297,11 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
           <p>Events, tasks and deadlines — organised in Zest.</p>
         </div>
         <div className="plannerHeroActions">
+          {/* The hero is hidden on the Reminders page, so this button is only ever shown un-pressed. */}
           <button
-            className={`plannerReminderButton ${tab === "reminders" ? "active" : ""}`}
+            className="plannerReminderButton"
             onClick={() => setTab("reminders")}
             aria-label={pendingCount ? `Open reminders, ${pendingCount} active` : "Open reminders"}
-            aria-pressed={tab === "reminders"}
           >
             <Bell />
             {pendingCount > 0 && <span aria-hidden="true">{pendingCount}</span>}
