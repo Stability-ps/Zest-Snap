@@ -92,8 +92,8 @@ export default function NativeBridge() {
       // Status/navigation-bar icons and the iOS keyboard follow the current theme (lib/appearance/client.ts
       // re-applies them on every change). Android still draws edge-to-edge, but we publish the OS' real bar
       // sizes as CSS variables because Samsung WebView can report env(safe-area-inset-*) as zero with
-      // three-button navigation.
-      await applyNativeAppearance(getAppearance().scheme);
+      // three-button navigation. Not awaited: a slow plugin call must never hold the splash screen.
+      void applyNativeAppearance(getAppearance().scheme);
       if (platform === "android") {
         StatusBar.setOverlaysWebView({ overlay: true }).catch(() => undefined);
         await syncAndroidInsets();
