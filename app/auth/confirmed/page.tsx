@@ -93,7 +93,7 @@ export default function EmailLinkResult() {
                 <a className="authSwitch" href="zestsnap://login?verified=1">
                   Open the installed Zest Snap app
                 </a>
-                <p className="authIntro">If the app doesn&apos;t open, use Sign in above. Your email verification is still complete.</p>
+                <p className="authIntro">If the app doesn’t open, use Sign in above. Your email verification is still complete.</p>
               </div>
             )}
           </>
