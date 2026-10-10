@@ -32,7 +32,17 @@ function SocialComplete() {
           const name = socialDisplayName(profile?.display_name, user.email, user.user_metadata);
           if (name !== null) await db.from("profiles").update({ display_name: name }).eq("id", user.id);
         } catch {}
-        if (!cancelled) window.location.replace(new URL(safeAuthNext(search.get("next")), window.location.origin).href);
+        let destination = safeAuthNext(search.get("next"));
+        // New accounts see the one-time premium introduction (same rule as email sign-in, see app/login).
+        if (destination === "/app" || destination.startsWith("/upgrade")) {
+          try {
+            const { data: status, error: statusError } = await db.rpc("premium_onboarding_status" as never);
+            if (!statusError && (status as { show?: boolean } | null)?.show === true) destination = "/upgrade?from=onboarding";
+          } catch {
+            // Never keep someone out of the app because onboarding is unavailable.
+          }
+        }
+        if (!cancelled) window.location.replace(new URL(destination, window.location.origin).href);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Sign-in could not be completed. Please try again.");
       }

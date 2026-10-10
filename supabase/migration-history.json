@@ -110,6 +110,8 @@
       "20261008153146"
     ],
     "20261015120000_free_plan_three_scans.sql": "pending",
+    "20261017090000_guest_trial_three_scans.sql": ["20261010085500"],
+    "20261017100000_premium_onboarding_and_funnel.sql": ["20261010085510"],
     "20261018090000_marketing_notifications.sql": "pending"
   }
 }

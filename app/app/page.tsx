@@ -75,6 +75,8 @@ import {
   setActiveUser,
 } from "@/lib/session";
 import { syncPushSubscription } from "@/lib/reminders";
+import { knownGuestTrialRemaining, rememberGuestTrial, trackConversion } from "@/lib/conversion";
+import GuestPaywall from "./guest-paywall";
 import { materializeWeeklySchedule, weeklyOccurrences } from "@/lib/schedule";
 
 type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards" | "shared";
@@ -121,6 +123,7 @@ export default function App() {
   const [scanStage, setScanStage] = useState("");
   const [error, setError] = useState("");
   const [errorAction, setErrorAction] = useState<"signup" | "plans" | null>(null);
+  const [guestPaywall, setGuestPaywall] = useState(false);
   const [success, setSuccess] = useState("");
   const [store, setStore] = useState<LocalState>(emptyState);
   const [plannerItems, setPlannerItems] = useState<PlannerItem[]>([]);
@@ -574,11 +577,17 @@ export default function App() {
         const code = payload && "code" in payload ? payload.code : undefined;
         if (res.status === 413 && !code) throw new Error("This file is too large to scan. Try a smaller PDF or photo.");
         const message = (payload && "error" in payload && payload.error) || "We couldn’t scan this file right now. Please try again.";
-        if ((code === "guest_trial_exhausted" || code === "sign_in_required") && mode === "local") {
+        if (code === "guest_trial_exhausted" && mode === "local") {
+          rememberGuestTrial(0);
+          setGuestPaywall(true);
+          return;
+        }
+        if (code === "sign_in_required" && mode === "local") {
           showError(message, "signup");
           return;
         }
         if ((code === "allowance_exhausted" || code === "device_free_limit") && mode === "cloud") {
+          trackConversion("free_limit_reached", "free_limit");
           showError(message, "plans");
           return;
         }
@@ -604,6 +613,7 @@ export default function App() {
       hapticSuccess();
       setSelected(payload.events.map((_: ExtractedEvent, i: number) => i).filter((i: number) => !duplicateOf(payload.events[i])));
       openView("review");
+      if (mode === "local" && typeof payload.trialRemaining === "number") rememberGuestTrial(payload.trialRemaining);
       if (mode === "local" && typeof payload.trialRemaining === "number")
         setSuccess(
           payload.trialRemaining > 0
@@ -621,7 +631,15 @@ export default function App() {
   }
 
   /** Native camera inside the iOS/Android apps; the browser camera input everywhere else. */
+  /** Guests who have used their trial see the upgrade options instead of a file picker. The server still enforces it. */
+  function guestTrialUsedUp() {
+    if (mode !== "local" || knownGuestTrialRemaining() !== 0) return false;
+    setGuestPaywall(true);
+    return true;
+  }
+
   async function takePhoto() {
+    if (guestTrialUsedUp()) return;
     if (!nativeCameraAvailable()) return cameraRef.current?.click();
     try {
       await scanFile(await capturePhoto("camera"));
@@ -1021,7 +1039,7 @@ export default function App() {
                 <button className="button" onClick={takePhoto} disabled={busy || !ready}>
                   {busy ? <Loader2 className="spin" size={20} /> : <Camera size={20} />} Take photo
                 </button>
-                <button className="button alt" onClick={() => fileRef.current?.click()} disabled={busy || !ready}>
+                <button className="button alt" onClick={() => !guestTrialUsedUp() && fileRef.current?.click()} disabled={busy || !ready}>
                   <Upload size={20} /> Upload
                 </button>
               </div>
@@ -1043,7 +1061,7 @@ export default function App() {
                     </button>
                   )}
                   {errorAction === "plans" && (
-                    <button className="textButton" onClick={() => router.push("/settings?sheet=plans")}>
+                    <button className="textButton" onClick={() => router.push("/upgrade?from=free_limit")}>
                       See plans
                     </button>
                   )}
@@ -1601,6 +1619,13 @@ export default function App() {
         )}
       </div>
 
+      {guestPaywall && (
+        <GuestPaywall
+          onClose={() => setGuestPaywall(false)}
+          onCreateAccount={goToSignUp}
+          onExplore={() => router.push("/upgrade?from=guest")}
+        />
+      )}
       <nav className="bottomNav" aria-label="Main">
         <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
         <NavButton active={view === "calendar" && (plannerTab ?? plannerRequest.tab) !== "reminders"} label="Planner" onClick={() => openView("calendar", { tab: "today" })} icon={<CalendarDays />} />

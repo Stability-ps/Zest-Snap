@@ -6,6 +6,7 @@ import { fallbackCatalog, formatPlanPrice, getPublicPlanCatalog, type CatalogPla
 import { billingAvailability, manageSubscriptionUrl, purchaseOffer, restorePurchases, storeName, storeOffers, type StoreOffer } from "@/lib/native/billing";
 import { hapticSuccess } from "@/lib/native/haptics";
 import { runtime } from "@/lib/native/runtime";
+import { trackConversion, type PaywallContext } from "@/lib/conversion";
 
 function features(p: CatalogPlan) {
   // Only benefits the server enforces (reserve_scan): monthly allowance and PDF pages per scan.
@@ -13,7 +14,7 @@ function features(p: CatalogPlan) {
 }
 
 /** Plans and upgrades. Native apps buy through the App Store / Google Play; the server grants the plan. */
-export default function PlansSheet({ onDone }: { onDone: (message: string) => void }) {
+export default function PlansSheet({ onDone, context = "settings" }: { onDone: (message: string) => void; context?: PaywallContext }) {
   const [plans, setPlans] = useState<CatalogPlan[]>(fallbackCatalog().filter((p) => p.id === "free"));
   const [current, setCurrent] = useState<string>("free");
   const [userId, setUserId] = useState<string | null>(null);
@@ -39,14 +40,22 @@ export default function PlansSheet({ onDone }: { onDone: (message: string) => vo
     if (!userId) return;
     setBusy(offer.id);
     setError("");
+    if (offer.period === "monthly") trackConversion("monthly_plan_selected", context);
+    if (offer.period === "annual") trackConversion("annual_plan_selected", context);
+    trackConversion("checkout_started", context);
     try {
       const out = await purchaseOffer(userId, offer.id);
-      if (out.status === "cancelled") return;
+      if (out.status === "cancelled") return trackConversion("checkout_cancelled", context);
       if (out.status === "pending") return onDone("Purchase pending — your plan updates as soon as the store confirms payment.");
       if (out.plan) setCurrent(out.plan);
+      trackConversion("checkout_completed", context);
+      // A new account that buys during the welcome screen has finished onboarding.
+      if (context === "post_verification" && isSupabaseConfigured())
+        await createClient().rpc("complete_premium_onboarding" as never, { p_choice: "paid" } as never).then(() => undefined, () => undefined);
       hapticSuccess();
       onDone("Subscription active. Thank you for supporting Zest Snap!");
     } catch (e) {
+      trackConversion("checkout_failed", context);
       setError(e instanceof Error ? e.message : "The purchase didn't complete.");
     } finally {
       setBusy(null);
@@ -60,6 +69,7 @@ export default function PlansSheet({ onDone }: { onDone: (message: string) => vo
     try {
       const plan = await restorePurchases(userId);
       if (plan) setCurrent(plan);
+      if (plan && plan !== "free") trackConversion("subscription_restored", context);
       onDone(plan && plan !== "free" ? "Purchases restored." : `No active ${storeName()} subscription was found for this account.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Restore didn't complete. Try again.");

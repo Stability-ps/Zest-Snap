@@ -203,6 +203,9 @@ test("signed-out trial is device- and network-limited and failures do not count"
   assert.deepEqual((await guest(req(3), "g2")).rows[0].r, { cached: { events: [] } }); // identical file: no new AI call
   await guest(req(4), "g4"); await asService(db, `select public.finish_guest_scan($1,'completed')`, [req(4)]);
   await age(db);
+  // Three successful scans per device (the failed req(1) was refunded); the fourth is refused.
+  await guest(req(9), "g9"); await asService(db, `select public.finish_guest_scan($1,'completed')`, [req(9)]);
+  await age(db);
   await assert.rejects(() => guest(req(5), "g5"), /guest_trial_exhausted/);
   await db.exec(`update public.app_limits set value=1 where key='guest_scans_per_network_day'; update public.guest_scan_usage set created_at=now()-interval '1 hour'`);
   await assert.rejects(() => guest(req(6), "g6", DEVICE_2, "net-1"), /guest_trial_exhausted/);
