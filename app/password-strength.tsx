@@ -9,7 +9,7 @@ export function passwordChecks(value: string) {
     { label: "One uppercase letter", ok: /[A-Z]/.test(value) },
     { label: "One lowercase letter", ok: /[a-z]/.test(value) },
     { label: "One special character", ok: /[^A-Za-z0-9\s]/.test(value) },
-    { label: "One number (for very strong)", ok: /\d/.test(value), optional: true },
+    { label: "A number (optional)", ok: /\d/.test(value), optional: true },
   ];
 }
 export function validPassword(value: string) {
@@ -41,20 +41,25 @@ export function PasswordStrength({ value, onChange, name = "password", icon }: {
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </div>
-      <div id={name + "-requirements"} className="passwordRules">
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
-          <span>Password strength</span><span style={{ color }} aria-live="polite">{label}</span>
+      {!value ? (
+        // Nothing typed yet: one line, so the whole sign-up form fits on a phone screen.
+        <p id={name + "-requirements"} className="passwordHint">8+ characters, upper & lowercase letters and a symbol.</p>
+      ) : (
+        <div id={name + "-requirements"} className="passwordRules">
+          <div className="passwordRulesTop">
+            <span>Password strength</span><span style={{ color }} aria-live="polite">{label}</span>
+          </div>
+          <div aria-hidden="true" className="passwordMeter">
+            {[1,2,3].map((n) => <div key={n} style={{ background: n <= level ? color : "var(--surface-4)" }} />)}
+          </div>
+          <div className="passwordChecks">
+            {checks.map((check) => <div key={check.label} style={{ color: check.ok ? "var(--success-text)" : "var(--text-3)" }}>
+              {check.ok ? <Check size={13} /> : <X size={13} />}
+              <span>{check.label}</span>
+            </div>)}
+          </div>
         </div>
-        {!requiredMet && value && <p role="status" style={{ fontSize: 12, marginTop: 7, color: "var(--text-2)" }}>Still needed: {checks.slice(0, 4).filter((check) => !check.ok).map((check) => check.label.toLowerCase()).join(", ")}.</p>}\n        <div aria-hidden="true" style={{ display: "flex", gap: 5, marginTop: 8, marginBottom: 12 }}>
-          {[1,2,3].map((n) => <div key={n} style={{ height: 5, flex: 1, borderRadius: 8, background: n <= level ? color : "var(--surface-4)", transition: "background .2s" }} />)}
-        </div>
-        <div style={{ display: "grid", gap: 7 }}>
-          {checks.map((check) => <div key={check.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: check.ok ? "var(--success-text)" : "var(--text-3)" }}>
-            {check.ok ? <Check size={14} /> : <X size={14} />}
-            <span>{check.label}</span>
-          </div>)}
-        </div>
-      </div>
+      )}
     </>
   );
 }

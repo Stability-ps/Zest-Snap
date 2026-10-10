@@ -1329,7 +1329,14 @@ button {
   box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.09);
 }
 /* Live password rules under the signup/reset password field (app/password-strength.tsx). */
-.authCard label > .passwordRules { display: block; min-height: 0; margin-top: 10px; padding: 14px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); box-shadow: none; }
+.authCard label > .passwordRules { display: block; min-height: 0; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); box-shadow: none; }
+.authCard label > .passwordHint { margin: 6px 2px 0; font-size: 12px; line-height: 1.35; color: var(--text-3); }
+.passwordRulesTop { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 700; color: var(--text-2); }
+.passwordMeter { display: flex; gap: 5px; margin: 7px 0 8px; }
+.passwordMeter > div { height: 4px; flex: 1; border-radius: 8px; transition: background .2s; }
+.passwordChecks { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; }
+.passwordChecks > div { display: flex; align-items: center; gap: 6px; font-size: 11.5px; line-height: 1.25; }
+.passwordChecks > div svg { flex: none; }
 .authCard label:focus-within > .passwordRules { border-color: var(--border); box-shadow: none; }
 .authCard label svg {
   color: var(--text-3);
@@ -3285,3 +3292,34 @@ html.native .pw{padding-top:var(--zest-safe-top);padding-bottom:max(12px,var(--z
 
 /* The landing page is always light (lib/appearance/boot.ts), so the regular light tokens apply. */
 
+/* Sign-up (and new-password) form fits one phone screen without scrolling: tighter spacing only on the form
+   that asks for a new password, so Sign in keeps its roomier layout. */
+@media (max-width: 520px) {
+  .authCard:has(input[autocomplete="new-password"]) { padding-top: 12px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  .authCard:has(input[autocomplete="new-password"]) .authBrandRow { margin-bottom: 14px; }
+  .authCard:has(input[autocomplete="new-password"]) h1 { font-size: clamp(28px, 8vw, 32px); line-height: 1.04; letter-spacing: -1.2px; margin: 0 0 6px; }
+  .authCard:has(input[autocomplete="new-password"]) .authIntro { font-size: 14px; line-height: 1.35; }
+  .authCard:has(input[autocomplete="new-password"]) form { margin-top: 14px; gap: 10px; }
+  .authCard:has(input[autocomplete="new-password"]) label > span { margin-bottom: 4px; }
+  .authCard:has(input[autocomplete="new-password"]) label > div,
+  .authCard:has(input[autocomplete="new-password"]) .authSubmit { min-height: 46px; }
+  .authCard:has(input[autocomplete="new-password"]) .authLinks { margin-top: 4px; }
+  .authCard:has(input[autocomplete="new-password"]) .authSwitch { padding: 7px 4px; }
+  .authCard:has(input[autocomplete="new-password"]) .authDivider { margin: 2px 0; }
+  .authCard:has(input[autocomplete="new-password"]) .authDeviceButton { min-height: 42px; }
+  .authCard:has(input[autocomplete="new-password"]) .authFine { margin-top: 8px; }
+}
+/* Small phones (iPhone SE and similar): a little tighter still, so the empty form fits there too. */
+@media (max-width: 520px) and (max-height: 700px) {
+  .authCard:has(input[autocomplete="new-password"]) { padding-top: 8px; }
+  .authCard:has(input[autocomplete="new-password"]) .authBrandRow { margin-bottom: 8px; }
+  .authCard:has(input[autocomplete="new-password"]) h1 { font-size: 26px; margin-bottom: 4px; }
+  .authCard:has(input[autocomplete="new-password"]) .authIntro { font-size: 13px; line-height: 1.3; }
+  .authCard:has(input[autocomplete="new-password"]) form { margin-top: 10px; gap: 7px; }
+  .authCard:has(input[autocomplete="new-password"]) label > span { font-size: 11.5px; margin-bottom: 3px; }
+  .authCard:has(input[autocomplete="new-password"]) label > div,
+  .authCard:has(input[autocomplete="new-password"]) .authSubmit { min-height: 44px; }
+  .authCard:has(input[autocomplete="new-password"]) .authSwitch { padding: 5px 4px; }
+  .authCard:has(input[autocomplete="new-password"]) .authDeviceButton { min-height: 40px; }
+  .authCard:has(input[autocomplete="new-password"]) .authFine { margin-top: 5px; font-size: 10.5px; }
+}
