@@ -6,7 +6,7 @@ export default function Privacy() {
       <div className="legalWrap">
         <Link href="/">← Home</Link>
         <h1>Privacy</h1>
-        <p>Last updated: 8 October 2026.</p>
+        <p>Last updated: 10 October 2026.</p>
         <h2>Uploads and AI processing</h2>
         <p>
           When you scan, Zest Snap sends your image or PDF to OpenAI to extract
@@ -79,7 +79,24 @@ export default function Privacy() {
           text can include item titles, plan names and people’s display names
           and, for Shared messages, the first 140 characters of the message.
           You can turn notifications off in your device or browser settings.
-          Zest Snap does not send marketing messages.
+        </p>
+        <h2>Tips and offers (optional marketing notifications)</h2>
+        <p>
+          Zest Snap sends marketing notifications only if you turn on Tips and
+          offers in Settings. It is off unless you choose it, and it is separate
+          from reminders, the Daily Briefing and Shared plan notifications, which
+          keep working whether or not you turn it on. When you turn it on, Zest
+          Snap records when you did so and on which kind of device, and uses
+          OneSignal (OneSignal, Inc.) to deliver these notifications: we share
+          your Zest Snap account identifier and your device’s notification
+          subscription with OneSignal for this purpose only. We do not share your
+          name, email address, scans, plans or messages with OneSignal, and
+          nothing is sent to OneSignal before you turn the setting on. These
+          notifications are about rewards you earned, your monthly scans or
+          returning to Zest Snap; you receive at most two a week, never
+          overnight in your timezone. Turn Tips and offers off at any time in
+          Settings, or by blocking notifications for Zest Snap; when you sign
+          out, your device stops receiving them for that account.
         </p>
         <h2>Shared plans</h2>
         <p>
@@ -147,8 +164,9 @@ export default function Privacy() {
           Apple devices and App Store purchases), Google Play (purchases on
           Android), RevenueCat (subscription status, when in-app purchases are
           available), Apple Push Notification service and Firebase Cloud
-          Messaging (app notifications) and browser push services (web
-          notifications). Vercel,
+          Messaging (app notifications), browser push services (web
+          notifications) and OneSignal (Tips and offers notifications, only if
+          you turn them on). Vercel, OneSignal,
           OpenAI and other providers may process data outside your country,
           including in the United States.
         </p>
@@ -157,7 +175,7 @@ export default function Privacy() {
           In Settings you can export your records, change how long scan history
           is kept, clear data on this device, disconnect Google Calendar and
           delete your cloud account. You can turn notifications off at any
-          time, leave a Shared plan, and delete your own Shared messages. For
+          time, turn Tips and offers on or off, leave a Shared plan, and delete your own Shared messages. For
           any other request about your personal data, contact us at the address
           below.
         </p>
