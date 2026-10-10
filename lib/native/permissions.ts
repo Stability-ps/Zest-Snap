@@ -5,8 +5,10 @@ import { isNative, runtime } from "./runtime";
 interface ZestNativePlugin {
   openAppSettings(): Promise<void>;
   getSystemInsets(): Promise<{ top: number; right: number; bottom: number; left: number }>;
+  /** Home-screen widget data (lib/native/widget.ts). */
+  setWidgetData(options: { json: string }): Promise<void>;
 }
-const ZestNative = registerPlugin<ZestNativePlugin>("ZestNative");
+export const ZestNative = registerPlugin<ZestNativePlugin>("ZestNative");
 
 export type PermissionName = "camera" | "photos" | "notifications" | "calendar" | "microphone";
 export type PermissionStatus = "granted" | "denied" | "prompt" | "unsupported";

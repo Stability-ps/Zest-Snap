@@ -119,7 +119,10 @@ Deno.serve(async (req: Request) => {
       const shared = (sharedRes.data || []).filter((x:any)=>briefing.include_meals || x.item_type!=="meal");
       const all = [...personal,...shared] as any[];
       if (!all.length) { await db.rpc("complete_daily_briefing",{p_user:briefing.user_id,p_ok:true}); continue; }
-      const names = all.slice(0,3).map(x=>x.title).filter(Boolean);
+      // Timed items first, each with its time ("08:30 Dentist"), matching the in-app briefing (lib/briefing.ts).
+      const timeOf = (x:any) => String(x.start_time || x.due_time || "").slice(0,5);
+      all.sort((a:any,b:any)=>(timeOf(a)||"99:99").localeCompare(timeOf(b)||"99:99"));
+      const names = all.slice(0,3).map(x=>(timeOf(x)?`${timeOf(x)} `:"")+(x.title||"")).filter((n:string)=>n.trim());
       const body = names.join(" · ") + (all.length>3 ? ` · +${all.length-3} more` : "");
       let delivered = false;
       for (const sub of (subsRes.data || []) as Sub[]) {

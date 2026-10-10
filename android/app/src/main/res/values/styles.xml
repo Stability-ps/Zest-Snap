@@ -25,4 +25,33 @@
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:background">@drawable/zest_launch_background_v6</item>
     </style>
+
+    <!-- Home-screen widget rows (layout/widget_today.xml). -->
+    <style name="ZestWidgetRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">6dp</item>
+        <item name="android:background">@drawable/widget_row_background</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">7dp</item>
+        <item name="android:paddingBottom">7dp</item>
+    </style>
+    <style name="ZestWidgetTime">
+        <item name="android:layout_width">58dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/zest_teal</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="ZestWidgetTitle">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">13sp</item>
+    </style>
 </resources>
