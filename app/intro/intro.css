@@ -86,7 +86,7 @@ html:has(.introPage) body {
 /* Phases come from data-phase on .introStage (set by page.tsx): idle → scan → done. Transitions only, no
    looping keyframes, which froze on some iPhones. Without JS the default is the finished state. */
 .introPaper {
-  position: relative; width: min(74%, 270px); padding: 18px 18px 16px; border-radius: 16px; background: #fbfaf6; color: #1c2533;
+  position: relative; z-index: 2; width: min(74%, 270px); padding: 18px 18px 16px; border-radius: 16px; background: #fbfaf6; color: #1c2533;
   transform: rotate(-2deg) scale(.94); opacity: .72; box-shadow: 0 24px 50px rgb(0 0 0 / 0.45);
   transition: transform .6s cubic-bezier(.5, 0, .2, 1), opacity .6s ease;
 }
@@ -117,16 +117,17 @@ html:has(.introPage) body {
   display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
   background: rgb(16 35 63 / 0.96); border: 1px solid var(--i-line); border-left: 4px solid var(--c);
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
-  transition: opacity .45s ease, transform .5s cubic-bezier(.2, .9, .3, 1.25);
+  transition: opacity .5s ease, transform .7s cubic-bezier(.2, 1.25, .35, 1);
 }
+/* Before the scan finishes the chips sit tucked up under the card, so each one visibly flies out of it. */
 [data-phase="idle"] .introChip,
-[data-phase="scan"] .introChip { opacity: 0; transform: translateY(18px) scale(.96); transition-duration: .3s; transition-delay: 0s; }
+[data-phase="scan"] .introChip { opacity: 0; transform: translateY(-46px) scale(.82); transition-duration: .25s; transition-delay: 0s; }
 .introChip svg { color: var(--c); flex: none; }
 .introChip span { display: flex; flex-direction: column; min-width: 0; }
 .introChip b { font-size: 15px; }
 .introChip small { color: var(--i-text-2); font-size: 13px; }
-.introChip.amber { --c: var(--i-amber); transition-delay: .4s; }
-.introChip.violet { --c: var(--i-violet); transition-delay: .8s; }
+.introChip.amber { --c: var(--i-amber); transition-delay: .55s; }
+.introChip.violet { --c: var(--i-violet); transition-delay: 1.1s; }
 
 /* ---- Step 2: interests ------------------------------------------------------------------------------ */
 .introGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
