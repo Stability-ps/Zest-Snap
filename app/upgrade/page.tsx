@@ -10,7 +10,8 @@ import { getDataProvider, type Usage } from "@/lib/data";
 import { getPublicPlanCatalog, type CatalogPlan } from "@/lib/plan-catalog";
 import { trackConversion, type PaywallContext } from "@/lib/conversion";
 import { billingAvailability, manageSubscriptionUrl, purchaseOffer, restorePurchases, storeName, storeOffers, type StoreOffer } from "@/lib/native/billing";
-import { annualSavingsPercent, billingTerms, cardPrice, pickProOffers, type PaidPlanId } from "@/lib/billing/paywall";
+import { annualSavingsPercent, billingTerms, cardPrice, pickProOffers, trialBadge, type PaidPlanId } from "@/lib/billing/paywall";
+import { readIntro, type InterestId } from "@/lib/intro";
 import { hapticSuccess } from "@/lib/native/haptics";
 import { holdLightAppearance } from "@/lib/appearance/client";
 
@@ -39,6 +40,9 @@ export default function UpgradePage() {
   const [period, setPeriod] = useState<Period>("annual");
   const [busy, setBusy] = useState<"buy" | "restore" | "free" | null>(null);
   const [message, setMessage] = useState("");
+  // What the person said they want to remember (first-run intro): sets an outcome-led headline. Read after mount.
+  const [focus, setFocus] = useState<InterestId | null>(null);
+  useEffect(() => setFocus(readIntro()?.interests[0] ?? null), []);
   const [error, setError] = useState("");
   const [eventDate, setEventDate] = useState("12 Oct 2026");
   const [availability, setAvailability] = useState<ReturnType<typeof billingAvailability>>("web_not_connected");
@@ -200,8 +204,16 @@ export default function UpgradePage() {
     }
   }
 
+  const OUTCOME: Record<InterestId, string> = {
+    school: "Never miss a school date.",
+    health: "Never miss an appointment.",
+    bills: "Never pay a bill late.",
+    work: "On top of every deadline.",
+    travel: "Every booking, on time.",
+    events: "Never miss an invite.",
+  };
   const heading =
-    from === "guest" ? "You’ve captured 3 important moments." : from === "free_limit" ? "You’ve used this month’s scans." : "Get more from Zest Snap.";
+    from === "guest" ? "You’ve captured 3 important moments." : from === "free_limit" ? "You’ve used this month’s scans." : focus ? OUTCOME[focus] : "Get more from Zest Snap.";
   const lead =
     from === "guest"
       ? "Ready for more? Create a free account or go Pro — everything you’ve scanned stays with you."
@@ -259,7 +271,9 @@ export default function UpgradePage() {
       : "Go to my Planner"
     : busy === "buy"
       ? `Opening ${storeName()}…`
-      : "Continue with Pro";
+      : selected?.freeTrial
+        ? `Start ${trialBadge(selected.freeTrial)}`
+        : "Continue with Pro";
 
   return (
     <main className="pw">
@@ -325,6 +339,7 @@ export default function UpgradePage() {
                   {p.id === "annual" && <span className="pwBadge">{savings ? `Best value · Save ${savings}%` : "Best value"}</span>}
                   <b className="pwPlanTitle">{p.title}</b>
                   <span className="pwPlanDetail">{p.detail}</span>
+                  {p.offer?.freeTrial && <span className="pwTrial">{trialBadge(p.offer.freeTrial)}</span>}
                 </span>
                 <span className="pwPlanSide">
                   <span className={"pwRadio" + (on ? " on" : "")} aria-hidden="true">

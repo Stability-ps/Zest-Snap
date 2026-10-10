@@ -4,7 +4,7 @@ import { annualSavingsPercent, billingTerms, cardPrice, pickProOffers } from "..
 import type { StoreOffer } from "../lib/native/billing";
 
 const offer = (o: Partial<StoreOffer>): StoreOffer => ({
-  id: "x", plan: "plus", period: "monthly", price: "R 199,99", priceAmount: 199.99, currencyCode: "ZAR", pricePerMonth: null, title: "Pro", ...o,
+  id: "x", plan: "plus", period: "monthly", price: "R 199,99", priceAmount: 199.99, currencyCode: "ZAR", pricePerMonth: null, title: "Pro", freeTrial: null, ...o,
 });
 const monthly = offer({ id: "$rc_monthly" });
 const annual = offer({ id: "$rc_annual", period: "annual", price: "R 599,99", priceAmount: 599.99, pricePerMonth: "R 49,99" });
@@ -37,4 +37,15 @@ test("billing terms name the selected price, the store account and auto-renewal"
   assert.match(billingTerms(annual, "App Store"), /^R 599,99 per year, charged to your Apple ID/);
   assert.match(billingTerms(monthly, "Google Play"), /R 199,99 per month, charged to your Google Play account/);
   assert.match(billingTerms(null, "web"), /Renews automatically unless cancelled/);
+});
+
+test("free trials come only from the store and are spelled out in the terms", async () => {
+  const { freeTrialOf } = await import("../lib/native/billing");
+  assert.deepEqual(freeTrialOf({ introPrice: { price: 0, periodUnit: "DAY", periodNumberOfUnits: 7 } }), { count: 7, unit: "day" });
+  assert.equal(freeTrialOf({ introPrice: { price: 9.99, periodUnit: "MONTH", periodNumberOfUnits: 1 } }), null, "a paid intro price is not a free trial");
+  assert.deepEqual(freeTrialOf({ defaultOption: { freePhase: { billingPeriod: { unit: "WEEK", value: 1 } } } }), { count: 1, unit: "week" });
+  assert.equal(freeTrialOf({}), null);
+  const trialAnnual = offer({ period: "annual", price: "R 599,99", freeTrial: { count: 7, unit: "day" } });
+  assert.match(billingTerms(trialAnnual, "App Store"), /^Free for 7 days, then R 599,99 per year, charged to your Apple ID when the trial ends/);
+  assert.match(billingTerms(annual, "App Store"), /^R 599,99 per year, charged to your Apple ID at confirmation/);
 });

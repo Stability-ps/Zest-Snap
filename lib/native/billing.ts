@@ -24,7 +24,23 @@ export type StoreOffer = {
   /** The store's localised monthly equivalent (annual packages), or null if the store didn't provide one. */
   pricePerMonth: string | null;
   title: string;
+  /** A free trial the store will actually give this person (iOS: Apple-confirmed eligibility; Android: Play's eligible offer). */
+  freeTrial: FreeTrial | null;
 };
+export type FreeTrial = { count: number; unit: "day" | "week" | "month" | "year" };
+
+const UNITS: Record<string, FreeTrial["unit"]> = { DAY: "day", WEEK: "week", MONTH: "month", YEAR: "year" };
+/** Free introductory period from a RevenueCat product, or null when it isn't free (paid intro prices are not trials). */
+export function freeTrialOf(product: {
+  introPrice?: { price: number; periodUnit: string; periodNumberOfUnits: number } | null;
+  defaultOption?: { freePhase?: { billingPeriod?: { unit: string; value: number } | null } | null } | null;
+}): FreeTrial | null {
+  const free = product.defaultOption?.freePhase?.billingPeriod;
+  if (free && UNITS[free.unit] && free.value > 0) return { count: free.value, unit: UNITS[free.unit] };
+  const intro = product.introPrice;
+  if (intro && intro.price === 0 && UNITS[intro.periodUnit] && intro.periodNumberOfUnits > 0) return { count: intro.periodNumberOfUnits, unit: UNITS[intro.periodUnit] };
+  return null;
+}
 export type PurchaseOutcome = { status: "purchased" | "cancelled" | "pending"; plan?: string };
 
 const storeKey = () => (runtime() === "ios" ? revenueCatPublicKeys.ios : runtime() === "android" ? revenueCatPublicKeys.android : "");
@@ -74,7 +90,18 @@ export async function storeOffers(userId: string | null): Promise<StoreOffer[]> 
   if (billingAvailability() !== "store") return [];
   const { Purchases } = await purchases(userId);
   const offerings = await Purchases.getOfferings();
-  return (offerings.current?.availablePackages || [])
+  const packages = offerings.current?.availablePackages || [];
+  // iOS shows an introductory offer only to people Apple says are eligible; unknown counts as not eligible.
+  let eligible: Record<string, boolean> | null = null;
+  if (runtime() === "ios") {
+    try {
+      const map = await Purchases.checkTrialOrIntroductoryPriceEligibility({ productIdentifiers: packages.map((p) => p.product.identifier) });
+      eligible = Object.fromEntries(Object.entries(map).map(([id, e]) => [id, (e as { status?: number }).status === 2]));
+    } catch {
+      eligible = {};
+    }
+  }
+  return packages
     .map((p) => {
       const plan = planForProduct(p.product.identifier);
       if (!plan) return null;
@@ -89,6 +116,7 @@ export async function storeOffers(userId: string | null): Promise<StoreOffer[]> 
         currencyCode: product.currencyCode || "",
         pricePerMonth: product.pricePerMonthString ?? null,
         title: product.title,
+        freeTrial: eligible && !eligible[product.identifier] ? null : freeTrialOf(product as never),
       } as StoreOffer;
     })
     .filter((x): x is StoreOffer => !!x);
