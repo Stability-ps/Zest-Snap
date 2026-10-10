@@ -80,18 +80,20 @@ export default function NativeBridge() {
     removers.push(() => window.removeEventListener("resize", onViewportChange));
 
     (async () => {
-      const [{ App }, { SplashScreen }, { StatusBar, Style }, { Keyboard }, { LocalNotifications }] = await Promise.all([
+      const [{ App }, { SplashScreen }, { StatusBar }, { Keyboard }, { LocalNotifications }, { applyNativeAppearance, getAppearance }] = await Promise.all([
         import("@capacitor/app"),
         import("@capacitor/splash-screen"),
         import("@capacitor/status-bar"),
         import("@capacitor/keyboard"),
         import("@capacitor/local-notifications"),
+        import("@/lib/appearance/client"),
       ]);
       if (disposed) return;
-      // Dark status-bar icons over Zest Snap's light screens. Android still draws edge-to-edge,
-      // but we publish the OS' real bar sizes as CSS variables because Samsung WebView can report
-      // env(safe-area-inset-*) as zero with three-button navigation.
-      StatusBar.setStyle({ style: Style.Light }).catch(() => undefined);
+      // Status/navigation-bar icons and the iOS keyboard follow the current theme (lib/appearance/client.ts
+      // re-applies them on every change). Android still draws edge-to-edge, but we publish the OS' real bar
+      // sizes as CSS variables because Samsung WebView can report env(safe-area-inset-*) as zero with
+      // three-button navigation.
+      await applyNativeAppearance(getAppearance().scheme);
       if (platform === "android") {
         StatusBar.setOverlaysWebView({ overlay: true }).catch(() => undefined);
         await syncAndroidInsets();
