@@ -114,6 +114,15 @@ export default function NativeBridge() {
           if (path) open(path);
         }),
       );
+      // iOS can deliver a Universal Link before the WebView has mounted and registered appUrlOpen.
+      // Recover the launch URL on cold start as well as listening for warm-start links.
+      void App.getLaunchUrl()
+        .then((launch) => {
+          if (disposed || !launch?.url) return;
+          const path = inAppPath(launch.url);
+          if (path) open(path);
+        })
+        .catch(() => undefined);
       listen(
         App.addListener("resume", async () => {
           // Validate (and refresh if needed) the session after time in the background, then refresh stale data.
