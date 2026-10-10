@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { ArrowLeft, Camera, CalendarDays, Cloud, Sparkles } from "lucide-react";
 import PlansSheet from "@/app/settings/plans-sheet";
 
@@ -13,6 +14,26 @@ import PlansSheet from "@/app/settings/plans-sheet";
  */
 export default function UpgradePage() {
   const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    createClient().auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      createClient().rpc("premium_onboarding_status").catch(() => undefined);
+    }).catch(() => undefined);
+  }, []);
+  async function continueFree() {
+    setBusy(true);
+    try {
+      if (isSupabaseConfigured()) {
+        const db = createClient();
+        const { data } = await db.auth.getUser();
+        if (data.user) await db.rpc("complete_premium_onboarding");
+      }
+    } finally {
+      window.location.assign("/app");
+    }
+  }
   const benefits = [
     { title: "More AI scans", detail: "Capture the moments that matter.", Icon: Camera },
     { title: "Smart planning", detail: "Turn dates into useful plans.", Icon: CalendarDays },
@@ -44,7 +65,7 @@ export default function UpgradePage() {
           <PlansSheet onDone={setMessage} />
           {message && <p role="status" style={{ color: "#087e74" }}>{message}</p>}
         </section>
-        <Link href="/app" style={{ display: "block", textAlign: "center", marginTop: 16, padding: 16, background: "#eff4fa", color: "#1469aa", borderRadius: 18, fontWeight: 700, textDecoration: "none" }}>Continue with Free plan</Link>
+        <button type="button" disabled={busy} onClick={continueFree} style={{ display: "block", width: "100%", border: 0, textAlign: "center", marginTop: 16, padding: 16, background: "#eff4fa", color: "#1469aa", borderRadius: 18, fontWeight: 700, cursor: "pointer" }}>Continue with Free plan</button>
         <p style={{ textAlign: "center", color: "#65778c", fontSize: 12, marginTop: 12 }}>No payment required to continue with Free.</p>
         <footer style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 26, fontSize: 12 }}>
           <Link href="/terms" style={{ color: "#65778c" }}>Terms of Service</Link>
