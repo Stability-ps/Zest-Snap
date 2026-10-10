@@ -122,6 +122,26 @@ export default function LoginPage() {
     window.location.assign(new URL(nextPath(), window.location.origin).href);
   }
 
+  async function socialSignIn(provider: "google" | "apple") {
+    if (!configured || busy) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const redirectTo = new URL("/auth/callback", window.location.origin);
+      redirectTo.searchParams.set("provider", provider);
+      redirectTo.searchParams.set("next", nextPath());
+      const { error } = await createClient().auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: redirectTo.toString() },
+      });
+      if (error) setMessage(authErrorMessage(error.code, error.message));
+    } catch (error) {
+      setMessage(error instanceof Error ? authErrorMessage(undefined, error.message) : "Unable to start sign-in.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!configured) {
@@ -282,6 +302,17 @@ export default function LoginPage() {
         <h1>{current.title}</h1>
           <p className="authIntro">{current.text}</p>
 
+          {mode !== "forgot" && (
+            <div className="socialAuth" aria-label="Other sign-in options">
+              <button type="button" className="authDeviceButton" disabled={busy || !configured} onClick={() => socialSignIn("google")}>
+                Continue with Google
+              </button>
+              <button type="button" className="authDeviceButton" disabled={busy || !configured} onClick={() => socialSignIn("apple")}>
+                Continue with Apple
+              </button>
+              <div className="authDivider"><span>or continue with email</span></div>
+            </div>
+          )}
           <form onSubmit={submit}>
             {mode === "signup" && (
               <label>
