@@ -117,7 +117,7 @@ export default function Reset() {
                   <input type={showConfirmation ? "text" : "password"} name="confirmation" required value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="new-password" placeholder="Enter the password again" />
                   <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowConfirmation((visible) => !visible); }} aria-label={showConfirmation ? "Hide confirmation" : "Show confirmation"} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 5, display: "flex" }}>{showConfirmation ? <EyeOff size={19} /> : <Eye size={19} />}</button>
                 </div>
-                {confirmation && <span style={{ marginTop: 6, color: matches ? "#087f68" : "#b45309" }}>{matches ? "Passwords match" : "Passwords do not match yet"}</span>}
+                {confirmation && <span style={{ marginTop: 6, color: matches ? "var(--success-text)" : "var(--warning-text)" }}>{matches ? "Passwords match" : "Passwords do not match yet"}</span>}
               </label>
               {message && (
                 <div className="authMessage" role="alert" aria-live="polite">

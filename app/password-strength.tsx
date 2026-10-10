@@ -27,7 +27,7 @@ export function PasswordStrength({ value, onChange, name = "password", icon }: {
   const requiredMet = checks.slice(0, 4).every((check) => check.ok);
   const level = !value ? 0 : requiredMet ? (checks[4].ok && value.length >= 12 ? 3 : 2) : 1;
   const label = ["Enter a password", "Weak", "Strong", "Very strong"][level];
-  const color = ["#94a3b8", "#dc5757", "#0d9488", "#047857"][level];
+  const color = ["var(--text-4)", "var(--danger-text)", "var(--success)", "var(--success-text)"][level];
   return (
     <>
       <div>
@@ -37,19 +37,19 @@ export function PasswordStrength({ value, onChange, name = "password", icon }: {
           aria-describedby={name + "-requirements"} />
         <button type="button" onPointerDown={(e) => e.preventDefault()} onClick={() => setVisible(!visible)}
           aria-label={visible ? "Hide password" : "Show password"}
-          style={{ border: 0, background: "transparent", cursor: "pointer", color: "#64748b", padding: 5, display: "flex" }}>
+          style={{ border: 0, background: "transparent", cursor: "pointer", color: "var(--text-3)", padding: 5, display: "flex" }}>
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </div>
       <div id={name + "-requirements"} className="passwordRules">
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "#334155" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
           <span>Password strength</span><span style={{ color }} aria-live="polite">{label}</span>
         </div>
         <div aria-hidden="true" style={{ display: "flex", gap: 5, marginTop: 8, marginBottom: 12 }}>
-          {[1,2,3].map((n) => <div key={n} style={{ height: 5, flex: 1, borderRadius: 8, background: n <= level ? color : "#e2e8f0", transition: "background .2s" }} />)}
+          {[1,2,3].map((n) => <div key={n} style={{ height: 5, flex: 1, borderRadius: 8, background: n <= level ? color : "var(--surface-4)", transition: "background .2s" }} />)}
         </div>
         <div style={{ display: "grid", gap: 7 }}>
-          {checks.map((check) => <div key={check.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: check.ok ? "#047857" : "#64748b" }}>
+          {checks.map((check) => <div key={check.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: check.ok ? "var(--success-text)" : "var(--text-3)" }}>
             {check.ok ? <Check size={14} /> : <X size={14} />}
             <span>{check.label}</span>
           </div>)}
