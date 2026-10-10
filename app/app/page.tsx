@@ -77,6 +77,7 @@ import {
 import { syncPushSubscription } from "@/lib/reminders";
 import { knownGuestTrialRemaining, rememberGuestTrial, trackConversion } from "@/lib/conversion";
 import { materializeWeeklySchedule, weeklyOccurrences } from "@/lib/schedule";
+import CalendarBackdrop from "./calendar-backdrop";
 
 type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards" | "shared";
 type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
@@ -1902,6 +1903,8 @@ function TodoView({
               ><ChevronRight /></button>
             </div>
 
+            <div className="todoCalendarBody hasBackdrop">
+            <CalendarBackdrop />
             <div className="todoWeekdays" aria-hidden="true">
               {todoCalendar.weekdayLabels.map((label, i) => <span key={i}>{label}</span>)}
             </div>
@@ -1919,6 +1922,7 @@ function TodoView({
                   {markedDates.has(cell.date) && <i />}
                 </button>
               ))}
+            </div>
             </div>
 
             <div className="todoDateAgenda">

@@ -3388,3 +3388,26 @@ html.native .welcomePage { padding-top: max(12px, var(--zest-safe-top)); padding
 .welcomeContinue { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 2; }
 html.native .welcomeContinue { bottom: max(12px, var(--zest-safe-bottom)); }
 .welcomeWrap::after { content: ""; display: block; height: 8px; }
+
+/* Calendar backdrop (app/app/calendar-backdrop.tsx): a faint, neutral desk scene behind Planner and date-picker month
+   grids. Kept grey and very light so it never competes with the dates; only the selected day and dots carry colour. */
+.hasBackdrop{position:relative;isolation:isolate}
+.hasBackdrop>:not(.calendarBackdrop){position:relative;z-index:1}
+.calendarBackdrop{position:absolute;left:0;right:0;bottom:0;z-index:0;width:100%;height:58%;pointer-events:none;opacity:.32}
+.plannerCalendar.hasBackdrop{overflow:hidden}
+.plannerCalendar .calendarBackdrop{bottom:-2px}
+:root[data-theme="dark"] .calendarBackdrop{opacity:.22}
+.cbDesk{fill:var(--surface-3)}
+.cbDeskEdge{fill:var(--surface-4)}
+.cbMug,.cbPot,.cbNote,.cbPaper{fill:var(--surface-2);stroke:var(--border-strong);stroke-width:1.5}
+.cbMugTop{fill:var(--border-strong)}
+.cbMugHandle{fill:none;stroke:var(--border-strong);stroke-width:3;stroke-linecap:round}
+.cbSteam,.cbNoteLine,.cbPaperLine,.cbScan{fill:none;stroke:var(--border-strong);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cbScan{stroke-width:3}
+.cbPhone{fill:var(--surface-4)}
+.cbScreen{fill:var(--surface)}
+.cbShutter,.cbLeaf{fill:var(--border-strong)}
+.cbLeaf.b{fill:var(--surface-3);stroke:var(--border-strong);stroke-width:1}
+/* iOS Safari paints button text system-blue unless a colour is set; dates and calendar controls use the text colour. */
+.monthGrid button,.todoMonthGrid button,.calendarTop button,.todayShortcut{color:var(--text);font:inherit}
+.monthGrid button.selected,.todoMonthGrid button.selected{color:var(--on-accent)}
