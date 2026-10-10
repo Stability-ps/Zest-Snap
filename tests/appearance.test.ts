@@ -163,6 +163,9 @@ test("boot script applies the stored theme before first paint and never throws",
   assert.equal(premium.dataset.theme, "light");
   assert.equal(premium.dataset.accent, undefined);
   assert.equal(boot(JSON.stringify({ mode: "dark" }), true, "/upgrades").dataset.theme, "dark", "only the premium route");
+  // The landing page is white in every mode (#96); the app itself follows the appearance.
+  assert.equal(boot(JSON.stringify({ mode: "dark", accent: "violet" }), true, "/").dataset.theme, "light");
+  assert.equal(boot(JSON.stringify({ mode: "dark" }), true, "/app").dataset.theme, "dark");
   assert.doesNotThrow(() => vm.runInNewContext(APPEARANCE_BOOT_SCRIPT, {}));
 });
 
