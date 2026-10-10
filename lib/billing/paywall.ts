@@ -1,5 +1,5 @@
 import type { PlanId } from "../product-config";
-import type { StoreOffer } from "../native/billing";
+import type { FreeTrial, StoreOffer } from "../native/billing";
 
 /**
  * Pure helpers for the Premium page (app/upgrade). The page shows one paid tier ("Pro") as an Annual and a
@@ -41,8 +41,23 @@ export function cardPrice(offer: StoreOffer | null): { main: string; unit: strin
 export function billingTerms(offer: StoreOffer | null, store: string): string {
   const where = store === "App Store" ? "your Apple ID" : store === "Google Play" ? "your Google Play account" : "your store account";
   const period = offer?.period === "annual" ? `${offer.price} per year` : offer?.period === "monthly" ? `${offer.price} per month` : null;
+  if (offer?.freeTrial && period)
+    return (
+      `Free for ${trialLength(offer.freeTrial)}, then ${period}, charged to ${where} when the trial ends unless you cancel at least 24 hours before. ` +
+      "Renews automatically unless cancelled at least 24 hours before the end of the period. Manage or cancel any time in your store account settings."
+    );
   return (
     (period ? `${period}, charged to ${where} at confirmation. ` : `Charged to ${where} at confirmation. `) +
     "Renews automatically unless cancelled at least 24 hours before the end of the period. Manage or cancel any time in your store account settings."
   );
+}
+
+/** "7 days", "1 week", "1 month": the length of a store free trial in words. */
+export function trialLength(t: FreeTrial) {
+  return `${t.count} ${t.unit}${t.count === 1 ? "" : "s"}`;
+}
+
+/** Card badge and button text for a free trial, e.g. "7-day free trial" / "Start 7-day free trial". */
+export function trialBadge(t: FreeTrial) {
+  return `${t.count}-${t.unit} free trial`;
 }

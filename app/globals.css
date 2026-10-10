@@ -3388,3 +3388,4 @@ html.native .welcomePage { padding-top: max(12px, var(--zest-safe-top)); padding
 .welcomeContinue { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 2; }
 html.native .welcomeContinue { bottom: max(12px, var(--zest-safe-bottom)); }
 .welcomeWrap::after { content: ""; display: block; height: 8px; }
+.pwTrial{display:inline-flex;align-self:flex-start;margin-top:6px;padding:3px 9px;border-radius:999px;background:var(--success-soft);color:var(--success-text);font-size:12px;font-weight:800}
