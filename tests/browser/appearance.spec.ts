@@ -262,8 +262,11 @@ for (const scheme of ["light", "dark"] as const) {
     await audit("todo-list");
     await page.goto("/app?view=history");
     await audit("history-list");
+    // Settings' plans link now opens the Premium page (always light by design).
     await page.goto("/settings?sheet=plans");
-    await audit("plans-sheet");
+    await page.waitForURL(/\/upgrade\?from=settings/);
+    await page.waitForLoadState("networkidle");
+    await audit("premium-from-settings");
     expect(failures).toEqual([]);
   });
 }

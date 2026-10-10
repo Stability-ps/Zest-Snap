@@ -2797,9 +2797,6 @@ button.rewardBalance{gap:10px}
 .upgradeHint{color:var(--accent-text)!important;font-weight:800}
 .proLock{color:var(--text-4)!important;width:17px!important}
 .planUsageRow .settingsIcon{background:var(--accent-soft)}
-.proBenefitList{display:grid;gap:10px;padding:2px 0 6px}
-.proBenefitList>div{display:flex;align-items:flex-start;gap:9px;color:var(--text-2);font-size:14px;line-height:1.4}
-.proBenefitList svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--accent-text)}
 
 
 /* Android Planner time picker: keep the native Set/Cancel actions inside the dialog.

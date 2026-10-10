@@ -24,7 +24,7 @@ function staysInApp(url: string) {
 }
 
 test("every in-app route stays inside the native WebView instead of opening Safari", () => {
-  for (const path of ["/app", "/settings", "/settings?sheet=plans", "/login", "/login?mode=signup", "/reset-password", "/auth/callback?code=x", "/onboarding", "/shared/1b4e28ba-2fa1-11d2-883f-0016d3cca427"])
+  for (const path of ["/app", "/settings", "/settings?sheet=plans", "/upgrade?from=settings", "/login", "/login?mode=signup", "/reset-password", "/auth/callback?code=x", "/onboarding", "/shared/1b4e28ba-2fa1-11d2-883f-0016d3cca427"])
     assert.ok(staysInApp("https://app.zestsnap.app" + path), path);
   for (const external of ["https://evil.example/settings", "https://accounts.google.com/o/oauth2/auth", "https://app.zestsnap.app.evil.example/settings"])
     assert.equal(staysInApp(external), false, external);

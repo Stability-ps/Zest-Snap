@@ -114,3 +114,14 @@ test("premium page: light in dark mode, no invented prices, honest on the web", 
   await expect(page.getByRole("link", { name: "Terms of Service" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Privacy Policy" })).toBeVisible();
 });
+
+test("Settings upgrade entry points open the Premium page; Back returns to Settings", async ({ page }) => {
+  await page.goto("/settings?sheet=plans");
+  await page.waitForURL(/\/upgrade\?from=settings/);
+  await expect(page.getByRole("radiogroup", { name: "Choose your Pro plan" })).toBeVisible();
+  await page.getByRole("link", { name: "Back" }).click();
+  await page.waitForURL(/\/settings$/);
+  await page.getByRole("button", { name: /Monthly scans/ }).click();
+  await page.waitForURL(/\/upgrade\?from=settings/);
+  await expect(page.getByRole("heading", { name: "Get more from Zest Snap." })).toBeVisible();
+});

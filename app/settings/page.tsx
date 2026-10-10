@@ -15,8 +15,6 @@ import { PlannerStore } from "@/lib/planner-store";
 import { timezoneOptions as allTimezones, timezoneLabel as zoneLabel } from "@/lib/timezones";
 import { productConfig } from "@/lib/product-config";
 import SupportForm from "./support-form";
-import PlansSheet from "./plans-sheet";
-import { billingAvailability } from "@/lib/native/billing";
 import NativeAppSettings from "./native-app-settings";
 import MarketingToggle from "./marketing-toggle";
 import SignInMethods from "./sign-in-methods";
@@ -35,6 +33,14 @@ function clearDeviceData() {
   for (const key of ["zest-planner-v1", "zest-reminders-v1", "zest-referral-v1"]) localStorage.removeItem(key);
 }
 export default function Settings() {
+  // Every upgrade entry point opens the Premium page (app/upgrade), on the web and in the iOS/Android apps.
+  // A full load, so the page's fixed light look applies from the first frame (lib/appearance/boot.ts).
+  const openPremium = (replace = false) => {
+    const url = "/upgrade?from=settings";
+    if (replace) window.location.replace(url);
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full load on purpose (see above)
+    else window.location.href = url;
+  };
   const [provider, setProvider] = useState<DataProvider | null>(null),
     [profile, setProfile] = useState<Profile>(defaultProfile),
     [usage, setUsage] = useState<Usage | null>(null),
@@ -42,7 +48,7 @@ export default function Settings() {
     [message, setMessage] = useState(""),
     [editingDisplayName, setEditingDisplayName] = useState(false),
     [busy, setBusy] = useState(false),
-    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|"support"|"report"|"pro"|"briefing"|"appearance"|null>(null),
+    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|"support"|"report"|"briefing"|"appearance"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
     [exportStatus, setExportStatus] = useState<{ ok: boolean; text: string } | null>(null),
     [accountEmail, setAccountEmail] = useState(""),
@@ -57,8 +63,8 @@ export default function Settings() {
   // Deep link into a sheet, e.g. /settings?sheet=plans from the scan-limit message.
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("sheet");
-    if (requested === "plans" || requested === "pro") setSheet("pro");
-    else if (requested === "support" || requested === "report" || requested === "appearance" || requested === "account") setSheet(requested);
+    if (requested === "plans" || requested === "pro") return openPremium(true);
+    if (requested === "support" || requested === "report" || requested === "appearance" || requested === "account") setSheet(requested);
     // Returning from connecting Google/Apple (/auth/callback?link=1).
     const params = new URLSearchParams(window.location.search);
     const linked = params.get("linked");
@@ -246,14 +252,14 @@ export default function Settings() {
 
         <h2 className="settingsSectionTitle">Calendar & history</h2>
         <section className="settingsGroup">
-          {isPro ? <a className="settingsRow" href="/app?view=history"><span className="settingsIcon"><History /></span><span className="settingsRowCopy"><b>History</b><small>View and search your previous scans</small></span><ChevronRight /></a> : <button type="button" className="settingsRow proLockedRow" onClick={()=>setSheet("pro")}><span className="settingsIcon"><History /></span><span className="settingsRowCopy"><b>History <span className="proBadge">PRO</span></b><small>Search and revisit all your scans</small></span><Lock className="proLock" /></button>}
+          {isPro ? <a className="settingsRow" href="/app?view=history"><span className="settingsIcon"><History /></span><span className="settingsRowCopy"><b>History</b><small>View and search your previous scans</small></span><ChevronRight /></a> : <button type="button" className="settingsRow proLockedRow" onClick={()=>openPremium()}><span className="settingsIcon"><History /></span><span className="settingsRowCopy"><b>History <span className="proBadge">PRO</span></b><small>Search and revisit all your scans</small></span><Lock className="proLock" /></button>}
           <button type="button" className="settingsRow" onClick={()=>setSheet("calendar")}><span className="settingsIcon"><CalendarDays /></span><span className="settingsRowCopy"><b>Calendar</b><small>{googleCalendarLoading ? "Checking Google Calendar connection…" : googleCalendar.connected ? `Google Calendar connected${googleCalendar.email ? ` · ${googleCalendar.email}` : ""}` : "Connect Google Calendar for one-tap adding"}</small></span><ChevronRight /></button>
-          {isPro ? <button type="button" className="settingsRow" onClick={()=>setSheet("retention")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history</b><small>How long scan history is kept</small></span><span className="settingsValue">{retentionLabel}</span><ChevronRight /></button> : <button type="button" className="settingsRow proLockedRow" onClick={()=>setSheet("pro")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history <span className="proBadge">PRO</span></b><small>Keep and access your scan history for longer</small></span><Lock className="proLock" /></button>}
+          {isPro ? <button type="button" className="settingsRow" onClick={()=>setSheet("retention")}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history</b><small>How long scan history is kept</small></span><span className="settingsValue">{retentionLabel}</span><ChevronRight /></button> : <button type="button" className="settingsRow proLockedRow" onClick={()=>openPremium()}><span className="settingsIcon"><Database /></span><span className="settingsRowCopy"><b>Scan history <span className="proBadge">PRO</span></b><small>Keep and access your scan history for longer</small></span><Lock className="proLock" /></button>}
         </section>
 
         <h2 className="settingsSectionTitle">Plan & usage</h2>
         <section className="settingsGroup">
-          <button type="button" className="settingsRow planUsageRow" onClick={()=>setSheet("pro")}><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Monthly scans <span className={isPro ? "planBadge pro" : "planBadge"}>{isPro ? "PRO" : "FREE"}</span></b><small>{usage ? `${usage.scans} of ${usage.allowance} ${isPro ? "" : "free "}scans used this month` : "Loading usage…"}</small>{!isPro&&usage&&usage.allowance-usage.scans<=1&&<small className="upgradeHint">Upgrade for more scans</small>}</span><ChevronRight /></button>
+          <button type="button" className="settingsRow planUsageRow" onClick={()=>openPremium()}><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Monthly scans <span className={isPro ? "planBadge pro" : "planBadge"}>{isPro ? "PRO" : "FREE"}</span></b><small>{usage ? `${usage.scans} of ${usage.allowance} ${isPro ? "" : "free "}scans used this month` : "Loading usage…"}</small>{!isPro&&usage&&usage.allowance-usage.scans<=1&&<small className="upgradeHint">Upgrade for more scans</small>}</span><ChevronRight /></button>
           <a className="settingsRow" href="/app?view=rewards"><span className="settingsIcon"><Gift /></span><span className="settingsRowCopy"><b>Rewards & referrals</b><small>Credits, milestones and invite rewards</small></span><ChevronRight /></a>
         </section>
         <NativeAppSettings />
@@ -279,7 +285,7 @@ export default function Settings() {
           <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
             <div className="settingsSheetTop">
               <div>
-                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="briefing"?"Daily Briefing":sheet==="appearance"?appearanceStrings.sheetTitle:sheet==="export"?"Export my data":sheet==="delete"?"Delete your account?":sheet==="support"?"Contact support":sheet==="report"?"Report a problem":sheet==="pro"?"Unlock more with Zest Snap Pro":"Clear device data?"}</h2>
+                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="briefing"?"Daily Briefing":sheet==="appearance"?appearanceStrings.sheetTitle:sheet==="export"?"Export my data":sheet==="delete"?"Delete your account?":sheet==="support"?"Contact support":sheet==="report"?"Report a problem":"Clear device data?"}</h2>
                 {sheet==="account"&&<p>You’re signed in. Manage this account without signing in again.</p>}
                 {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
@@ -291,7 +297,6 @@ export default function Settings() {
                 {sheet==="support"&&<p>We usually reply within one working day. You can also email {productConfig.supportEmail}.</p>}
                 {sheet==="report"&&<p>Reports go straight to the Zest team so we can fix problems quickly.</p>}
                 {sheet==="delete"&&<p>This permanently deletes your Zest account, scans, Planner, reminders, rewards, feedback and notification subscriptions. Events you already added to another calendar app are not affected. This can’t be undone.</p>}
-                {sheet==="pro"&&<p>Get more AI scans, full searchable history and longer scan-history access while keeping the free experience useful.</p>}
               </div>
               <button className="iconButton" onClick={()=>setSheet(null)} aria-label="Close"><X/></button>
             </div>
@@ -335,7 +340,6 @@ export default function Settings() {
               </> : <a className="button" href="/api/calendar/google/connect">Connect Google Calendar</a>}
               <span>After a scan, confirm the detected event and tap <b>Calendar</b>. Connected accounts are added directly; otherwise Zest opens a ready-to-save Google Calendar event.</span>
             </div>}
-            {sheet==="pro"&&<div className="settingsSheetActions proUpsellSheet"><div className="proBenefitList"><div><Check/> <span>More AI scans every month</span></div><div><Check/> <span>Longer PDFs in one scan</span></div><div><Check/> <span>Your plan on every device you sign in to</span></div></div>{billingAvailability()==="web_not_connected" ? <><a className="button" href="https://zestsnap.app/#pricing">See Pro plans</a><button className="button alt" type="button" onClick={()=>setSheet(null)}>Not now</button></> : <PlansSheet onDone={(m)=>{setSheet(null);setMessage(m);}} />}</div>}
             {sheet==="export"&&<div className="settingsSheetActions">
               <button className="button" disabled={busy} onClick={()=>runExport(downloadPdfExport)}><Download size={18}/> Save or share readable PDF</button>
               <button className="button alt" disabled={busy} onClick={()=>runExport(downloadJsonExport)}><Download size={18}/> Save full data (JSON)</button>
