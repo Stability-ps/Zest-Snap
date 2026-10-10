@@ -34,8 +34,9 @@ test("capture → review → save to Planner → Home Today stays in sync withou
     event({ title: "Sports day", startDate: "2031-05-02", endDate: "2031-05-02" }),
   ]);
   await expect(page.getByRole("heading", { name: "3 events found" })).toBeVisible();
-  await page.getByRole("button", { name: "Save to Planner" }).click();
-  await expect(page.getByText("3 items saved to Planner.")).toBeVisible();
+  await page.getByRole("button", { name: "Save 3 to Planner" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "3 events added to Planner" })).toBeVisible();
+  await page.getByRole("button", { name: "View in Planner" }).click();
   await expect(page.getByRole("tab", { name: "Upcoming" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Sports day" })).toBeVisible();
 
