@@ -3253,7 +3253,7 @@ body:has(.marketingPage) {
 }
 .marketingPage .phone {
   background: var(--hero);
-  box-shadow: 0 28px 80px rgb(15 33 57 / 16%);
+  box-shadow: var(--marketing-phone-shadow, 0 28px 80px rgba(15, 33, 57, .16));
 }
 .marketingPage .phone .screen {
   background: var(--marketing-screen, #111c29);
