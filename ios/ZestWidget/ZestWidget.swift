@@ -53,17 +53,25 @@ struct TodayProvider: TimelineProvider {
 
 struct TodayWidgetView: View {
     let entry: TodayEntry
+    @Environment(\.widgetFamily) private var family
     private let teal = Color(red: 0, green: 198 / 255, blue: 167 / 255)
     private let navy = Color(red: 11 / 255, green: 31 / 255, blue: 59 / 255)
 
     var body: some View {
-        let items = Array((entry.day?.items ?? []).prefix(3))
+        let items = Array((entry.day?.items ?? []).prefix(family == .systemSmall ? 2 : 3))
         let count = entry.day?.count ?? 0
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
+            let countText = Text(count == 0 ? "Nothing planned" : count == 1 ? "1 thing" : "\(count) things").font(.caption.bold()).foregroundColor(teal)
+            if family == .systemSmall {
+                // Small widgets are too narrow for title + count on one line.
                 Text("Today").font(.headline).foregroundColor(.white)
-                Spacer()
-                Text(count == 0 ? "Nothing planned" : count == 1 ? "1 thing" : "\(count) things").font(.caption.bold()).foregroundColor(teal)
+                countText
+            } else {
+                HStack {
+                    Text("Today").font(.headline).foregroundColor(.white)
+                    Spacer()
+                    countText
+                }
             }
             if items.isEmpty {
                 Spacer()
