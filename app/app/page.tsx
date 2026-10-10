@@ -74,9 +74,11 @@ import {
   sessionUserIdSync,
   setActiveUser,
 } from "@/lib/session";
-import { syncPushSubscription } from "@/lib/reminders";
+import { listReminders, syncPushSubscription, type ReminderRecord } from "@/lib/reminders";
 import { knownGuestTrialRemaining, rememberGuestTrial, trackConversion } from "@/lib/conversion";
 import { materializeWeeklySchedule, weeklyOccurrences } from "@/lib/schedule";
+import WeeklyValueCard from "./weekly-value-card";
+import { hasWeeklyValue, weeklyValue, type WeeklyValue } from "@/lib/weekly-value";
 
 type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards" | "shared";
 type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
@@ -311,6 +313,16 @@ export default function App() {
   }, [identity]);
   const allCalendarItems = useMemo(() => mergePlannerWithExternal(plannerItems, googleCalendarItems), [plannerItems, googleCalendarItems]);
   const homeToday = useMemo(() => plannerTodayItems(allCalendarItems, timezone), [allCalendarItems, timezone]);
+  // "This week with Zest" (lib/weekly-value.ts): reminders are read once per visit to Home.
+  const [weekReminders, setWeekReminders] = useState<ReminderRecord[]>([]);
+  useEffect(() => {
+    if (view !== "home" && view !== "rewards") return;
+    listReminders().then(setWeekReminders).catch(() => undefined);
+  }, [view, identity]);
+  const weekValue = useMemo(
+    () => weeklyValue({ scans: store.scans, items: plannerItems, reminders: weekReminders, timezone }),
+    [store.scans, plannerItems, weekReminders, timezone],
+  );
 
   const refreshGoogleCalendar = useCallback(async () => {
     if (mode !== "cloud" || !navigator.onLine) return setGoogleCalendarItems([]);
@@ -1130,6 +1142,7 @@ export default function App() {
                 )}
               </div>
             </section>
+            {hasWeeklyValue(weekValue) && <WeeklyValueCard value={weekValue} />}
             {!homeToday.length && (
               <section className="homeIdeas" aria-labelledby="home-ideas-title">
                 <h2 id="home-ideas-title">What can I snap?</h2>
@@ -1413,6 +1426,7 @@ export default function App() {
         )}
         {view === "rewards" && (
           <RewardsView
+            weekValue={weekValue}
             ready={ready}
             signedIn={mode === "cloud"}
             store={store}
@@ -2072,6 +2086,7 @@ const MILESTONES: { key: string; title: string; hint: string; open?: "scan" | "p
 ];
 
 function RewardsView({
+  weekValue,
   ready,
   signedIn,
   store,
@@ -2082,6 +2097,7 @@ function RewardsView({
   onInvite,
   onFeedback,
 }: {
+  weekValue: WeeklyValue;
   ready: boolean;
   signedIn: boolean;
   store: LocalState;
@@ -2112,6 +2128,7 @@ function RewardsView({
   return (
     <section className="rewardsView">
       <h1>Your rewards</h1>
+      {hasWeeklyValue(weekValue) && <WeeklyValueCard value={weekValue} />}
       <p>Earn bonus AI credits for milestones and for helping Zest grow. Credits can pay for extra scans.</p>
       {signedIn ? (
         <div className="rewardBalance">
