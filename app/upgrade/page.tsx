@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { ArrowLeft, Camera, CalendarDays, Cloud, Sparkles } from "lucide-react";
 import PlansSheet from "@/app/settings/plans-sheet";
@@ -15,13 +15,6 @@ import PlansSheet from "@/app/settings/plans-sheet";
 export default function UpgradePage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-    createClient().auth.getUser().then(({ data }) => {
-      if (!data.user) return;
-      createClient().rpc("premium_onboarding_status").catch(() => undefined);
-    }).catch(() => undefined);
-  }, []);
   async function continueFree() {
     setBusy(true);
     try {
