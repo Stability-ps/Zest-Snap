@@ -76,8 +76,13 @@ async function unreadableText(page: Page) {
   });
 }
 
-test("Automatic is the default and follows the device, including live changes", async ({ page }) => {
+test("Light is the default, even on a dark device; Automatic follows the device, including live changes", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/app");
+  expect(await theme(page)).toMatchObject({ theme: "light", themeMode: "light" });
+  await openAppearance(page);
+  await expect(page.getByRole("radio", { name: /Light/ })).toBeChecked();
+  await page.locator("label.appearanceMode", { hasText: "Automatic" }).click();
   await page.goto("/app");
   expect(await theme(page)).toMatchObject({ theme: "dark", themeMode: "system" });
   expect(await bodyBg(page)).toBe(rgb(NEUTRALS.dark.bg));
@@ -90,7 +95,7 @@ test("Automatic is the default and follows the device, including live changes", 
 test("explicit Light and Dark override the device and persist across reloads", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await openAppearance(page);
-  await expect(page.getByRole("radio", { name: /Automatic/ })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /Light/ })).toBeChecked();
   await page.getByText("Dark", { exact: true }).click();
   await expect(page.getByRole("radio", { name: /Dark/ })).toBeChecked();
   expect(await theme(page)).toMatchObject({ theme: "dark", themeMode: "dark" });
@@ -108,6 +113,8 @@ test("all six accent colours apply immediately in Light and Dark", async ({ page
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await openAppearance(page);
+    // Light is the default; choose the mode under test explicitly.
+    await page.locator("label.appearanceMode", { hasText: scheme === "dark" ? "Dark" : "Light" }).click();
     for (const accent of ACCENTS) {
       await page.getByTitle(accent.name, { exact: true }).click();
       await expect(page.getByRole("radio", { name: accent.name, exact: true })).toBeChecked();
@@ -121,13 +128,13 @@ test("all six accent colours apply immediately in Light and Dark", async ({ page
   expect(await token(page, "--danger-text")).toBe(NEUTRALS.dark["danger-text"]);
 });
 
-test("reset restores Automatic and Ocean Blue", async ({ page }) => {
+test("reset restores Light and Ocean Blue", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.addInitScript((k) => localStorage.setItem(k, JSON.stringify({ mode: "dark", accent: "rose", updatedAt: 1 })), KEY);
   await openAppearance(page);
   expect(await theme(page)).toMatchObject({ theme: "dark", accent: "rose" });
   await page.getByRole("button", { name: "Reset appearance" }).click();
-  expect(await theme(page)).toMatchObject({ theme: "light", themeMode: "system" });
+  expect(await theme(page)).toMatchObject({ theme: "light", themeMode: "light" });
   expect((await theme(page)).accent).toBeUndefined();
   await expect(page.getByRole("radio", { name: "Ocean Blue" })).toBeChecked();
 });
@@ -145,7 +152,7 @@ test("invalid stored preferences fall back to the defaults", async ({ page }) =>
   await page.emulateMedia({ colorScheme: "dark" });
   await page.addInitScript((k) => localStorage.setItem(k, "{oops"), KEY);
   await page.goto("/app");
-  expect(await theme(page)).toMatchObject({ theme: "dark", themeMode: "system" });
+  expect(await theme(page)).toMatchObject({ theme: "light", themeMode: "light" });
 });
 
 test("changing the theme never reloads the page or loses typed input (and other tabs follow)", async ({ page, context }) => {
@@ -188,6 +195,7 @@ for (const scheme of ["light", "dark"] as const) {
   test(`no unreadable text on any screen in ${scheme} mode`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+    await page.addInitScript(([k, m]) => localStorage.setItem(k, JSON.stringify({ mode: m, accent: "ocean", updatedAt: 1 })), [KEY, scheme] as const);
     const failures: string[] = [];
     for (const [name, path] of screens) {
       await page.goto(path);
@@ -211,6 +219,7 @@ for (const scheme of ["light", "dark"] as const) {
   test(`screens with real content (scan review, Planner, sheets, reminders, to-dos) are readable in ${scheme} mode`, async ({ page }, info) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+    await page.addInitScript(([k, m]) => localStorage.setItem(k, JSON.stringify({ mode: m, accent: "ocean", updatedAt: 1 })), [KEY, scheme] as const);
     const failures: string[] = [];
     const audit = async (name: string) => {
       await page.screenshot({ path: info.outputPath(`${name}.png`) });
@@ -279,6 +288,8 @@ for (const [width, height, label] of [[390, 844, "mobile"], [1280, 900, "desktop
       test.skip(process.platform !== "darwin", "baselines are recorded on macOS");
       await page.setViewportSize({ width, height });
       await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+      await page.addInitScript(([k, m]) => localStorage.setItem(k, JSON.stringify({ mode: m, accent: "ocean", updatedAt: 1 })), [KEY, scheme] as const);
+    await page.addInitScript(([k, m]) => localStorage.setItem(k, JSON.stringify({ mode: m, accent: "ocean", updatedAt: 1 })), [KEY, scheme] as const);
       // Fixed clock so greetings and calendars are stable.
       await page.clock.setFixedTime(new Date("2026-10-12T09:30:00-04:00"));
       for (const name of ["home", "calendar", "todo", "settings", "appearance"]) {

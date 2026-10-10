@@ -111,6 +111,11 @@ test("guest: exactly three successful scans (a failed one is free), then the pay
   await page.getByRole("button", { name: "Create account" }).click();
 
   // New verified account: the premium screen, once.
+  // New account: first choose the look (Light is preselected), then the one-time premium screen.
+  await page.waitForURL(/\/welcome\?next=/);
+  await expect(page.getByRole("heading", { name: "How should Zest look?" })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Light/ })).toBeChecked();
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.waitForURL(/\/upgrade\?from=onboarding/);
   await expect(page.getByRole("heading", { name: "Get more from Zest Snap." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue with Free plan" })).toBeVisible();
@@ -157,6 +162,11 @@ test("registered Free: its own monthly allowance (independent of the guest trial
   await page.getByPlaceholder("you@example.com").fill(email);
   await page.locator('input[name="password"]').fill(PASSWORD);
   await page.getByRole("button", { name: /^Sign in/ }).click();
+  // New account: first choose the look (Light is preselected), then the one-time premium screen.
+  await page.waitForURL(/\/welcome\?next=/);
+  await expect(page.getByRole("heading", { name: "How should Zest look?" })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Light/ })).toBeChecked();
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.waitForURL(/\/upgrade\?from=onboarding/);
   await page.getByRole("button", { name: "Skip for now" }).click();
   await page.waitForURL(/\/app$/);

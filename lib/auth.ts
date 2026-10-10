@@ -1,4 +1,7 @@
 /** Only same-site app paths are allowed after sign-in, so auth links can't redirect elsewhere. */
+/** Where a brand-new account goes first: choose the app's look, then the one-time premium introduction. */
+export const NEW_ACCOUNT_DESTINATION = "/welcome?next=" + encodeURIComponent("/upgrade?from=onboarding");
+
 export function safeAuthNext(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/app";
   try {

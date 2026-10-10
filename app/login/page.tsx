@@ -6,7 +6,7 @@ import SocialButtons from "./social-buttons";
 import { isOAuthErrorKind, oauthErrorMessage } from "@/lib/social-auth";
 import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { PENDING_NEXT_KEY, authLinkErrorFrom, safeAuthNext } from "@/lib/auth";
+import { NEW_ACCOUNT_DESTINATION, PENDING_NEXT_KEY, authLinkErrorFrom, safeAuthNext } from "@/lib/auth";
 import { ResendVerification } from "../auth/resend-verification";
 import { useCompactAuthCard } from "../auth/compact";
 import { PasswordStrength, validPassword } from "@/app/password-strength";
@@ -126,7 +126,7 @@ export default function LoginPage() {
     if (destination === "/app" || destination.startsWith("/upgrade")) {
       try {
         const { data, error } = await createClient().rpc("premium_onboarding_status");
-        if (!error && data?.show === true) destination = "/upgrade?from=onboarding";
+        if (!error && data?.show === true) destination = NEW_ACCOUNT_DESTINATION;
       } catch { /* Never prevent sign-in when onboarding is unavailable. */ }
     }
     window.location.assign(new URL(destination, window.location.origin).href);

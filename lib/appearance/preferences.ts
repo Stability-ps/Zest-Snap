@@ -12,7 +12,7 @@ export type StoredAppearance = Appearance & { owner: string | null; dirty: boole
 
 export const APPEARANCE_KEY = "zest-appearance-v1";
 export const THEME_MODES: readonly ThemeMode[] = ["light", "dark", "system"];
-export const DEFAULT_APPEARANCE: Appearance = { mode: "system", accent: "ocean", updatedAt: 0 };
+export const DEFAULT_APPEARANCE: Appearance = { mode: "light", accent: "ocean", updatedAt: 0 };
 export const ACCENT_IDS = ACCENTS.map((a) => a.id) as readonly AccentId[];
 
 const isMode = (v: unknown): v is ThemeMode => typeof v === "string" && (THEME_MODES as readonly string[]).includes(v);

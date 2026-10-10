@@ -3372,3 +3372,19 @@ html.native .pw{padding-top:var(--zest-safe-top);padding-bottom:max(12px,var(--z
 .homeIdeas li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-2); }
 .homeIdeas li span { width: 22px; text-align: center; }
 .todoHero > div { display: block; }
+
+/* Welcome: choose the look after sign-up (app/welcome/page.tsx). Follows the chosen appearance live. */
+.welcomePage { min-height: 100dvh; background: var(--bg); color: var(--text); padding: max(16px, env(safe-area-inset-top)) 0 max(16px, env(safe-area-inset-bottom)); }
+html.native .welcomePage { padding-top: max(12px, var(--zest-safe-top)); padding-bottom: max(12px, var(--zest-safe-bottom)); }
+.welcomeWrap { width: min(100%, 520px); margin: 0 auto; padding: 0 20px; display: flex; flex-direction: column; }
+.welcomeBrand { margin: 6px 0 18px; font-size: 21px; font-weight: 800; letter-spacing: -0.035em; }
+.welcomeBrand span { color: var(--brand); }
+.welcomeEyebrow { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--brand-text); }
+.welcomeWrap h1 { margin: 6px 0 6px; font-size: 32px; line-height: 1.05; letter-spacing: -1px; }
+.welcomeIntro { margin: 0 0 14px; font-size: 15px; line-height: 1.4; color: var(--text-3); }
+.welcomeContinue { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 54px; margin-top: 16px; border: 0; border-radius: 15px; background: var(--ink); color: var(--on-ink); font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; box-shadow: 0 10px 24px rgb(var(--shadow-rgb) / calc(.16 * var(--shadow-strength))); }
+.welcomeContinue:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+/* Continue stays in reach on every phone: pinned above the home indicator while the choices scroll. */
+.welcomeContinue { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 2; }
+html.native .welcomeContinue { bottom: max(12px, var(--zest-safe-bottom)); }
+.welcomeWrap::after { content: ""; display: block; height: 8px; }

@@ -152,6 +152,7 @@ test("larger text: the action bar wraps instead of clipping", async ({ page }) =
 for (const scheme of ["light", "dark"] as const) {
   test(`native safe area: a solid strip covers the status bar and no card sits under it (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
+    await page.addInitScript((m) => localStorage.setItem("zest-appearance-v1", JSON.stringify({ mode: m, accent: "ocean", updatedAt: 1 })), scheme);
     await page.setViewportSize({ width: 393, height: 852 });
     await scan(page, many(8));
     // What the iOS app does: html.native plus the real top inset (59px on Dynamic Island iPhones).

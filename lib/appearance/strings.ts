@@ -32,8 +32,12 @@ export const appearanceStrings = {
   previewTaskMeta: "Today · 18:00",
   previewProgress: "3 of 4 done this week",
   resetButton: "Reset appearance",
-  resetHint: "Automatic mode and Ocean Blue",
+  resetHint: "Light mode and Ocean Blue",
   resetDone: "Appearance reset",
+  welcomeEyebrow: "Welcome to Zest Snap",
+  welcomeTitle: "How should Zest look?",
+  welcomeIntro: "Pick a display mode and colour. You can change this any time in Settings › Appearance.",
+  welcomeContinue: "Continue",
   savedSignedIn: "Saved to your account",
   savedDevice: "Saved on this device",
 };
