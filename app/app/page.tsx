@@ -76,7 +76,6 @@ import {
 } from "@/lib/session";
 import { syncPushSubscription } from "@/lib/reminders";
 import { knownGuestTrialRemaining, rememberGuestTrial, trackConversion } from "@/lib/conversion";
-import GuestPaywall from "./guest-paywall";
 import { materializeWeeklySchedule, weeklyOccurrences } from "@/lib/schedule";
 
 type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards" | "shared";
@@ -123,7 +122,6 @@ export default function App() {
   const [scanStage, setScanStage] = useState("");
   const [error, setError] = useState("");
   const [errorAction, setErrorAction] = useState<"signup" | "plans" | null>(null);
-  const [guestPaywall, setGuestPaywall] = useState(false);
   const [success, setSuccess] = useState("");
   const [store, setStore] = useState<LocalState>(emptyState);
   const [plannerItems, setPlannerItems] = useState<PlannerItem[]>([]);
@@ -579,7 +577,7 @@ export default function App() {
         const message = (payload && "error" in payload && payload.error) || "We couldn’t scan this file right now. Please try again.";
         if (code === "guest_trial_exhausted" && mode === "local") {
           rememberGuestTrial(0);
-          setGuestPaywall(true);
+          openGuestPremium();
           return;
         }
         if (code === "sign_in_required" && mode === "local") {
@@ -631,10 +629,21 @@ export default function App() {
   }
 
   /** Native camera inside the iOS/Android apps; the browser camera input everywhere else. */
-  /** Guests who have used their trial see the upgrade options instead of a file picker. The server still enforces it. */
+  /**
+   * A guest who has used the trial scans goes straight to the Premium page ("You’ve captured 3 important
+   * moments."), which offers a free account and Pro. Their scans and plans stay here. A full load, so the page's
+   * fixed light look applies from the first frame. The server still enforces the trial.
+   */
+  function openGuestPremium() {
+    trackConversion("guest_limit_reached", "guest_limit");
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full load on purpose (see above)
+    window.location.assign("/upgrade?from=guest");
+  }
+
+  /** Guests who have used their trial see the upgrade options instead of a file picker. */
   function guestTrialUsedUp() {
     if (mode !== "local" || knownGuestTrialRemaining() !== 0) return false;
-    setGuestPaywall(true);
+    openGuestPremium();
     return true;
   }
 
@@ -1619,13 +1628,6 @@ export default function App() {
         )}
       </div>
 
-      {guestPaywall && (
-        <GuestPaywall
-          onClose={() => setGuestPaywall(false)}
-          onCreateAccount={goToSignUp}
-          onExplore={() => router.push("/upgrade?from=guest")}
-        />
-      )}
       <nav className="bottomNav" aria-label="Main">
         <NavButton active={view === "home" || view === "review"} label="Home" onClick={() => openView("home")} icon={<HomeIcon />} />
         <NavButton active={view === "calendar" && (plannerTab ?? plannerRequest.tab) !== "reminders"} label="Planner" onClick={() => openView("calendar", { tab: "today" })} icon={<CalendarDays />} />
