@@ -17,7 +17,7 @@ function ModeThumb({ mode }: { mode: ThemeMode }) {
 }
 
 /** Settings › Appearance. Every choice applies immediately on this device; signed-in accounts sync it. */
-export default function AppearanceSheet({ owner, signedIn, onMessage }: { owner: string | null; signedIn: boolean; onMessage: (m: string) => void }) {
+export default function AppearanceSheet({ owner, signedIn, onMessage, showReset = true }: { owner: string | null; signedIn: boolean; onMessage: (m: string) => void; showReset?: boolean }) {
   const appearance = useAppearance();
   return (
     <div className="appearanceSheet">
@@ -80,7 +80,7 @@ export default function AppearanceSheet({ owner, signedIn, onMessage }: { owner:
         </div>
       </section>
 
-      <div className="appearanceFooter">
+      {showReset && <div className="appearanceFooter">
         <button
           type="button"
           className="button alt"
@@ -92,7 +92,7 @@ export default function AppearanceSheet({ owner, signedIn, onMessage }: { owner:
           <RotateCcw size={17} /> {t.resetButton}
         </button>
         <small>{t.resetHint} · {signedIn ? t.savedSignedIn : t.savedDevice}</small>
-      </div>
+      </div>}
     </div>
   );
 }

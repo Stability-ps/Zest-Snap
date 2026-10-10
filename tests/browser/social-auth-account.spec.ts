@@ -170,6 +170,11 @@ test("a brand-new account finishing Google/Apple sign-in sees the premium introd
   await page.getByPlaceholder("you@example.com").fill(email);
   await page.locator('input[name="password"]').fill(PASSWORD);
   await page.getByRole("button", { name: /^Sign in/ }).click();
+  // New account: first choose the look (Light is preselected), then the one-time premium screen.
+  await page.waitForURL(/\/welcome\?next=/);
+  await expect(page.getByRole("heading", { name: "How should Zest look?" })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Light/ })).toBeChecked();
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.waitForURL(/\/upgrade\?from=onboarding/);
   await page.getByRole("button", { name: "Continue with Free plan" }).click();
   await page.waitForURL((u) => u.pathname === "/app");

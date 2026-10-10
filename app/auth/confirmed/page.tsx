@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { AUTH_LINK_STATUSES, PENDING_NEXT_KEY, safeAuthNext, type AuthLinkStatus } from "@/lib/auth";
+import { AUTH_LINK_STATUSES, NEW_ACCOUNT_DESTINATION, PENDING_NEXT_KEY, safeAuthNext, type AuthLinkStatus } from "@/lib/auth";
 import { claimPendingReferral, registerDevice, setActiveUser } from "@/lib/session";
 import { ResendVerification } from "../resend-verification";
 import { useCompactAuthCard } from "../compact";
@@ -47,7 +47,7 @@ export default function EmailLinkResult() {
       if (view.status === "verified" && view.confirmed && (view.next === "/app" || view.next.startsWith("/upgrade"))) {
         try {
           const { data, error } = await createClient().rpc("premium_onboarding_status");
-          if (!error && data?.show === true) destination = "/upgrade?from=onboarding";
+          if (!error && data?.show === true) destination = NEW_ACCOUNT_DESTINATION;
         } catch { /* Never block verified users if the onboarding service is unavailable. */ }
       }
       window.location.assign(new URL(destination, window.location.origin).href);

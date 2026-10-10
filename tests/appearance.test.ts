@@ -104,8 +104,10 @@ test("every CSS variable the stylesheets use is defined", () => {
 
 // ---- Preferences ---------------------------------------------------------------------------------------
 
-test("Automatic mode and Ocean Blue are the defaults; explicit modes override the OS", () => {
+test("Light mode and Ocean Blue are the defaults; Automatic follows the OS, explicit modes override it", () => {
   assert.deepEqual(readStoredAppearance(memory()), stored());
+  assert.equal(DEFAULT_APPEARANCE.mode, "light");
+  assert.equal(DEFAULT_APPEARANCE.accent, "ocean");
   assert.equal(resolveScheme("system", true), "dark");
   assert.equal(resolveScheme("system", false), "light");
   assert.equal(resolveScheme("light", true), "light");
@@ -116,7 +118,7 @@ test("invalid stored preferences fall back safely, field by field", () => {
   for (const raw of ["not json", "null", "42", '{"mode":"neon","accent":"pink"}', "[]"])
     assert.deepEqual(readStoredAppearance(memory({ [APPEARANCE_KEY]: raw })), stored(), raw);
   assert.deepEqual(parseAppearance({ mode: "dark", accent: "pink", updatedAt: -5 }), { mode: "dark", accent: "ocean", updatedAt: 0 });
-  assert.deepEqual(parseAppearance({ mode: 1, accent: "rose", updatedAt: 7 }), { mode: "system", accent: "rose", updatedAt: 7 });
+  assert.deepEqual(parseAppearance({ mode: 1, accent: "rose", updatedAt: 7 }), { mode: "light", accent: "rose", updatedAt: 7 });
   const s = memory();
   writeStoredAppearance(s, stored({ mode: "dark", accent: "amber", updatedAt: 5, owner: A, dirty: true }));
   assert.deepEqual(readStoredAppearance(s), stored({ mode: "dark", accent: "amber", updatedAt: 5, owner: A, dirty: true }));
@@ -145,7 +147,9 @@ function boot(storageValue: string | null, systemDark: boolean, pathname = "/app
 }
 
 test("boot script applies the stored theme before first paint and never throws", () => {
-  assert.equal(boot(null, true).dataset.theme, "dark");
+  // Nothing chosen yet: Light, even on a dark device.
+  assert.equal(boot(null, true).dataset.theme, "light");
+  assert.equal(boot(JSON.stringify({ mode: "system" }), true).dataset.theme, "dark", "Automatic follows a dark device");
   assert.equal(boot(null, false).dataset.theme, "light");
   assert.equal(boot(null, false).dataset.accent, undefined);
   const dark = boot(JSON.stringify({ mode: "dark", accent: "violet" }), false);
@@ -155,7 +159,7 @@ test("boot script applies the stored theme before first paint and never throws",
   assert.equal(boot(JSON.stringify({ mode: "light" }), true).style.colorScheme, "light", "explicit Light on a dark device");
   assert.deepEqual(dark.metas[0], { content: "#0e1114" });
   assert.equal(boot(JSON.stringify({ mode: "light", accent: "rose" }), true).dataset.theme, "light");
-  assert.equal(boot("{broken", true).dataset.theme, "dark");
+  assert.equal(boot("{broken", true).dataset.theme, "light");
   assert.equal(boot(JSON.stringify({ mode: "evil", accent: "x" }), false).dataset.accent, undefined);
   // Internal admin pages keep their light styling.
   assert.equal(boot(JSON.stringify({ mode: "dark" }), true, "/admin/users").dataset.theme, "light");

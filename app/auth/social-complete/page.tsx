@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { safeAuthNext } from "@/lib/auth";
+import { NEW_ACCOUNT_DESTINATION, safeAuthNext } from "@/lib/auth";
 import { claimPendingReferral, registerDevice, setActiveUser } from "@/lib/session";
 import { socialDisplayName } from "@/lib/social-auth";
 
@@ -37,7 +37,7 @@ function SocialComplete() {
         if (destination === "/app" || destination.startsWith("/upgrade")) {
           try {
             const { data: status, error: statusError } = await db.rpc("premium_onboarding_status" as never);
-            if (!statusError && (status as { show?: boolean } | null)?.show === true) destination = "/upgrade?from=onboarding";
+            if (!statusError && (status as { show?: boolean } | null)?.show === true) destination = NEW_ACCOUNT_DESTINATION;
           } catch {
             // Never keep someone out of the app because onboarding is unavailable.
           }
