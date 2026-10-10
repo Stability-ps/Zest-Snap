@@ -9,8 +9,7 @@ import PlansSheet from "@/app/settings/plans-sheet";
 /**
  * Standalone premium destination. Reuses the existing store-backed purchase and
  * restore flows; it intentionally never invents prices or subscription trials.
- * This route is not automatically inserted into signup until the server-side
- * once-per-account onboarding gate has been implemented.
+ * New verified accounts can be routed here by the server-side onboarding gate.
  */
 export default function UpgradePage() {
   const [message, setMessage] = useState("");
@@ -21,7 +20,12 @@ export default function UpgradePage() {
       if (isSupabaseConfigured()) {
         const db = createClient();
         const { data } = await db.auth.getUser();
-        if (data.user) await db.rpc("complete_premium_onboarding");
+        if (data.user) {
+          const { error } = await db.rpc("complete_premium_onboarding");
+          if (error) {
+            setMessage("We could not save your choice. You can still use the Free plan.");
+          }
+        }
       }
     } finally {
       window.location.assign("/app");
@@ -38,7 +42,7 @@ export default function UpgradePage() {
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 38 }}>
           <Link href="/app" style={{ color: "#102b4e", fontSize: 22, fontWeight: 800, textDecoration: "none" }}>Zest <span style={{ color: "#13b9a7" }}>Snap</span></Link>
-          <Link href="/app" style={{ color: "#50677d", fontSize: 14, textDecoration: "none" }}>Skip for now</Link>
+          <button type="button" onClick={continueFree} disabled={busy} style={{ color: "#50677d", fontSize: 14, background: "none", border: 0, cursor: "pointer" }}>Skip for now</button>
         </header>
         <section aria-labelledby="upgrade-title">
           <p style={{ color: "#079f93", fontWeight: 700, letterSpacing: 2, fontSize: 12 }}>MAKE MORE OF EVERY DAY</p>
@@ -63,7 +67,7 @@ export default function UpgradePage() {
         <footer style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 26, fontSize: 12 }}>
           <Link href="/terms" style={{ color: "#65778c" }}>Terms of Service</Link>
           <Link href="/privacy" style={{ color: "#65778c" }}>Privacy Policy</Link>
-          <Link href="/app" style={{ color: "#65778c" }}><ArrowLeft size={12} style={{ verticalAlign: "middle" }} /> Back to app</Link>
+          <button type="button" onClick={continueFree} disabled={busy} style={{ color: "#65778c", background: "none", border: 0, cursor: "pointer" }}><ArrowLeft size={12} style={{ verticalAlign: "middle" }} /> Back to app</button>
         </footer>
       </div>
     </main>
