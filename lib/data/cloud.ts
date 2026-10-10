@@ -149,6 +149,14 @@ export class SupabaseDataProvider implements DataProvider {
     } as Profile;
   }
   async updateProfile(p: Profile) {
+    // preferences also holds keys owned elsewhere (appearance, see lib/appearance/sync.ts): keep them.
+    const { data: current, error: readError } = await this.db
+      .from("profiles")
+      .select("preferences")
+      .eq("id", this.userId)
+      .maybeSingle();
+    this.check(readError);
+    const kept = current?.preferences && typeof current.preferences === "object" && !Array.isArray(current.preferences) ? current.preferences : {};
     const { error } = await this.db
       .from("profiles")
       .update({
@@ -156,6 +164,7 @@ export class SupabaseDataProvider implements DataProvider {
         timezone: p.timezone,
         locale: p.locale,
         preferences: {
+          ...kept,
           reminders: p.reminders,
           weeklyRecap: p.weeklyRecap,
           retentionDays: p.retentionDays,

@@ -1,7 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import "./theme.css";
 import "./globals.css";
 import ReferralCapture from "./referral-capture";
 import NativeBridge from "./native-bridge";
+import AppearanceProvider from "./appearance-provider";
+import { APPEARANCE_BOOT_SCRIPT } from "@/lib/appearance/boot";
+import { THEME_COLOR } from "@/lib/appearance/palette";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://zestsnap.app"),
@@ -53,7 +57,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0B1F3B",
+  // Without JavaScript the OS scheme decides; the boot script replaces both with the person's own choice.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOR.dark },
+  ],
 };
 
 export default function RootLayout({
@@ -62,10 +70,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // The class is added before first paint inside the iOS/Android apps (Capacitor injects its bridge at document
-    // start), so native safe-area styles apply without a layout jump; hence suppressHydrationWarning.
+    // The head scripts set the theme (data-theme/data-accent) and, inside the iOS/Android apps, the native class
+    // before first paint, so neither the colours nor the safe-area layout jump; hence suppressHydrationWarning.
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: APPEARANCE_BOOT_SCRIPT }} />
         <script
           dangerouslySetInnerHTML={{
             __html:
@@ -77,6 +86,7 @@ export default function RootLayout({
         {children}
         <ReferralCapture />
         <NativeBridge />
+        <AppearanceProvider />
       </body>
     </html>
   );
