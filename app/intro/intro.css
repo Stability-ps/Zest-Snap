@@ -147,7 +147,7 @@ html:has(.introPage) body {
 .introOption.on .introTick { background: var(--i-teal); border-color: var(--i-teal); color: #04221d; transform: scale(1.05); }
 
 /* ---- Step 3: look, colour and reminders ---------------------------------------------------------- */
-.introCopy.top.tight { margin: 10px 0 16px; }
+.introCopy.top.tight { margin: 18px 0 18px; }
 .introReminder {
   display: flex; align-items: center; gap: 12px; margin-top: 18px; padding: 12px 14px; border-radius: 18px;
   background: var(--i-card); border: 1px solid var(--i-line); cursor: pointer;
@@ -187,8 +187,6 @@ html:has(.introPage) body {
 
 /* The shared appearance picker inside the intro, at compact, native-feeling sizes so the whole step (preview,
    mode, colour, reminders, button) sits comfortably on one phone screen. */
-.introPage .introCopy.top.tight h1 { font-size: clamp(26px, 7.4vw, 32px); margin-bottom: 6px; }
-.introPage .introCopy.top.tight p { font-size: 15px; }
 .introPage .appearanceSheet { gap: 16px; }
 .introPage .appearancePhone { width: min(100%, 176px); padding: 5px; border-radius: 24px; }
 .introPage .appearancePhoneScreen { gap: 6px; padding: 9px 9px 7px; border-radius: 19px; }
@@ -214,7 +212,6 @@ html:has(.introPage) body {
 .introPage .appearanceGem { width: 36px; height: 36px; }
 .introPage .appearanceGemDot { width: 30px; height: 30px; }
 .introPage .appearanceGemDot svg { width: 14px; height: 14px; }
-.introPage .appearanceGem.selected { transform: scale(1.08); }
 .introPage .introReminder { margin-top: 16px; padding: 10px 12px; }
 .introPage .introReminderIcon { width: 32px; height: 32px; border-radius: 10px; }
 .introPage .introReminderCopy b { font-size: 14px; }
