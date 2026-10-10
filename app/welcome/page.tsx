@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import AppearanceSheet from "@/app/settings/appearance-sheet";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { appearanceStrings as t } from "@/lib/appearance/strings";
+import { readIntro } from "@/lib/intro";
 
 /** Only the onboarding steps that follow this one; anything else continues to the app. */
 function safeNext(value: string | null) {
@@ -12,7 +13,8 @@ function safeNext(value: string | null) {
 }
 
 /**
- * One-time step for a brand-new account, right after sign-up: choose Light, Dark or Automatic and an accent
+ * One-time step for a brand-new account, right after sign-up (skipped when the first-run intro, which has the same
+ * picker, was completed on this device): choose Light, Dark or Automatic and an accent
  * before using the app. Every choice applies immediately (and syncs to the account); Continue moves on to the
  * premium introduction. The default (Light, Ocean Blue) is already selected, so Continue alone is fine.
  */
@@ -21,7 +23,14 @@ export default function WelcomeAppearance() {
   const [next, setNext] = useState("/app");
 
   useEffect(() => {
-    setNext(safeNext(new URLSearchParams(window.location.search).get("next")));
+    const target = safeNext(new URLSearchParams(window.location.search).get("next"));
+    // Already chose a look in the first-run intro on this device: don't ask twice. That choice carries into the
+    // new account (lib/appearance/sync.ts seeds a brand-new account from the device's appearance).
+    if (readIntro()) {
+      window.location.replace(target);
+      return;
+    }
+    setNext(target);
     if (!isSupabaseConfigured()) return;
     createClient()
       .auth.getSession()

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Bell, CalendarDays, Check, CheckCircle2 } from "lucide-react";
 import { INTEREST_IDS, saveIntro, type InterestId } from "@/lib/intro";
+import AppearanceSheet from "@/app/settings/appearance-sheet";
 import "./intro.css";
 
 const INTERESTS: Record<InterestId, { emoji: string; label: string; hint: string }> = {
@@ -30,6 +31,7 @@ export default function Intro() {
   const [picked, setPicked] = useState<InterestId[]>([]);
   const [native, setNative] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reminders, setReminders] = useState(true);
   // Photo-to-plan demo on the first screen: "idle" → "scan" → "done" (chips appear), then it loops.
   // Driven from here with plain CSS transitions; looping CSS keyframe animations froze on some iPhones.
   // Starts (and server-renders) as "done", so the full result shows even if the demo never runs.
@@ -72,13 +74,16 @@ export default function Intro() {
     setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   };
 
-  const enableReminders = async () => {
+  // Last screen: the look is already applied as it is picked; ask for notifications only if the switch is on.
+  const finish = async () => {
     setBusy(true);
-    try {
-      const { enableNativeNotifications } = await import("@/lib/native/notifications");
-      await enableNativeNotifications();
-    } catch {
-      // Declined or unavailable: reminders can be turned on later in Settings.
+    if (native && reminders) {
+      try {
+        const { enableNativeNotifications } = await import("@/lib/native/notifications");
+        await enableNativeNotifications();
+      } catch {
+        // Declined or unavailable: reminders can be turned on later in Settings.
+      }
     }
     leave("/app");
   };
@@ -198,54 +203,29 @@ export default function Intro() {
 
       {step === 2 && (
         <section className="introStep" key="s2">
-          <div className="introStage notices" aria-hidden="true">
-            <div className="introGlow amber" />
-            <div className="introNotice n1">
-              <span className="introAppIcon" />
-              <span>
-                <b>Science Fair tomorrow</b>
-                <small>09:00 · School hall · bring the project board</small>
-              </span>
-              <time>now</time>
-            </div>
-            <div className="introNotice n2">
-              <span className="introAppIcon" />
-              <span>
-                <b>Dentist in 1 hour</b>
-                <small>Dr Naidoo · 14:30</small>
-              </span>
-              <time>1h</time>
-            </div>
-            <div className="introNotice n3">
-              <span className="introAppIcon" />
-              <span>
-                <b>Car licence renews Friday</b>
-                <small>Pay online before 31 Oct</small>
-              </span>
-              <time>2d</time>
-            </div>
-          </div>
-          <div className="introCopy">
+          <div className="introCopy top tight">
             <h1>
-              Never miss the <em>important</em> dates.
+              Make it <em>yours</em>.
             </h1>
-            <p>Zest reminds you before it matters, only about things you saved.</p>
+            <p>Pick a look and colour. Change it any time in Settings.</p>
           </div>
+          <AppearanceSheet owner={null} signedIn={false} onMessage={() => undefined} showReset={false} tone="dark" />
+          {native && (
+            <label className="introReminder">
+              <span className="introReminderIcon" aria-hidden="true">
+                <Bell size={18} />
+              </span>
+              <span className="introReminderCopy">
+                <b>Remind me before important dates</b>
+                <small>Only about things you save</small>
+              </span>
+              <input type="checkbox" className="introSwitch" checked={reminders} onChange={(e) => setReminders(e.target.checked)} />
+            </label>
+          )}
           <div className="introActions">
-            {native ? (
-              <>
-                <button type="button" className="introPrimary" disabled={busy} onClick={enableReminders}>
-                  <Bell size={20} /> Turn on reminders
-                </button>
-                <button type="button" className="introLink" onClick={() => leave("/app")}>
-                  Not now
-                </button>
-              </>
-            ) : (
-              <button type="button" className="introPrimary" onClick={() => leave("/app")}>
-                Start snapping <ArrowRight size={20} />
-              </button>
-            )}
+            <button type="button" className="introPrimary" disabled={busy} onClick={finish}>
+              Start snapping <ArrowRight size={20} />
+            </button>
           </div>
         </section>
       )}
