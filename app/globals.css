@@ -3275,35 +3275,52 @@ body:has(.marketingPage) {
   color: var(--on-ink);
 }
 
-/* Premium onboarding: editorial composition from the approved reference.
-   This screen intentionally stays light, independently of app appearance. */
-.upgradePage{color-scheme:light;background:var(--surface);--bg:var(--premium-white, white);--surface:var(--premium-white, white);--surface-2:var(--premium-surface-soft, color(srgb 96% 98% 99%));--text:var(--ink);--text-2:color(srgb 22% 30% 40%);--text-3:color(srgb 37% 44% 52%);--text-4:color(srgb 46% 51% 58%);--ink:color(srgb 7% 14% 23%);--on-ink:color(srgb 100% 100% 100%);--border:color(srgb 88% 91% 94%);--divider:color(srgb 90% 93% 95%);--brand:color(srgb 7% 72% 67%);--brand-text:color(srgb 3% 49% 46%);--accent-soft:color(srgb 90% 98% 96%);--accent-text:color(srgb 3% 49% 46%);--accent-wash:color(srgb 94% 99% 98%);--hero:color(srgb 8% 17% 28%);--shadow-rgb:16 39 71;--shadow-strength:1}
-.upgradeWrap{max-width:430px;gap:14px}
-.upgradeTop{margin-bottom:8px}
-.upgradeTop .textButton{background:var(--surface-2);border-radius:999px;padding:0 14px;font-size:13px;font-weight:600}
-.upgradeWrap h1{font-size:clamp(32px,9vw,42px);margin:8px 0 8px;max-width:330px}
-.upgradeLead{font-size:15px;line-height:1.45;max-width:320px}
-.premiumEditorial{height:156px;position:relative;overflow:hidden;border-radius:22px;background:linear-gradient(130deg,var(--surface) 10%,var(--accent-wash) 60%,var(--surface-2));margin:0}
-.premiumNotebook{position:absolute;right:-10px;top:6px;width:145px;height:145px;transform:rotate(17deg);border-radius:8px;background:repeating-linear-gradient(0deg,var(--surface) 0 17px,var(--border) 18px 19px);box-shadow:0 6px 24px rgb(var(--shadow-rgb) / .12)}
-.premiumPhone{position:absolute;right:63px;top:12px;width:124px;height:180px;border:7px solid var(--ink);border-radius:22px;transform:rotate(14deg);background:var(--surface);box-shadow:0 12px 20px rgb(var(--shadow-rgb) / .2);display:flex;flex-direction:column;gap:8px;padding:12px 8px;color:var(--text)}
-.premiumPhoneTime{font-size:9px;font-weight:700}
-.premiumPhone b{font-size:15px;line-height:1.1;margin:6px 0}
-.premiumPhone>span:not(:first-child){font-size:8px}
-.premiumNote{position:absolute;right:-15px;bottom:-32px;width:105px;height:108px;background:var(--surface);transform:rotate(-14deg);box-shadow:0 3px 16px rgb(var(--shadow-rgb) / .1);padding:16px;color:var(--text-2);font-weight:700;line-height:1.25}
-.premiumBenefits{background:transparent;border:0;box-shadow:none;padding:0 2px}
-.premiumBenefits ul{gap:12px}
-.premiumBenefits li{gap:13px}
-.premiumBenefits .upgradeIcon{height:48px;width:48px;background:var(--accent-soft);color:var(--brand-text)}
-.premiumBenefits .upgradeIcon.soft{background:var(--surface-2);color:var(--accent-text)}
-.premiumBenefits b{font-size:15px}
-.premiumBenefits small{font-size:12px;line-height:1.35}
-.premiumPlans{display:grid;gap:10px;margin-top:6px}
-.premiumPlanHeading{font-size:17px!important;margin:0!important}
-.premiumPlans .plansSheet{display:grid;gap:10px}
-.premiumPlans .planOption{border-radius:18px}
-.premiumPlans .plansNote{font-size:12px}
-.premiumPlans .upgradeSignup{gap:9px}
-.premiumPlans .upgradeSignup .button{min-height:52px}
-.upgradeFree .button{border-radius:16px;background:var(--surface-2);color:var(--accent-text)}
-.upgradeFooter{border-top:1px solid var(--divider);padding-top:16px}
-@media(min-width:550px){.premiumEditorial{height:190px}.premiumPhone{right:90px;width:145px;height:215px}.premiumNotebook{right:12px;width:180px;height:180px}}
+/* Premium page as approved in Figma (4:2). Always light (lib/appearance/boot.ts), so light tokens apply. */
+.upgradePage{background:var(--surface)}
+.upgradeWrap{max-width:430px;gap:16px}
+.upgradeTop{margin-bottom:0}
+.upgradeTop .brand{font-size:18px;font-weight:800;color:var(--text)}
+.upgradeTop .textButton{font-size:15px;font-weight:700;color:var(--text-2)}
+.upgradeWrap h1{font-size:clamp(32px,9.6vw,38px);margin:4px 0 8px;color:var(--text)}
+.upgradeLead{font-size:15px;line-height:1.45;color:var(--text-2)}
+.premiumHero{margin:0;display:grid;gap:6px;padding:14px 16px;border-radius:18px;background:var(--accent-wash);border:1px solid var(--divider)}
+.premiumHeroEyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--brand-text)}
+.premiumHero b{font-size:22px;letter-spacing:-0.02em;color:var(--text)}
+.premiumHeroMeta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--text-3)}
+.premiumHeroMeta span{display:inline-flex;align-items:center;gap:6px}
+.premiumHeroMeta svg{width:15px;height:15px;color:var(--brand-text)}
+.premiumBenefits{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.premiumBenefits li{display:flex;gap:12px;align-items:center}
+.premiumBenefits li>span:last-child{min-width:0}
+.premiumBenefits b{display:block;font-size:16px;color:var(--text)}
+.premiumBenefits small{display:block;font-size:12.5px;line-height:1.4;color:var(--text-3)}
+.premiumBenefitIcon{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:var(--accent-wash);color:var(--brand-text)}
+.premiumBenefitIcon svg{width:20px;height:20px}
+.premiumPlans{display:grid;gap:10px}
+.proPicker{display:grid;gap:10px}
+.proPlans{display:grid;gap:10px}
+.proPlan{position:relative;display:grid;gap:4px;width:100%;text-align:left;padding:12px 14px;border-radius:18px;border:2px solid transparent;background:var(--surface-3);color:var(--text);font:inherit;cursor:pointer;min-height:64px}
+.proPlan.selected{background:var(--info-soft);border-color:var(--accent-text)}
+.proPlan:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.proPlan:disabled{cursor:default;opacity:.7}
+.proPlanBadge{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--brand-text)}
+.proPlanTop{display:flex;align-items:center;gap:10px}
+.proPlanTop b{font-size:17px}
+.proPlanPrice{margin-left:auto;font-size:17px;font-weight:800}
+.proPlanCheck{display:grid;place-items:center;flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--border);margin-left:auto}
+.proPlanPrice+.proPlanCheck{margin-left:0}
+.proPlan.selected .proPlanCheck{background:var(--accent-text);border-color:var(--accent-text);color:var(--on-ink)}
+.proPlan small{font-size:12.5px;color:var(--text-2)}
+.proContinue{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;padding:14px 18px;border:0;border-radius:17px;background:var(--ink);color:var(--on-ink);font:inherit;font-size:18px;font-weight:800;text-align:center;cursor:pointer;text-decoration:none}
+.proContinue:disabled{opacity:.45;cursor:not-allowed}
+.proSecondary{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;padding:14px 18px;border:0;border-radius:17px;background:var(--accent-soft);color:var(--accent-text);font:inherit;font-size:17px;font-weight:800;text-align:center;cursor:pointer;text-decoration:none}
+.proSecondary:disabled{opacity:.6;cursor:wait}
+.proContinue:focus-visible,.proSecondary:focus-visible,.proRestore:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.proNote{margin:0;font-size:12px;line-height:1.45;color:var(--text-3);text-align:center}
+.proError{margin:0;font-size:13px;color:var(--danger-text);text-align:center}
+.proCurrent{margin:0;padding:12px 14px;border-radius:18px;background:var(--info-soft);color:var(--text);font-weight:700}
+.proRestore{justify-self:center;min-height:44px;padding:0 10px;border:0;background:none;color:var(--text-3);font:inherit;font-size:12.5px;text-decoration:underline;cursor:pointer}
+.upgradeSignup .proContinue{font-size:16px}
+.upgradeFree{gap:6px}
+.upgradeFree small{font-size:12px}
+.upgradeFooter{gap:14px;font-size:12px;padding:2px 0 0}

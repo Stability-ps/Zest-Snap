@@ -11,7 +11,8 @@ import { hasPlugin, runtime } from "./runtime";
  * RevenueCat webhook) from receipts RevenueCat verified with Apple/Google — never from the client's word.
  */
 export type BillingAvailability = "store" | "store_not_configured" | "web_not_connected";
-export type StoreOffer = { id: string; plan: Exclude<PlanId, "free">; period: "monthly" | "annual" | "other"; price: string; title: string };
+/** One store package. `price` is the store's localised string; `amount`/`currency` are the same price as numbers. */
+export type StoreOffer = { id: string; plan: Exclude<PlanId, "free">; period: "monthly" | "annual" | "other"; price: string; title: string; amount?: number; currency?: string };
 export type PurchaseOutcome = { status: "purchased" | "cancelled" | "pending"; plan?: string };
 
 const storeKey = () => (runtime() === "ios" ? revenueCatPublicKeys.ios : runtime() === "android" ? revenueCatPublicKeys.android : "");
@@ -61,7 +62,7 @@ export async function storeOffers(userId: string): Promise<StoreOffer[]> {
       const plan = planForProduct(p.product.identifier);
       if (!plan) return null;
       const type = String(p.packageType);
-      return { id: p.identifier, plan, period: type === "MONTHLY" ? "monthly" : type === "ANNUAL" ? "annual" : "other", price: p.product.priceString, title: p.product.title } as StoreOffer;
+      return { id: p.identifier, plan, period: type === "MONTHLY" ? "monthly" : type === "ANNUAL" ? "annual" : "other", price: p.product.priceString, title: p.product.title, amount: p.product.price, currency: p.product.currencyCode } as StoreOffer;
     })
     .filter((x): x is StoreOffer => !!x);
 }
