@@ -269,3 +269,15 @@ export async function updateLimit(_: ActionState, f: FormData) {
     return "Limit saved";
   }, ["/admin/settings"]);
 }
+
+export async function saveMarketingCampaign(_: ActionState, f: FormData) {
+  return run("operate", async () => {
+    const key = oneOf(str(f, "key", 40), ["inactive_users", "reward_earned", "free_scans_exhausted"] as const);
+    const title = str(f, "title", 65), body = str(f, "body", 180), path = str(f, "path", 200);
+    if (!title || !body) throw new AdminError("message_required");
+    // Deep links stay inside the app (also enforced by the database).
+    if (!/^\/app(\?[A-Za-z0-9=&_-]*)?$/.test(path)) throw new AdminError("invalid_value");
+    await rpc("admin_set_marketing_campaign", { p_key: key, p_enabled: bool(f, "enabled"), p_title: title, p_body: body, p_path: path });
+    return "Campaign saved";
+  }, ["/admin/campaigns"]);
+}

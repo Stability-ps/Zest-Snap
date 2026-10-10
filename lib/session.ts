@@ -75,6 +75,8 @@ export async function signOut() {
   }
   // Native apps: disarm this account's reminder notifications so the next person on the device never sees them.
   await import("./native/notifications").then((m) => m.clearNativeReminders()).catch(() => undefined);
+  // …and unlink this device from the account's marketing notifications (OneSignal), if they were turned on.
+  await import("./marketing/push").then((m) => m.signOutMarketingPush()).catch(() => undefined);
   clearAccountCaches();
 }
 

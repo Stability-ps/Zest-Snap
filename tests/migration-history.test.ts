@@ -12,7 +12,8 @@ test("every migration file is mapped to production history, and every production
     "add new migration files to supabase/migration-history.json (\"pending\" until applied to production)");
   const prod = Object.values(mapping.files).flatMap((v) => (Array.isArray(v) ? v : []));
   assert.equal(new Set(prod).size, prod.length, "a production version is mapped twice");
-  assert.equal(prod.length, 40, "production history had 40 versions on 2026-10-09");
+  // 40 on 2026-10-09; +2 on 2026-10-10 (#94: 20261010085500, 20261010085510).
+  assert.equal(prod.length, 42, "production history had 42 versions on 2026-10-10");
   for (const v of prod) assert.match(v, /^\d{14}$/);
 });
 
@@ -20,7 +21,7 @@ test("the repair plan only renames history: it never marks a pending migration a
   const plan = repairPlan(mapping) as { revert: string[]; apply: string[] };
   const pending = Object.entries(mapping.files).filter(([, v]) => v === "pending").map(([f]) => f.split("_")[0]);
   for (const v of pending) assert.ok(!plan.apply.includes(v), `${v} is pending and must run through db push`);
-  assert.equal(plan.revert.length + 9, 40, "versions shared by a file and production stay as they are");
+  assert.equal(plan.revert.length + 9, 42, "versions shared by a file and production stay as they are");
   assert.ok(plan.revert.every((v: string) => !plan.apply.includes(v)));
 });
 

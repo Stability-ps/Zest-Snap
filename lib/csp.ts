@@ -11,13 +11,15 @@
 export function contentSecurityPolicy(supabaseUrl: string) {
   const supabase = new URL(supabaseUrl);
   const capacitor = "https://localhost capacitor://localhost";
+  // OneSignal marketing push (lib/marketing/push.ts) — loaded only after the person opts in.
+  const onesignal = "https://cdn.onesignal.com https://onesignal.com https://api.onesignal.com";
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    `script-src 'self' 'unsafe-inline' https://cdn.onesignal.com`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: ${capacitor}`,
+    `img-src 'self' data: blob: ${capacitor} https://img.onesignal.com`,
     "font-src 'self' data:",
-    `connect-src 'self' ${supabase.origin} wss://${supabase.host} ${capacitor}`,
+    `connect-src 'self' ${supabase.origin} wss://${supabase.host} ${capacitor} ${onesignal}`,
     "media-src 'self' blob:",
     "worker-src 'self'",
     "manifest-src 'self'",

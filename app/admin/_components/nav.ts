@@ -39,6 +39,7 @@ export const adminNav: NavGroup[] = [
     { href: "/admin/flags", label: "Feature Flags", icon: "ToggleRight" },
     { href: "/admin/content", label: "Content", icon: "FileText" },
     { href: "/admin/notifications", label: "Notifications", icon: "Megaphone" },
+    { href: "/admin/campaigns", label: "Campaigns", icon: "Sparkles" },
   ] },
   { label: "Operations", items: [
     { href: "/admin/exports", label: "Exports", icon: "Download" },

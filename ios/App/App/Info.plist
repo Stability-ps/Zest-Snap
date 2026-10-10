@@ -97,5 +97,10 @@
 	<string>Zest Snap does not read or change your Reminders. This permission is never requested.</string>
 	<key>NSRemindersUsageDescription</key>
 	<string>Zest Snap does not read or change your Reminders. This permission is never requested.</string>
+	<!-- Remote notifications (OneSignal marketing notifications: delivery confirmation and badge updates). -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
