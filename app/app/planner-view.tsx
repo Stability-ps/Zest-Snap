@@ -49,6 +49,9 @@ import PlanningTools from "./planning-tools";
 import SmartFollowups from "./smart-followups";
 import { followupCandidates } from "@/lib/followup-suggestions";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import CategoryIcon from "./category-icon";
+import EmptyArt from "./empty-art";
+import { CATEGORY_LABEL, itemCategory } from "@/lib/item-category";
 
 type Tab = "today" | "upcoming" | "calendar" | "reminders";
 type ReminderFilter = "all" | "today" | "upcoming" | "overdue";
@@ -375,7 +378,7 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
         <div className="plannerList">
           {!visible.length && (
             <div className="plannerEmpty plannerEmptyCompact">
-              <CalendarDays />
+              <EmptyArt kind="calendar" />
               <b>{tab === "today" ? "Nothing planned for today" : tab === "calendar" ? "Nothing on this day" : "No upcoming items"}</b>
               <span>Use the + button above to add something.</span>
             </div>
@@ -384,9 +387,10 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
             const status = plannerStatus(item, undefined, timezone);
             const time = plannerReferenceTime(item);
             const itemReminders = activeReminders.filter((r) => r.plannerItemId === item.id).length;
+            const category = itemCategory(item);
             return (
               <article
-                className={`plannerCard ${status}`}
+                className={`plannerCard ${status} cat-${category}`}
                 key={item.id}
                 role="button"
                 tabIndex={0}
@@ -413,7 +417,9 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
                 )}
                 <div className="plannerCardBody">
                   <div className="plannerCardTop">
-                    <span>{item.type}</span>
+                    <span className="plannerCardCat">
+                      <CategoryIcon category={category} size={13} /> {category === "personal" ? item.type : CATEGORY_LABEL[category]}
+                    </span>
                     <em>{status === "open" ? "" : status}</em>
                   </div>
                   <h3>{item.title}</h3>
@@ -869,7 +875,7 @@ function RemindersPage({
       </div>
       {!filtered.length ? (
         <div className="plannerEmpty reminderEmpty">
-          <Bell aria-hidden="true" />
+          <EmptyArt kind="bell" />
           <b>{filter === "all" ? "No reminders yet" : `No ${filter} reminders`}</b>
           <span>{filter === "all" ? "Add one here, or tap a day in Calendar to set a reminder." : "You’re all caught up."}</span>
           {filter === "all" && (

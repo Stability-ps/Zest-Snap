@@ -70,6 +70,12 @@ export const NEUTRALS: Record<Scheme, Record<string, string>> = {
     highlight: "rgb(255 255 255 / 0.96)",
     skeleton: "#edf1f4",
     "skeleton-shine": "#f8fafc",
+    "cat-school": "#b45309",
+    "cat-health": "#e11d48",
+    "cat-work": "#2563eb",
+    "cat-bills": "#c2410c",
+    "cat-travel": "#0e7490",
+    "cat-social": "#7c3aed",
   },
   dark: {
     bg: "#0e1114",
@@ -122,6 +128,12 @@ export const NEUTRALS: Record<Scheme, Record<string, string>> = {
     highlight: "rgb(255 255 255 / 0.04)",
     skeleton: "#222830",
     "skeleton-shine": "#2c333c",
+    "cat-school": "#fbbf24",
+    "cat-health": "#fb7185",
+    "cat-work": "#60a5fa",
+    "cat-bills": "#fb923c",
+    "cat-travel": "#22d3ee",
+    "cat-social": "#a78bfa",
   },
 };
 
