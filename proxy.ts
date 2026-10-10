@@ -4,7 +4,7 @@ import { updateSession } from "@/lib/supabase/proxy";
 
 const APP_HOST = "app.zestsnap.app";
 const MARKETING_HOSTS = new Set(["zestsnap.app", "www.zestsnap.app"]);
-const PRODUCT_PATHS = ["/app", "/login", "/settings", "/upgrade", "/onboarding", "/reset-password", "/admin", "/auth"];
+const PRODUCT_PATHS = ["/app", "/login", "/settings", "/upgrade", "/onboarding", "/intro", "/reset-password", "/admin", "/auth"];
 // Supabase params on an auth redirect. Older emails (and any redirect Supabase rejects) fall back to the
 // bare Site URL; those are forwarded to the auth routes instead of showing the homepage or the app.
 const AUTH_REDIRECT_PARAMS = ["code", "token_hash", "error", "error_code"];

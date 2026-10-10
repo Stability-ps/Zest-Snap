@@ -1,0 +1,190 @@
+/* First-run intro (/intro). A fixed dark brand palette, independent of the person's chosen appearance,
+   so the native splash (navy) flows straight into it. */
+html:has(.introPage),
+html:has(.introPage) body {
+  background: #071528;
+  color-scheme: dark;
+}
+
+.introPage {
+  --i-bg: #071528;
+  --i-bg-2: #0b1f3b;
+  --i-card: rgb(255 255 255 / 0.06);
+  --i-line: rgb(255 255 255 / 0.1);
+  --i-text: #ffffff;
+  --i-text-2: #a9b8cc;
+  --i-teal: #00c6a7;
+  --i-amber: #f5b841;
+  --i-violet: #a594ff;
+  --safe-top: max(env(safe-area-inset-top), var(--zest-safe-top, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom), var(--zest-safe-bottom, 0px));
+
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: calc(var(--safe-top) + 8px) 20px calc(var(--safe-bottom) + 16px);
+  background: radial-gradient(120% 70% at 50% 0%, var(--i-bg-2) 0%, var(--i-bg) 70%);
+  color: var(--i-text);
+  overflow-x: hidden;
+}
+@media (min-width: 521px) {
+  html:has(.introPage) body { background: radial-gradient(90% 60% at 50% 0%, #0b1f3b 0%, #071528 70%); }
+  .introPage { background: transparent; }
+}
+
+/* ---- Top bar ---------------------------------------------------------------------------------------- */
+.introTop { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px; min-height: 48px; }
+.introIconBtn,
+.introSkip {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px;
+  border: 0; background: none; color: var(--i-text-2); font: inherit; font-size: 16px; font-weight: 600; cursor: pointer;
+  border-radius: 12px;
+}
+.introSkip { padding: 0 6px; }
+.introProgress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.introProgress span { height: 5px; border-radius: 99px; background: rgb(255 255 255 / 0.14); overflow: hidden; position: relative; }
+.introProgress span::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--i-teal);
+  transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.2, .8, .2, 1);
+}
+.introProgress span.on::after { transform: scaleX(1); }
+
+/* ---- Step layout ------------------------------------------------------------------------------------ */
+.introStep { flex: 1; display: flex; flex-direction: column; animation: introIn .5s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes introIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.introCopy { margin-top: 8px; }
+.introCopy.top { margin: 18px 0 20px; }
+.introCopy h1 { margin: 0 0 10px; font-size: clamp(30px, 8.6vw, 38px); line-height: 1.06; letter-spacing: -1.2px; font-weight: 800; }
+.introCopy h1 em { font-style: normal; color: var(--i-teal); }
+.introCopy p { margin: 0; color: var(--i-text-2); font-size: 17px; line-height: 1.45; max-width: 34ch; }
+
+.introActions { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: auto; padding-top: 22px; }
+.introPrimary {
+  display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 58px; width: 100%;
+  border: 0; border-radius: 999px; background: var(--i-teal); color: #04221d; font: inherit; font-size: 18px; font-weight: 800;
+  cursor: pointer; box-shadow: 0 12px 32px rgb(0 198 167 / 0.28), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+.introPrimary:active { transform: scale(.97); box-shadow: 0 6px 18px rgb(0 198 167 / 0.22); }
+.introPrimary:disabled { opacity: .7; }
+.introLink { min-height: 44px; border: 0; background: none; color: var(--i-text-2); font: inherit; font-size: 15px; cursor: pointer; }
+.introLink b { color: var(--i-text); }
+.introPage button:focus-visible { outline: 3px solid var(--i-teal); outline-offset: 3px; }
+
+/* ---- Step 1: photo → plan demo ---------------------------------------------------------------------- */
+.introStage { position: relative; flex: 1; min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.introGlow {
+  position: absolute; width: 320px; height: 320px; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgb(0 198 167 / 0.26), transparent 65%); filter: blur(8px); pointer-events: none;
+}
+.introGlow.amber { background: radial-gradient(circle, rgb(245 184 65 / 0.2), transparent 65%); }
+
+.introPaper {
+  --loop: 7s;
+  position: relative; width: min(74%, 270px); padding: 18px 18px 16px; border-radius: 16px; background: #fbfaf6; color: #1c2533;
+  transform: rotate(-4deg); box-shadow: 0 24px 50px rgb(0 0 0 / 0.45);
+  animation: introPaper var(--loop) cubic-bezier(.5, 0, .2, 1) infinite;
+}
+.introPaper small { display: block; font-size: 10px; letter-spacing: 1.6px; font-weight: 800; color: #8a6d1f; }
+.introPaper b { display: block; margin: 6px 0 8px; font-size: 24px; letter-spacing: -.5px; font-family: Georgia, "Times New Roman", serif; }
+.introPaper p { margin: 3px 0; font-size: 14px; font-weight: 600; }
+.introPaper p.faint { margin-top: 8px; font-weight: 400; color: #6b7280; font-size: 12.5px; }
+@keyframes introPaper {
+  0%, 38% { transform: rotate(-4deg) translateY(0) scale(1); opacity: 1; }
+  52%, 90% { transform: rotate(-2deg) scale(.94); opacity: .72; }
+  100% { transform: rotate(-4deg) translateY(0) scale(1); opacity: 1; }
+}
+
+.introCorner { position: absolute; width: 22px; height: 22px; border: 3px solid var(--i-teal); animation: introCorners 7s ease infinite; }
+.introCorner.tl { top: -10px; left: -10px; border-right: 0; border-bottom: 0; border-top-left-radius: 10px; }
+.introCorner.tr { top: -10px; right: -10px; border-left: 0; border-bottom: 0; border-top-right-radius: 10px; }
+.introCorner.bl { bottom: -10px; left: -10px; border-right: 0; border-top: 0; border-bottom-left-radius: 10px; }
+.introCorner.br { bottom: -10px; right: -10px; border-left: 0; border-top: 0; border-bottom-right-radius: 10px; }
+@keyframes introCorners { 0%, 4% { opacity: 0; transform: scale(1.15); } 10%, 40% { opacity: 1; transform: none; } 48%, 100% { opacity: 0; } }
+
+.introScanLine {
+  position: absolute; left: 6px; right: 6px; top: 0; height: 3px; border-radius: 3px;
+  background: var(--i-teal); box-shadow: 0 0 18px 4px rgb(0 198 167 / 0.55); opacity: 0;
+  animation: introScan 7s ease-in-out infinite;
+}
+@keyframes introScan { 0%, 10% { top: 4%; opacity: 0; } 13% { opacity: 1; } 34% { top: 94%; opacity: 1; } 38%, 100% { top: 94%; opacity: 0; } }
+
+.introChips { position: relative; width: 100%; margin-top: 22px; display: flex; flex-direction: column; gap: 9px; padding: 0 6px; }
+.introChip {
+  --c: var(--i-teal);
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
+  background: rgb(16 35 63 / 0.92); border: 1px solid var(--i-line); border-left: 4px solid var(--c);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
+  opacity: 0; animation: introChip 7s cubic-bezier(.2, .9, .3, 1.2) infinite;
+}
+.introChip svg { color: var(--c); flex: none; }
+.introChip span { display: flex; flex-direction: column; min-width: 0; }
+.introChip b { font-size: 15px; }
+.introChip small { color: var(--i-text-2); font-size: 13px; }
+.introChip.amber { --c: var(--i-amber); animation-name: introChip2; }
+.introChip.violet { --c: var(--i-violet); animation-name: introChip3; }
+@keyframes introChip { 0%, 40% { opacity: 0; transform: translateY(18px) scale(.96); } 46%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; transform: translateY(-4px); } }
+@keyframes introChip2 { 0%, 46% { opacity: 0; transform: translateY(18px) scale(.96); } 52%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; transform: translateY(-4px); } }
+@keyframes introChip3 { 0%, 52% { opacity: 0; transform: translateY(18px) scale(.96); } 58%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; transform: translateY(-4px); } }
+
+/* ---- Step 2: interests ------------------------------------------------------------------------------ */
+.introGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.introOption {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 104px;
+  padding: 14px; border-radius: 18px; border: 1.5px solid var(--i-line); background: var(--i-card); color: var(--i-text);
+  font: inherit; text-align: left; cursor: pointer; transition: transform .15s ease, border-color .2s ease, background .2s ease;
+}
+.introOption:active { transform: scale(.97); }
+.introOption b { font-size: 15.5px; margin-top: 6px; }
+.introOption small { color: var(--i-text-2); font-size: 13px; }
+.introEmoji { font-size: 26px; line-height: 1; }
+.introTick {
+  position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  border: 1.5px solid rgb(255 255 255 / 0.25); color: transparent; transition: all .2s ease;
+}
+.introOption.on { border-color: var(--i-teal); background: rgb(0 198 167 / 0.12); }
+.introOption.on .introTick { background: var(--i-teal); border-color: var(--i-teal); color: #04221d; transform: scale(1.05); }
+
+/* ---- Step 3: reminders ------------------------------------------------------------------------------ */
+.introStage.notices { gap: 10px; justify-content: center; }
+.introNotice {
+  position: relative; width: 100%; display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px;
+  padding: 13px 14px; border-radius: 20px; background: rgb(255 255 255 / 0.09); border: 1px solid var(--i-line);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 30px rgb(0 0 0 / 0.3);
+  animation: introDrop .7s cubic-bezier(.2, .9, .3, 1.15) both;
+}
+.introNotice span:not(.introAppIcon) { display: flex; flex-direction: column; min-width: 0; }
+.introNotice b { font-size: 15px; }
+.introNotice small { color: var(--i-text-2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.introNotice time { align-self: start; color: var(--i-text-2); font-size: 12px; }
+.introNotice.n2 { animation-delay: .25s; transform-origin: top; width: 96%; opacity: .85; }
+.introNotice.n3 { animation-delay: .5s; width: 92%; opacity: .7; }
+@keyframes introDrop { from { opacity: 0; transform: translateY(-26px) scale(.96); } }
+.introAppIcon {
+  width: 40px; height: 40px; border-radius: 11px; background: #0b1f3b url("/icons/zest-snap-192.png") center / cover no-repeat;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+}
+
+/* ---- Small screens and reduced motion --------------------------------------------------------------- */
+@media (max-height: 700px) {
+  .introStage { min-height: 290px; }
+  .introPaper { padding: 12px 14px 10px; }
+  .introPaper p.faint { display: none; }
+  .introChips { margin-top: 14px; gap: 7px; }
+  .introChip { padding: 9px 12px; }
+  .introPaper b { font-size: 20px; margin: 4px 0 6px; }
+  .introCopy h1 { font-size: 29px; }
+  .introCopy p { font-size: 15.5px; }
+  .introOption { min-height: 92px; padding: 12px; }
+  .introPrimary { min-height: 54px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .introStep, .introNotice { animation: none; }
+  .introPaper { animation: none; transform: rotate(-2deg) scale(.94); opacity: .72; }
+  .introCorner, .introScanLine { animation: none; opacity: 0; }
+  .introChip, .introChip.amber, .introChip.violet { animation: none; opacity: 1; }
+}
