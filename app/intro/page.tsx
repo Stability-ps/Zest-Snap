@@ -32,7 +32,8 @@ export default function Intro() {
   const [busy, setBusy] = useState(false);
   // Photo-to-plan demo on the first screen: "idle" → "scan" → "done" (chips appear), then it loops.
   // Driven from here with plain CSS transitions; looping CSS keyframe animations froze on some iPhones.
-  const [phase, setPhase] = useState<"idle" | "scan" | "done">("idle");
+  // Starts (and server-renders) as "done", so the full result shows even if the demo never runs.
+  const [phase, setPhase] = useState<"idle" | "scan" | "done">("done");
 
   useEffect(() => {
     setNative(isNativeShell());
@@ -54,7 +55,7 @@ export default function Intro() {
       timers.push(window.setTimeout(() => setPhase("done"), 2500));
       timers.push(window.setTimeout(cycle, 7000));
     };
-    cycle();
+    timers.push(window.setTimeout(cycle, 2500));
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, [step]);
 
