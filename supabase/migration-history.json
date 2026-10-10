@@ -109,6 +109,7 @@
     "20261015110000_admin_shared_usage_grant.sql": [
       "20261008153146"
     ],
-    "20261015120000_free_plan_three_scans.sql": "pending"
+    "20261015120000_free_plan_three_scans.sql": "pending",
+    "20261018090000_marketing_notifications.sql": "pending"
   }
 }
