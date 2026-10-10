@@ -152,6 +152,35 @@ export default function App() {
     setErrorAction(action);
   }, [setError, setErrorAction]);
 
+  /**
+   * Marketing notifications: records an open (?mc=<send id>) once, and on devices that opted in keeps the device
+   * linked to this account and routes taps on app notifications inside the app. Never prompts.
+   */
+  function startMarketing(userId: string) {
+    const recordOpen = (url: string) => {
+      const sendId = new URL(url, window.location.origin).searchParams.get("mc");
+      if (sendId && /^[0-9a-f-]{36}$/i.test(sendId))
+        createClient().rpc("record_marketing_open" as never, { p_send: sendId } as never).then(() => undefined, () => undefined);
+    };
+    recordOpen(window.location.href);
+    if (new URLSearchParams(window.location.search).has("mc")) {
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete("mc");
+      window.history.replaceState(window.history.state, "", clean.pathname + clean.search + clean.hash);
+    }
+    import("@/lib/marketing/push")
+      .then((m) => {
+        if (!m.marketingPushOnThisDevice(userId)) return;
+        return m.resumeMarketingPush(userId, (path) => {
+          recordOpen(path);
+          const target = new URL(path, window.location.origin);
+          target.searchParams.delete("mc");
+          window.dispatchEvent(new CustomEvent("zest-open", { detail: { url: target.pathname + target.search } }));
+        });
+      })
+      .catch(() => undefined);
+  }
+
   function saveSnapshot(next: Snapshot) {
     try {
       localStorage.setItem(STARTUP_STATE_KEY, JSON.stringify(next));
@@ -397,6 +426,7 @@ export default function App() {
       if (check === "paused") showError("Cloud sync is paused for maintenance. Your data is safe — changes may not save until it resumes.");
       if (check === "ok") {
         Promise.allSettled([registerDevice(), claimPendingReferral(), syncPushSubscription()]);
+        if (p.userId) startMarketing(p.userId);
         if (hasGuestData()) {
           try {
             await migrateGuestData(p);
