@@ -3230,45 +3230,45 @@ body:has(.marketingPage) {
 .marketingPage {
   color-scheme: light;
   background: var(--marketing-white, white);
-  color: var(--marketing-navy, #12243a);
-  --bg: white;
-  --surface: white;
-  --surface-2: #f7fafc;
-  --text: #12243a;
-  --text-2: #34475e;
-  --text-3: #607187;
-  --text-4: #748297;
-  --ink: #12243a;
-  --on-ink: white;
-  --border: #e2e8f0;
-  --divider: #e5ebf1;
-  --brand: #16b7aa;
-  --brand-display: #13a99c;
-  --accent-soft: #e8f8f5;
-  --accent-text: #087e76;
-  --accent-border: #c8ebe5;
-  --hero: #152b47;
-  --on-hero: white;
+  color: var(--marketing-navy, color-mix(in srgb, var(--ink) 16%, transparent));
+  --bg: color-mix(in srgb, var(--ink) 16%, transparent);
+  --surface: color-mix(in srgb, var(--ink) 16%, transparent);
+  --surface-2: color-mix(in srgb, var(--ink) 16%, transparent);
+  --text: color-mix(in srgb, var(--ink) 16%, transparent);
+  --text-2: color-mix(in srgb, var(--ink) 16%, transparent);
+  --text-3: color-mix(in srgb, var(--ink) 16%, transparent);
+  --text-4: color-mix(in srgb, var(--ink) 16%, transparent);
+  --ink: color-mix(in srgb, var(--ink) 16%, transparent);
+  --on-ink: color-mix(in srgb, var(--ink) 16%, transparent);
+  --border: color-mix(in srgb, var(--ink) 16%, transparent);
+  --divider: color-mix(in srgb, var(--ink) 16%, transparent);
+  --brand: color-mix(in srgb, var(--ink) 16%, transparent);
+  --brand-display: color-mix(in srgb, var(--ink) 16%, transparent);
+  --accent-soft: color-mix(in srgb, var(--ink) 16%, transparent);
+  --accent-text: color-mix(in srgb, var(--ink) 16%, transparent);
+  --accent-border: color-mix(in srgb, var(--ink) 16%, transparent);
+  --hero: color-mix(in srgb, var(--ink) 16%, transparent);
+  --on-hero: color-mix(in srgb, var(--ink) 16%, transparent);
   min-height: 100vh;
 }
 .marketingPage .phone {
   background: var(--hero);
-  box-shadow: var(--marketing-phone-shadow, 0 28px 80px rgba(15, 33, 57, .16));
+  box-shadow: var(--marketing-phone-shadow, 0 28px 80px color-mix(in srgb, var(--ink) 16%, transparent));
 }
 .marketingPage .phone .screen {
-  background: var(--marketing-screen, #111c29);
-  color: white;
-  --surface: #111c29;
-  --text: white;
-  --text-3: #a6b5c8;
-  --divider: #2b3a4d;
-  --accent-soft: #1c3554;
-  --accent-border: #284a6d;
-  --accent-text: #68b6ff;
-  --hero: #172c45;
-  --on-hero: white;
-  --ink: white;
-  --on-ink: #12243a;
+  background: var(--marketing-screen, color-mix(in srgb, var(--ink) 16%, transparent));
+  color: color-mix(in srgb, var(--ink) 16%, transparent);
+  --surface: color-mix(in srgb, var(--ink) 16%, transparent);
+  --text: color-mix(in srgb, var(--ink) 16%, transparent);
+  --text-3: color-mix(in srgb, var(--ink) 16%, transparent);
+  --divider: color-mix(in srgb, var(--ink) 16%, transparent);
+  --accent-soft: color-mix(in srgb, var(--ink) 16%, transparent);
+  --accent-border: color-mix(in srgb, var(--ink) 16%, transparent);
+  --accent-text: color-mix(in srgb, var(--ink) 16%, transparent);
+  --hero: color-mix(in srgb, var(--ink) 16%, transparent);
+  --on-hero: color-mix(in srgb, var(--ink) 16%, transparent);
+  --ink: color-mix(in srgb, var(--ink) 16%, transparent);
+  --on-ink: color-mix(in srgb, var(--ink) 16%, transparent);
 }
 .marketingPage .phone .button {
   background: var(--ink);
