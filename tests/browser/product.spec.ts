@@ -85,8 +85,9 @@ test("Planner navigation: back button, deep links and warm return", async ({ pag
   await page.goto("/app?view=planner&tab=reminders");
   await expect(page.getByRole("heading", { name: "Reminders" })).toBeVisible();
   await expect(page.getByText("Stay ahead of what matters")).toBeVisible();
-  // Exactly three Planner tabs; reminders live behind the bell.
-  await page.getByRole("button", { name: "Back to Planner" }).click();
+  // Exactly three Planner tabs; Reminders is its own tab in the bottom bar (no back arrow on a tab).
+  await expect(page.getByRole("button", { name: "Back to Planner" })).toHaveCount(0);
+  await page.getByRole("navigation").getByRole("button", { name: "Planner" }).click();
   await expect(page.getByRole("tab")).toHaveText(["Today", "Upcoming", "Calendar"]);
   await page.getByRole("button", { name: "Add to Planner" }).click();
   await expect(page.getByRole("radio")).toHaveText(["event", "task", "deadline"]);
@@ -108,7 +109,7 @@ test("Calendar date → action sheet → set a reminder with the date prefilled"
   await page.getByLabel("Time").fill("14:30");
   await page.getByRole("button", { name: "Save reminder" }).click();
   await expect(page.getByText(/Reminder saved in Zest\. Sign in to get phone notifications/)).toBeVisible();
-  await page.getByRole("button", { name: /Open reminders/ }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Reminders" }).click();
   await expect(page.getByText("Call the dentist")).toBeVisible();
   // The overflow button opens a menu; it never snoozes on its own.
   await page.getByRole("button", { name: "Options for Call the dentist" }).click();
@@ -117,7 +118,7 @@ test("Calendar date → action sheet → set a reminder with the date prefilled"
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
   // Guests are told plainly that phone notifications need an account.
-  await expect(page.getByText("Notifications need an account")).toBeVisible();
+  await expect(page.getByText("Notifications need a free account")).toBeVisible();
 });
 
 test("a previous account's cached name, credits and Planner never appear for someone else", async ({ page }) => {
@@ -156,7 +157,9 @@ test.describe(() => {
     );
     await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeEnabled();
     await page.locator("input[type=file]").last().setInputFiles({ name: "x.png", mimeType: "image/png", buffer: PNG });
-    await expect(page.getByRole("button", { name: "Create a free account" })).toBeVisible();
+    // Trial used up: straight to the Premium page, which offers a free account.
+    await page.waitForURL(/\/upgrade\?from=guest/);
+    await expect(page.getByRole("link", { name: "Create a free account" })).toBeVisible();
   });
 });
 
@@ -215,13 +218,13 @@ test("offline: the installed shell opens and private responses are never cached"
   expect(paths.some((p) => /^\/(api|admin|auth|login)/.test(p))).toBeFalsy();
 });
 
-test("Reminders: bell opens a standalone Reminders page, add while inside Reminders, View day works", async ({ page }) => {
+test("Reminders: the Reminders tab opens a standalone page, add while inside Reminders, View day works", async ({ page }) => {
   await page.goto("/app?view=planner");
-  await page.getByRole("button", { name: /Open reminders/ }).click();
-  // The Planner hero (and its bell) is hidden so it can't overlap the Reminders header on phones.
+  // One way in: the bottom bar (the Planner header no longer repeats it with a bell).
+  await expect(page.getByRole("button", { name: /Open reminders/ })).toHaveCount(0);
+  await page.getByRole("navigation").getByRole("button", { name: "Reminders" }).click();
   await expect(page.getByRole("heading", { name: "Reminders" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Your planner" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Open reminders/ })).toHaveCount(0);
   await expect(page.getByRole("navigation").getByRole("button", { name: "Reminders" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("navigation").getByRole("button", { name: "Planner" })).not.toHaveAttribute("aria-current", "page");
   await page.getByRole("button", { name: "Add reminder" }).click();
@@ -237,7 +240,7 @@ test("Reminders: bell opens a standalone Reminders page, add while inside Remind
   await expect(page.getByText("Renew passport")).toHaveCount(0);
 
   // Calendar → date with an item → View day closes the sheet and shows that day's items.
-  await page.getByRole("button", { name: "Back to Planner" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Planner" }).click();
   await page.getByRole("tab", { name: "Calendar" }).click();
   for (let i = 0; i < 60; i++) {
     if ((await page.locator(".calendarTop strong").textContent())?.includes("March 2031")) break;

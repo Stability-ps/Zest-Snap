@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { UserRound, SlidersHorizontal, Bell, Palette, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, LogIn, LogOut, Download, Trash2, X, Check, Search, History, Lock, Gift } from "lucide-react";
+import { UserRound, Palette, CalendarDays, Database, CreditCard, LifeBuoy, ChevronRight, Clock3, Globe, Sparkles, Sunrise, ShieldCheck, FileText, LogIn, LogOut, Download, Trash2, X, Check, Search, History, Lock, Gift } from "lucide-react";
 import {
   getDataProvider,
   LocalDataProvider,
@@ -243,10 +243,10 @@ export default function Settings() {
         <section className="settingsGroup">
           <label className={"settingsRow editable "+(editingDisplayName?"isEditing":"")} onClick={()=>{if(!editingDisplayName){setEditingDisplayName(true);requestAnimationFrame(()=>displayNameInputRef.current?.focus());}}}><span className="settingsIcon"><UserRound /></span><span className="settingsRowCopy"><b>{editingDisplayName?"Editing display name":"Display name"}</b><small>{editingDisplayName?"Type your name, then tap Done":"How Zest addresses you"}</small></span><input ref={displayNameInputRef} aria-label="Display name" maxLength={100} value={profile.displayName} placeholder="Add name" onFocus={()=>setEditingDisplayName(true)} onChange={e=>setProfile({...profile,displayName:e.target.value})} onBlur={()=>{setEditingDisplayName(false);saveProfile(profile);}} /></label>
           <button type="button" className="settingsRow" onClick={()=>setSheet("appearance")}><span className="settingsIcon"><Palette /></span><span className="settingsRowCopy"><b>{appearanceStrings.rowTitle}</b><small>{appearanceStrings.rowHint}</small></span><span className="settingsValue">{appearanceSummary(appearance.mode, appearance.accent)}</span><ChevronRight /></button>
-          <button type="button" className="settingsRow" onClick={()=>{setSheetSearch("");setSheet("timezone");}}><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Timezone</b></span><span className="settingsValue">{timezoneLabel}</span><ChevronRight /></button>
-          <button type="button" className="settingsRow" onClick={()=>setSheet("region")}><span className="settingsIcon"><SlidersHorizontal /></span><span className="settingsRowCopy"><b>Language & region</b><small>Interface is currently English</small></span><span className="settingsValue">{localeLabel}</span><ChevronRight /></button>
-          <label className="settingsRow"><span className="settingsIcon"><Bell /></span><span className="settingsRowCopy"><b>Upcoming insights</b><small>Helpful reminders inside Zest</small></span><input className="settingsToggle" type="checkbox" checked={profile.reminders} onChange={e=>saveProfile({...profile,reminders:e.target.checked})} /></label>
-          <button type="button" className="settingsRow" onClick={()=>setSheet("briefing")}><span className="settingsIcon"><Bell /></span><span className="settingsRowCopy"><b>Daily Briefing</b><small>{provider?.mode!=="cloud"?"Sign in to get a morning agenda":dailyBriefing.enabled?`Every day at ${dailyBriefing.localTime}`:"Off · get your day in one notification"}</small></span><ChevronRight /></button>
+          <button type="button" className="settingsRow" onClick={()=>{setSheetSearch("");setSheet("timezone");}}><span className="settingsIcon"><Clock3 /></span><span className="settingsRowCopy"><b>Timezone</b></span><span className="settingsValue">{timezoneLabel}</span><ChevronRight /></button>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("region")}><span className="settingsIcon"><Globe /></span><span className="settingsRowCopy"><b>Language & region</b><small>Interface is currently English</small></span><span className="settingsValue">{localeLabel}</span><ChevronRight /></button>
+          <label className="settingsRow"><span className="settingsIcon"><Sparkles /></span><span className="settingsRowCopy"><b>Upcoming insights</b><small>Helpful reminders inside Zest</small></span><input className="settingsToggle" type="checkbox" checked={profile.reminders} onChange={e=>saveProfile({...profile,reminders:e.target.checked})} /></label>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("briefing")}><span className="settingsIcon"><Sunrise /></span><span className="settingsRowCopy"><b>Daily Briefing</b><small>{provider?.mode!=="cloud"?"Sign in to get a morning agenda":dailyBriefing.enabled?`Every day at ${dailyBriefing.localTime}`:"Off · get your day in one notification"}</small></span><ChevronRight /></button>
           <MarketingToggle userId={provider?.mode === "cloud" ? provider.userId ?? null : null} onMessage={setMessage} />
         </section>
 
@@ -259,7 +259,7 @@ export default function Settings() {
 
         <h2 className="settingsSectionTitle">Plan & usage</h2>
         <section className="settingsGroup">
-          <button type="button" className="settingsRow planUsageRow" onClick={()=>openPremium()}><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Monthly scans <span className={isPro ? "planBadge pro" : "planBadge"}>{isPro ? "PRO" : "FREE"}</span></b><small>{usage ? `${usage.scans} of ${usage.allowance} ${isPro ? "" : "free "}scans used this month` : "Loading usage…"}</small>{!isPro&&usage&&usage.allowance-usage.scans<=1&&<small className="upgradeHint">Upgrade for more scans</small>}</span><ChevronRight /></button>
+          <button type="button" className="settingsRow planUsageRow" onClick={()=>openPremium()}><span className="settingsIcon"><CreditCard /></span><span className="settingsRowCopy"><b>Monthly scans <span className={isPro ? "planBadge pro" : "planBadge"}>{isPro ? "PRO" : "FREE"}</span></b><small>{usage ? `${Math.min(usage.scans, usage.allowance)} of ${usage.allowance} ${isPro ? "" : "free "}scans used this month` : "Loading usage…"}</small>{!isPro&&usage&&usage.allowance-usage.scans<=1&&<small className="upgradeHint">Upgrade for more scans</small>}</span><ChevronRight /></button>
           <a className="settingsRow" href="/app?view=rewards"><span className="settingsIcon"><Gift /></span><span className="settingsRowCopy"><b>Rewards & referrals</b><small>Credits, milestones and invite rewards</small></span><ChevronRight /></a>
         </section>
         <NativeAppSettings />
@@ -277,8 +277,8 @@ export default function Settings() {
             <button type="button" className="settingsRow" onClick={()=>setSheet("support")}><span className="settingsIcon"><LifeBuoy /></span><span className="settingsRowCopy"><b>Contact support</b><small>Send us a message from the app</small></span><ChevronRight /></button>
             <button type="button" className="settingsRow" onClick={()=>setSheet("report")}><span className="settingsIcon"><LifeBuoy /></span><span className="settingsRowCopy"><b>Report a problem</b><small>Something broken or a scan got it wrong</small></span><ChevronRight /></button>
           </> : <a className="settingsRow" href={"mailto:"+productConfig.supportEmail}><span className="settingsIcon"><LifeBuoy /></span><span className="settingsRowCopy"><b>Contact support</b><small>{productConfig.supportEmail}</small></span><ChevronRight /></a>}
-          <a className="settingsRow" href="/privacy"><span className="settingsRowCopy"><b>Privacy</b></span><ChevronRight /></a>
-          <a className="settingsRow" href="/terms"><span className="settingsRowCopy"><b>Terms</b></span><ChevronRight /></a>
+          <a className="settingsRow" href="/privacy"><span className="settingsIcon"><ShieldCheck /></span><span className="settingsRowCopy"><b>Privacy</b></span><ChevronRight /></a>
+          <a className="settingsRow" href="/terms"><span className="settingsIcon"><FileText /></span><span className="settingsRowCopy"><b>Terms</b></span><ChevronRight /></a>
         </section>
         <p className="settingsFootnote">Original uploads are not retained by Zest after processing. Calendar access stays under your control and can be disconnected here.</p>
         {sheet && <div className="settingsOverlay" onClick={()=>setSheet(null)}>

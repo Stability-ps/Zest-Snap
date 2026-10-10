@@ -1126,15 +1126,20 @@ export default function App() {
                   );
                 })}
                 {!homeToday.length && (
-                  <button className="homeTodayEmpty" onClick={() => openView("calendar", { tab: "today" })}>
-                    <span>Your day is clear.</span>
-                    <b>
-                      Open Planner <ChevronRight size={16} />
-                    </b>
-                  </button>
+                  <p className="homeTodayEmpty">Your day is clear.</p>
                 )}
               </div>
             </section>
+            {!homeToday.length && (
+              <section className="homeIdeas" aria-labelledby="home-ideas-title">
+                <h2 id="home-ideas-title">What can I snap?</h2>
+                <ul>
+                  <li><span aria-hidden="true">🏫</span> School notices and newsletters</li>
+                  <li><span aria-hidden="true">🩺</span> Appointment cards and booking emails</li>
+                  <li><span aria-hidden="true">🎟️</span> Invitations, posters and tickets</li>
+                </ul>
+              </section>
+            )}
           </>
         )}
 
@@ -1800,11 +1805,8 @@ function TodoView({
     <section className="todoView">
       <div className="todoHero">
         <div>
-          <span className="todoHeroIcon"><Check /></span>
-          <div>
-            <h1>To-do</h1>
-            <p>{open.length ? `${open.length} still to do` : "You’re all caught up."}</p>
-          </div>
+          <h1>To-do</h1>
+          <p>{open.length ? `${open.length} still to do` : "You’re all caught up."}</p>
         </div>
       </div>
 
@@ -2063,7 +2065,7 @@ const MILESTONES: { key: string; title: string; hint: string; open?: "scan" | "p
   { key: "first_scan", title: "Complete your first scan", hint: "Capture or upload something with a date", open: "scan", icon: <CheckCircle2 /> },
   { key: "first_planner_item", title: "Add your first Planner item", hint: "Save a scan or tap + in Planner", open: "planner", icon: <CalendarDays /> },
   { key: "first_calendar", title: "Add an event to your device calendar", hint: "Use “Add to device calendar” after a scan", open: "scan", icon: <Download /> },
-  { key: "first_reminder", title: "Set your first reminder", hint: "Use the bell in Planner", open: "reminder", icon: <Bell /> },
+  { key: "first_reminder", title: "Set your first reminder", hint: "Open Reminders and tap Add", open: "reminder", icon: <Bell /> },
   { key: "first_completed_task", title: "Complete your first task", hint: "Tick off a task or deadline", open: "planner", icon: <ListChecks /> },
   { key: "organised_5_scans", title: "Organise 5 scans", hint: "Save items from 5 different scans to Planner", open: "scan", icon: <Layers /> },
   { key: "organised_10_scans", title: "Organise 10 scans", hint: "Save items from 10 different scans to Planner", open: "scan", icon: <Layers /> },
@@ -2120,7 +2122,7 @@ function RewardsView({
       ) : (
         <button className="rewardBalance" type="button" onClick={onSignIn}>
           <span>Rewards need a free account</span>
-          <small>Sign in or create an account to earn credits →</small>
+          <small>Sign in to earn credits for everything below →</small>
         </button>
       )}
       <div className="rewardRows">
@@ -2144,7 +2146,7 @@ function RewardsView({
               <span className="rewardIcon">{m.icon}</span>
               <span className="rewardCopy">
                 <b>{m.title}</b>
-                <small>{signedIn ? [m.hint, amount(m.key)].filter(Boolean).join(" · ") : "Sign in to earn"}</small>
+                <small>{signedIn ? [m.hint, amount(m.key)].filter(Boolean).join(" · ") : m.hint}</small>
               </span>
               <ChevronRight className="rewardChevron" size={18} />
             </button>
@@ -2170,7 +2172,7 @@ function RewardsView({
             </span>
             <span className="rewardCopy">
               <b>Share your experience</b>
-              <small>{signedIn ? ["Any honest feedback", amount("product_feedback") && amount("product_feedback") + " once"].filter(Boolean).join(" · ") : "Sign in to earn"}</small>
+              <small>{signedIn ? ["Any honest feedback", amount("product_feedback") && amount("product_feedback") + " once"].filter(Boolean).join(" · ") : "Any honest feedback"}</small>
             </span>
             <ChevronRight className="rewardChevron" size={18} />
           </button>
@@ -2184,7 +2186,7 @@ function RewardsView({
             <small>
               {signedIn
                 ? [`When they sign up and complete their first scan`, amount("referral_qualified"), referrals ? `${referrals} rewarded` : ""].filter(Boolean).join(" · ")
-                : "Sign in to earn"}
+                : "When they sign up and complete their first scan"}
             </small>
           </span>
           <ChevronRight className="rewardChevron" size={18} />

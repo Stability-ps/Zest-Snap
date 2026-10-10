@@ -250,7 +250,7 @@ for (const scheme of ["light", "dark"] as const) {
     await page.getByLabel("Remind me to").fill("Call the dentist");
     await page.getByLabel("Time").fill("14:30");
     await page.getByRole("button", { name: "Save reminder" }).click();
-    await page.getByRole("button", { name: /Open reminders/ }).click();
+    await page.getByRole("navigation").getByRole("button", { name: "Reminders" }).click();
     await expect(page.getByText("Call the dentist")).toBeVisible();
     await audit("reminders-list");
     await page.goto("/app?view=todo");
