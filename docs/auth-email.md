@@ -51,3 +51,18 @@ Emails → SMTP settings, then raise the email rate limit.
 Android App Links and iOS Universal Links include `/auth/confirm` (iOS through the AASA file, live on deploy;
 Android needs a new app build). Until the Android build ships, verification links open in the browser,
 which verifies the account; the person then signs in in the app.
+
+## iPhone Universal Link release verification
+
+The app now checks both warm-start `appUrlOpen` and cold-start `App.getLaunchUrl()`.
+For this to work on a real iPhone, install a native build containing the associated-domains entitlement,
+verify that Apple Developer App ID `app.zestsnap` has Associated Domains enabled, and ensure
+`https://app.zestsnap.app/.well-known/apple-app-site-association` returns HTTP 200 with
+`D64PWXTUJ5.app.zestsnap` (or the configured team ID) and the `/auth/confirm*` path.
+After installing the new build, tap a fresh verification email in Apple Mail and Gmail and check that
+it opens Zest Snap and completes verification. If Gmail keeps the URL inside its in-app browser,
+verification still works there; sign in to the installed app afterward. Do not claim universal-link
+handoff is verified solely from a simulator or web test.
+
+For recovery, verify the link opens the reset-password form, not the home page, and that a used token
+cannot be reused. Never embed auth tokens in diagnostic logs or analytics.
