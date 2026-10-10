@@ -87,23 +87,22 @@ test("guest: exactly three successful scans (a failed one is free), then the pay
   const usage = (await admin(`/rest/v1/guest_scan_usage?select=status`)).json as { status: string }[];
   expect(usage.filter((u) => u.status === "completed").length).toBeGreaterThanOrEqual(3);
 
-  // Fourth attempt: the paywall, without uploading anything.
+  // Fourth attempt: straight to the Premium page, without uploading anything.
   const before = Number(await stub("/calls"));
   await page.getByRole("button", { name: /Scan another/ }).click();
   await page.getByRole("button", { name: "Upload", exact: true }).click();
-  const paywall = page.getByRole("dialog", { name: "You’ve captured 3 important moments." });
-  await expect(paywall).toBeVisible();
-  await expect(paywall.getByRole("button", { name: "Explore Premium" })).toBeVisible();
+  await page.waitForURL(/\/upgrade\?from=guest/);
+  await expect(page.getByRole("heading", { name: "You’ve captured 3 important moments." })).toBeVisible();
   expect(Number(await stub("/calls"))).toBe(before);
-  // Even if the local hint is cleared, the server refuses and the same paywall appears.
-  await paywall.getByRole("button", { name: "Not now" }).click();
+  // Even if the local hint is cleared, the server refuses and the same Premium page opens.
+  await page.goto("/app");
   await page.evaluate(() => localStorage.removeItem("zest-guest-trial-v1"));
   await upload(page);
-  await expect(page.getByRole("dialog", { name: "You’ve captured 3 important moments." })).toBeVisible();
+  await page.waitForURL(/\/upgrade\?from=guest/);
   expect(Number(await stub("/calls"))).toBe(before);
 
-  // Create a free account from the paywall.
-  await page.getByRole("button", { name: /Create a free account/ }).click();
+  // Create a free account from the Premium page.
+  await page.getByRole("link", { name: "Create a free account" }).click();
   await page.waitForURL(/\/login\?mode=signup/);
   await page.getByPlaceholder("What should Zest call you?").fill("Funnel Tester");
   await page.getByPlaceholder("you@example.com").fill(email);
