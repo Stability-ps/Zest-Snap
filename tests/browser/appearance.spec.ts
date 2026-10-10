@@ -192,7 +192,8 @@ for (const scheme of ["light", "dark"] as const) {
     for (const [name, path] of screens) {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
-      expect((await theme(page)).theme, name).toBe(scheme);
+      // The landing page is white in every mode, like Admin.
+      expect((await theme(page)).theme, name).toBe(name === "landing" ? "light" : scheme);
       for (const f of await unreadableText(page)) failures.push(`${name}: ${f}`);
     }
     expect(failures).toEqual([]);

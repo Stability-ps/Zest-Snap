@@ -58,5 +58,5 @@ export function resolveScheme(mode: ThemeMode, systemDark: boolean): Scheme {
 
 export const themeColorFor = (scheme: Scheme) => THEME_COLOR[scheme];
 
-/** Internal tools keep their fixed light styling; only the product follows the person's appearance. */
-export const followsAppearance = (pathname: string) => !/^\/admin(\/|$)/.test(pathname);
+/** Internal tools and the landing page keep their fixed light styling; only the product follows the person's appearance. */
+export const followsAppearance = (pathname: string) => !/^\/(admin(\/|$)|$)/.test(pathname);

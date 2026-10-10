@@ -158,6 +158,9 @@ test("boot script applies the stored theme before first paint and never throws",
   assert.equal(boot(JSON.stringify({ mode: "evil", accent: "x" }), false).dataset.accent, undefined);
   // Internal admin pages keep their light styling.
   assert.equal(boot(JSON.stringify({ mode: "dark" }), true, "/admin/users").dataset.theme, "light");
+  // The landing page is white in every mode (#96); the app itself follows the appearance.
+  assert.equal(boot(JSON.stringify({ mode: "dark", accent: "violet" }), true, "/").dataset.theme, "light");
+  assert.equal(boot(JSON.stringify({ mode: "dark" }), true, "/app").dataset.theme, "dark");
   assert.doesNotThrow(() => vm.runInNewContext(APPEARANCE_BOOT_SCRIPT, {}));
 });
 
