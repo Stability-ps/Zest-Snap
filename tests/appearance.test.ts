@@ -77,10 +77,11 @@ const STYLESHEETS = ["app/globals.css", "app/shared/[id]/shared-chat.module.css"
 
 test("components use theme tokens, not hard-coded colours", () => {
   const css = STYLESHEETS.map((f) => readFileSync(f, "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
-  // Allowed: the fixed Light/Dark depictions in the Appearance thumbnails, the brand capture mark, white glyphs on
+  // Allowed: the Appearance picker's phone preview (fixed bezel; screen colours come from --p-* tokens set from the
+  // real palette), its accent gems and its fixed-dark intro variant, the brand capture mark, white glyphs on
   // coloured swatches/toggle knobs and destructive buttons, neutral drop shadows on swatches, and the Premium page's
   // fixed illustration (a white phone screen, a kraft notebook, a plant) plus its one violet feature tile.
-  const allowed = /^(\.pw(Art|Plant|Notebook|Phone|Screen|Status|Event|Notes)|(:root\[data-theme="dark"\] |:root:not\(\[data-theme\]\) )?\.pwIcon\.violet|\.appearanceThumbHalf|\.appearanceSwatch|\.zestCaptureMark|\.settingsToggle:after|\.dangerButton|\.button\.dangerSolid|\.plannerReminderButton span|\.mine \.reaction|\.socialButton|:root\[data-theme="dark"\] \.socialButton)/;
+  const allowed = /^(\.pw(Art|Plant|Notebook|Phone|Screen|Status|Event|Notes)|(:root\[data-theme="dark"\] |:root:not\(\[data-theme\]\) )?\.pwIcon\.violet|\.appearancePhone|\.appearanceGem|\.appearanceSheet\.onDark|\.zestCaptureMark|\.settingsToggle:after|\.dangerButton|\.button\.dangerSolid|\.plannerReminderButton span|\.mine \.reaction|\.socialButton|:root\[data-theme="dark"\] \.socialButton)/;
   const offenders: string[] = [];
   for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selector = m[1].trim().replace(/\s+/g, " ").replace(/^@media[^{]*/, "");
@@ -97,8 +98,10 @@ test("every CSS variable the stylesheets use is defined", () => {
   const css = STYLESHEETS.map((f) => readFileSync(f, "utf8")).join("\n");
   const theme = readFileSync("app/theme.css", "utf8");
   const defined = new Set([...(theme + css).matchAll(/--([a-z0-9-]+)\s*:/g)].map((m) => m[1]));
-  const runtime = new Set(["native-safe-top", "native-safe-right", "native-safe-bottom", "native-safe-left"]);
-  const missing = [...css.matchAll(/var\(--([a-z0-9-]+)\)/g)].map((m) => m[1]).filter((v) => !defined.has(v) && !runtime.has(v));
+  // Set at runtime: native safe-area insets, and the Appearance preview's --p-* tokens (app/settings/appearance-sheet.tsx)
+  // and accent --gem.
+  const runtime = new Set(["native-safe-top", "native-safe-right", "native-safe-bottom", "native-safe-left", "gem"]);
+  const missing = [...css.matchAll(/var\(--([a-z0-9-]+)\)/g)].map((m) => m[1]).filter((v) => !defined.has(v) && !runtime.has(v) && !v.startsWith("p-"));
   assert.deepEqual([...new Set(missing)], []);
 });
 
