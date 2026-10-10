@@ -59,6 +59,7 @@ import SharedView from "./shared-view";
 import { PlannerStore, sharedPlannerStore, subscribePlanner } from "@/lib/planner-store";
 import { createClient } from "@/lib/supabase/client";
 import { extractionToPlannerSuggestion } from "@/lib/planner-from-extraction";
+import { saveEventsToPlanner, saveSummary, withStartTime, type SaveOutcome } from "@/lib/save-to-planner";
 import { normalizeDocumentType } from "@/lib/extraction-validation";
 import { MAX_DATE, MIN_DATE, formatDisplayDate, formatDisplayTime, isValidDate } from "@/lib/dates";
 import { monthGrid, plannerFingerprint, plannerReferenceDate, plannerReferenceTime, plannerTodayItems, plannerSort, plannerStatus, todayDate, mergePlannerWithExternal, type PlannerItem } from "@/lib/planner";
@@ -111,6 +112,12 @@ export default function App() {
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
+  // Result of the last Save to Planner on the review screen; cleared when the selection or an event changes.
+  const [saveOutcome, setSaveOutcome] = useState<SaveOutcome | null>(null);
+  const [savingToPlanner, setSavingToPlanner] = useState(false);
+  const savingRef = useRef(false);
+  // One stable Planner id per review event, so a retry or repeated tap updates the same item instead of inserting again.
+  const reviewItemIds = useRef(new Map<number, string>());
   const [scanStage, setScanStage] = useState("");
   const [error, setError] = useState("");
   const [errorAction, setErrorAction] = useState<"signup" | "plans" | null>(null);
@@ -143,7 +150,7 @@ export default function App() {
   const showError = useCallback((message: string, action: "signup" | "plans" | null = null) => {
     setError(message);
     setErrorAction(action);
-  }, []);
+  }, [setError, setErrorAction]);
 
   function saveSnapshot(next: Snapshot) {
     try {
@@ -466,7 +473,11 @@ export default function App() {
     }
   }
 
-  const highConfidence = useMemo(() => result?.events.filter((e) => e.confidence >= 0.8).length ?? 0, [result]);
+  /** A new scan, plan or history entry is being reviewed: forget the previous review's save state. */
+  function startReview() {
+    reviewItemIds.current = new Map();
+    setSaveOutcome(null);
+  }
 
   async function scanFile(file?: File) {
     if (!file || !ready || busy) return;
@@ -558,6 +569,7 @@ export default function App() {
       await persist({ ...store, scans: [scan, ...store.scans.filter((s) => s.id !== scan.id)] });
 
       setActiveScan(scan.id);
+      startReview();
       setResult(normalizeDocumentType(payload));
       hapticSuccess();
       setSelected(payload.events.map((_: ExtractedEvent, i: number) => i).filter((i: number) => !duplicateOf(payload.events[i])));
@@ -590,6 +602,7 @@ export default function App() {
   }
 
   function toggle(index: number) {
+    setSaveOutcome(null);
     setSelected((s) => (s.includes(index) ? s.filter((i) => i !== index) : [...s, index]));
   }
 
@@ -628,43 +641,65 @@ export default function App() {
       return;
     }
     setResult({ ...result, events });
+    setSaveOutcome(null);
     setEditingIndex(null);
     setDraft(null);
   }
 
+  /**
+   * Saves the selected review events. Works for photo scans and for Plan with Zest results (which have no scan),
+   * reports every event's outcome, and can be retried: saved events are recognised as duplicates and failed ones
+   * keep their ids, so nothing is inserted twice.
+   */
   async function saveSelectedToPlanner(indexes: number[]) {
-    if (!result || !activeScan || !indexes.length || !identity) return;
+    if (!result || !indexes.length || savingRef.current) return;
+    if (!identity) {
+      showError("Zest is still loading your Planner. Try again in a moment.");
+      return;
+    }
+    savingRef.current = true;
+    setSavingToPlanner(true);
     setBusy(true);
     setError("");
+    setSuccess("");
+    setSaveOutcome(null);
     try {
       const planner = await sharedPlannerStore(identity);
-      const scanId = planner.mode === "cloud" && store.scans.some((s) => s.id === activeScan) ? activeScan : activeScan;
-      let saved = 0,
-        skipped = 0;
-      for (const index of indexes) {
-        const event = result.events[index];
-        if (!event) continue;
-        if (duplicateOf(event)) {
-          skipped++;
-          continue;
-        }
-        if (!event.startDate) {
-          skipped++;
-          continue;
-        }
-        await planner.upsert(extractionToPlannerSuggestion(event, scanId).item);
-        saved++;
+      // Plan with Zest results are not scans: their items are saved without a scan link.
+      const scanId = activeScan && store.scans.some((s) => s.id === activeScan) ? activeScan : undefined;
+      const outcome = await saveEventsToPlanner({
+        events: result.events,
+        indexes,
+        isDuplicate: duplicateOf,
+        toItem: (event, index) => {
+          const item = extractionToPlannerSuggestion(event, scanId ?? "").item;
+          let id = reviewItemIds.current.get(index);
+          if (!id) reviewItemIds.current.set(index, (id = item.id));
+          return { ...item, id, sourceScanId: scanId };
+        },
+        upsert: (item) => planner.upsert(item),
+      });
+      setSaveOutcome(outcome);
+      // Keep only what still needs attention selected: failed events can be retried as they are.
+      setSelected(outcome.failed);
+      if (outcome.saved.length) {
+        hapticSuccess();
+        if (mode === "cloud") refresh();
       }
-      const parts = [saved === 1 ? "Saved to Planner." : saved ? `${saved} items saved to Planner.` : "Nothing new to save."];
-      if (skipped) parts.push(`${skipped} skipped (already in your agenda or missing a date).`);
-      setSuccess(parts.join(" "));
-      if (saved) openView("calendar", { tab: "upcoming" });
-      if (saved && mode === "cloud") refresh();
     } catch (e) {
-      showError(e instanceof Error ? e.message : "Could not save to Planner.");
+      // The Planner itself could not be opened: nothing was saved, the selection and edits stay as they are.
+      console.error("planner_save_failed", e instanceof Error ? e.message : e);
+      showError("Couldn’t save your events. Please try again.");
     } finally {
+      savingRef.current = false;
+      setSavingToPlanner(false);
       setBusy(false);
     }
+  }
+
+  /** Opens Planner › Upcoming, which lists the just-saved events (today's included until their time passes). */
+  function viewSavedInPlanner() {
+    openView("calendar", { tab: "upcoming" });
   }
 
   async function addToCalendar(event: ExtractedEvent) {
@@ -896,10 +931,10 @@ export default function App() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.error || "Zest could not organise that plan.");
       const planned = normalizeDocumentType(body as ExtractionResult);
-      setActiveScan(null); setResult(planned);
+      setActiveScan(null); startReview(); setResult(planned);
       setSelected(planned.events.map((event, i) => isValidDate(event.startDate) ? i : -1).filter(i => i >= 0));
       closeVoicePlanner(); openView("review");
-      setSuccess(planned.events.length ? "Review your plan before saving it." : "I couldn’t find an actionable date yet. Try adding a day or time.");
+      if (!planned.events.length) showError("I couldn’t find an actionable date yet. Try adding a day or time.");
     } catch (e) { showError(e instanceof Error ? e.message : "Zest could not organise that plan."); }
     finally { setVoiceBusy(false); }
   }
@@ -1059,16 +1094,6 @@ export default function App() {
                   : `${result.events.length} ${result.events.length === 1 ? "event" : "events"} found`}
               </h1>
               <p>{result.summary}</p>
-              <div className="reviewStats">
-                <span>
-                  <CheckCircle2 size={15} />
-                  {highConfidence} high confidence
-                </span>
-                <span>
-                  <FileText size={15} />
-                  {result.documentType}
-                </span>
-              </div>
             </section>
 
             {success && (
@@ -1090,12 +1115,21 @@ export default function App() {
             <p>
               <button
                 className="textButton"
-                onClick={() => setSelected(result.events.map((_, i) => i))}
+                onClick={() => {
+                  setSaveOutcome(null);
+                  setSelected(result.events.map((_, i) => i));
+                }}
               >
                 Select all
               </button>{" "}
               ·{" "}
-              <button className="textButton" onClick={() => setSelected([])}>
+              <button
+                className="textButton"
+                onClick={() => {
+                  setSaveOutcome(null);
+                  setSelected([]);
+                }}
+              >
                 Clear selection
               </button>
             </p>
@@ -1126,14 +1160,10 @@ export default function App() {
                           <span className="category">{event.category}</span>
                           <h3>{event.title}</h3>
                         </div>
-                        <span
-                          className={
-                            "confidence " +
-                            (event.confidence < 0.7 ? "low" : "")
-                          }
-                        >
-                          {Math.round(event.confidence * 100)}%
-                        </span>
+                        {event.confidence < 0.7 && (
+                          // Only uncertain extractions are flagged, so the person knows what to check before saving.
+                          <span className="confidence low">Check details</span>
+                        )}
                       </div>
                       <div className="eventMeta">
                         <span>
@@ -1148,7 +1178,8 @@ export default function App() {
                           </span>
                         )}
                       </div>
-                      {event.confidenceReason && (
+                      {event.description && <p className="reason">{event.description}</p>}
+                      {event.confidence < 0.7 && event.confidenceReason && (
                         <p className="reason">{event.confidenceReason}</p>
                       )}
                       {duplicate && (
@@ -1207,19 +1238,41 @@ export default function App() {
               </div>
             )}
 
-            <div className="stickyAction">
+            <div className="stickyAction" aria-live="polite">
               <div>
-                <b>{selected.length} selected</b>
-                <span>Duplicates are skipped automatically</span>
+                {saveOutcome ? (
+                  <b className={saveOutcome.failed.length || saveOutcome.invalid.length ? "saveResult attention" : "saveResult"} role="status">
+                    {saveSummary(saveOutcome)}
+                  </b>
+                ) : (
+                  <b>{selected.length} selected</b>
+                )}
+                {!selected.length && !saveOutcome?.saved.length && <span id="save-hint">Select at least one event to save</span>}
               </div>
               <div className="stickyActions">
-                <button
-                  className="button"
-                  disabled={!selected.length}
-                  onClick={() => saveSelectedToPlanner(selected)}
-                >
-                  Save to Planner
-                </button>
+                {saveOutcome?.saved.length && !selected.length ? (
+                  <button className="button" onClick={viewSavedInPlanner}>
+                    View in Planner
+                  </button>
+                ) : (
+                  <button
+                    className="button"
+                    disabled={!selected.length || savingToPlanner}
+                    aria-describedby={!selected.length ? "save-hint" : undefined}
+                    aria-busy={savingToPlanner}
+                    onClick={() => saveSelectedToPlanner(selected)}
+                  >
+                    {savingToPlanner ? (
+                      <>
+                        <Loader2 size={17} className="spin" aria-hidden="true" /> Saving…
+                      </>
+                    ) : saveOutcome?.failed.length ? (
+                      `Retry ${selected.length}`
+                    ) : (
+                      `Save ${selected.length || ""} to Planner`.replace("  ", " ")
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </>
@@ -1230,6 +1283,7 @@ export default function App() {
             scans={store.scans}
             onOpen={(s) => {
               setActiveScan(s.id);
+              startReview();
               setResult(normalizeDocumentType({ ...s, warnings: s.warnings || [] }));
               setSelected(s.events.map((_, i) => i));
               openView("review");
@@ -1409,6 +1463,16 @@ export default function App() {
                   }
                 />
               </label>
+              <label>
+                <span>Category</span>
+                <select value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value as ExtractedEvent["category"] })}>
+                  {(["event", "school", "meeting", "appointment", "travel", "payment", "deadline", "other"] as const).map((c) => (
+                    <option key={c} value={c}>
+                      {c[0].toUpperCase() + c.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="fieldGrid">
                 <label>
                   <span>Date</span>
@@ -1429,13 +1493,7 @@ export default function App() {
                   <input
                     type="time"
                     value={draft.startTime}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        startTime: e.target.value,
-                        allDay: !e.target.value,
-                      })
-                    }
+                    onChange={(e) => setDraft(withStartTime(draft, e.target.value))}
                   />
                 </label>
               </div>
