@@ -20,7 +20,8 @@
     "mobile:version": "node scripts/mobile-version.mjs",
     "mobile:build:android": "npm run mobile:assets && node scripts/mobile-sync.mjs android && cd android && ./gradlew assembleDebug bundleRelease",
     "mobile:build:ios": "node scripts/mobile-sync.mjs ios && cd ios/App && xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphoneos -archivePath ../build/ZestSnap.xcarchive archive",
-    "theme:css": "tsx scripts/build-theme-css.ts"
+    "theme:css": "tsx scripts/build-theme-css.ts",
+    "pwa:splash": "tsx scripts/pwa-splash.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",
