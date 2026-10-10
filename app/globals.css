@@ -3226,7 +3226,7 @@ html.native .upgradePage{padding-top:calc(16px + var(--zest-safe-top));padding-b
 
 /* Premium onboarding: editorial composition from the approved reference.
    This screen intentionally stays light, independently of app appearance. */
-.upgradePage{color-scheme:light;background:var(--surface);--bg:#fff;--surface:#fff;--surface-2:#f4f8fc;--text:#102747;--text-2:#526b86;--text-3:#60758f;--text-4:#74869c;--ink:#102747;--on-ink:#fff;--border:#dce5ef;--divider:#e7edf4;--brand:#0abda8;--brand-text:#087f72;--accent-soft:#e8f6f5;--accent-text:#127dbe;--accent-wash:#f7faff;--hero:#102747;--shadow-rgb:16 39 71;--shadow-strength:1}
+.upgradePage{color-scheme:light;background:var(--surface);--bg:var(--premium-white, white);--surface:var(--premium-white, white);--surface-2:#f4f8fc;--text:#102747;--text-2:#526b86;--text-3:#60758f;--text-4:#74869c;--ink:#102747;--on-ink:#fff;--border:#dce5ef;--divider:#e7edf4;--brand:#0abda8;--brand-text:#087f72;--accent-soft:#e8f6f5;--accent-text:#127dbe;--accent-wash:#f7faff;--hero:#102747;--shadow-rgb:16 39 71;--shadow-strength:1}
 .upgradeWrap{max-width:430px;gap:14px}
 .upgradeTop{margin-bottom:8px}
 .upgradeTop .textButton{background:var(--surface-2);border-radius:999px;padding:0 14px;font-size:13px;font-weight:600}
