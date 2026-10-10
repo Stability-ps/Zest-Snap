@@ -8,7 +8,7 @@ import { APPEARANCE_KEY } from "./preferences";
  */
 export const APPEARANCE_BOOT_SCRIPT = `(function(){try{
 var d=document.documentElement,m="system",a="ocean",A=${JSON.stringify(ACCENTS.map((x) => x.id))};
-if(/^\\/(admin(\\/|$)|$)/.test(location.pathname)){d.dataset.theme="light";if(d.style)d.style.colorScheme="light";return}
+if(/^\\/((admin|upgrade)(\\/|$)|$)/.test(location.pathname)){d.dataset.theme="light";if(d.style)d.style.colorScheme="light";return}
 try{var s=JSON.parse(localStorage.getItem(${JSON.stringify(APPEARANCE_KEY)})||"null");
 if(s&&(s.mode==="light"||s.mode==="dark"||s.mode==="system"))m=s.mode;
 if(s&&A.indexOf(s.accent)>=0)a=s.accent}catch(e){}
