@@ -254,7 +254,6 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
     () => activeReminders.filter((r) => dateKeyIn(r.scheduledAt, timezone) === selectedDate),
     [activeReminders, selectedDate, timezone],
   );
-  const pendingCount = activeReminders.filter((r) => r.status === "pending" || r.status === "sent" || r.status === "processing").length;
 
   const act = async (fn: () => Promise<void>) => {
     if (busy) return;
@@ -297,18 +296,9 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
       {tab !== "reminders" && <div className="plannerHero">
         <div>
           <h1>Your planner</h1>
-          <p>Events, tasks and deadlines — organised in Zest.</p>
+          <p>Your events, tasks and deadlines.</p>
         </div>
         <div className="plannerHeroActions">
-          {/* The hero is hidden on the Reminders page, so this button is only ever shown un-pressed. */}
-          <button
-            className="plannerReminderButton"
-            onClick={() => setTab("reminders")}
-            aria-label={pendingCount ? `Open reminders, ${pendingCount} active` : "Open reminders"}
-          >
-            <Bell />
-            {pendingCount > 0 && <span aria-hidden="true">{pendingCount}</span>}
-          </button>
           <button className="plannerFab" onClick={() => setEditing(emptyItem(timezone, tab === "calendar" ? selectedDate : today))} aria-label="Add to Planner">
             <Plus />
           </button>
@@ -481,7 +471,6 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
           notificationState={notificationState}
           signedIn={signedIn}
           busy={busy}
-          onBack={() => setTab("today")}
           onAdd={() => setNewReminderDate(today)}
           onSignIn={onSignIn}
           onEnable={() =>
@@ -645,8 +634,9 @@ function Sheet({ label, onClose, className = "", children }: { label: string; on
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const first = ref.current?.querySelector<HTMLElement>("input,select,textarea,button:not([aria-label='Close'])");
-    first?.focus();
+    // Focus the dialog itself: screen readers announce it, Tab moves inside, and no button shows a focus ring
+    // (or input opens the keyboard) before the person has touched anything.
+    ref.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key !== "Tab" || !ref.current) return;
@@ -669,7 +659,7 @@ function Sheet({ label, onClose, className = "", children }: { label: string; on
   }, [onClose]);
   return (
     <div className="plannerOverlay" onClick={onClose}>
-      <section ref={ref} className={`plannerSheet ${className}`} role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
+      <section ref={ref} tabIndex={-1} className={`plannerSheet ${className}`} role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
         {children}
       </section>
     </div>
@@ -686,7 +676,6 @@ function RemindersPage({
   notificationState,
   signedIn,
   busy,
-  onBack,
   onAdd,
   onSignIn,
   onEnable,
@@ -704,7 +693,6 @@ function RemindersPage({
   notificationState: NotificationState;
   signedIn: boolean;
   busy: boolean;
-  onBack: () => void;
   onAdd: () => void;
   onSignIn?: () => void;
   onEnable: () => void;
@@ -820,11 +808,8 @@ function RemindersPage({
   return (
     <div className="remindersStandalone">
       <div className="remindersTitle">
-        <button className="reminderBack" onClick={onBack} aria-label="Back to Planner">
-          <ChevronLeft />
-        </button>
         <div className="remindersTitleCopy">
-          <h2>Reminders</h2>
+          <h1>Reminders</h1>
           <p>Stay ahead of what matters</p>
         </div>
         <button className="reminderAddButton" onClick={onAdd} disabled={busy} aria-label="Add reminder">
@@ -837,7 +822,7 @@ function RemindersPage({
         <div>
           <b>
             {!signedIn
-              ? "Notifications need an account"
+              ? "Notifications need a free account"
               : notificationState === "enabled"
                 ? "Notifications on"
                 : notificationState === "blocked"

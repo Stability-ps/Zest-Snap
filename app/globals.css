@@ -3323,3 +3323,52 @@ html.native .pw{padding-top:var(--zest-safe-top);padding-bottom:max(12px,var(--z
   .authCard:has(input[autocomplete="new-password"]) .authDeviceButton { min-height: 40px; }
   .authCard:has(input[autocomplete="new-password"]) .authFine { margin-top: 5px; font-size: 10.5px; }
 }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   Consistency pass. One place for the rules every tab shares:
+   - main actions are navy (--ink); blue is for links and the selected filter only
+   - every tab header is the same: title, one-line subtitle, at most one action
+   - every filter row is the same segmented control as the Planner tabs
+   --------------------------------------------------------------------------------------------------------------- */
+.plannerFab,
+.todoQuickAdd button:not(.todoDateButton) { background: var(--ink); color: var(--on-ink); }
+.plannerFab { box-shadow: 0 10px 24px rgb(var(--shadow-rgb) / calc(0.16 * var(--shadow-strength))); }
+
+.plannerHero h1, .todoHero h1, .remindersTitle h1, .sharedHero h1, .rewardsView > h1 {
+  margin: 0 0 6px; font-size: 32px; line-height: 1.05; letter-spacing: -1px; color: var(--text);
+}
+.plannerHero p, .todoHero p, .remindersTitle p, .sharedHero p, .rewardsView > p {
+  margin: 0; max-width: 340px; font-size: 15px; line-height: 1.4; color: var(--text-3);
+}
+.plannerHero, .todoHero, .remindersTitle { padding-top: 6px; }
+.remindersTitle { align-items: flex-start; }
+@media (max-width: 380px) {
+  .plannerHero h1, .todoHero h1, .remindersTitle h1, .sharedHero h1, .rewardsView > h1 { font-size: 29px; }
+}
+
+.todoFilters, .reminderFilters {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; overflow: visible;
+  background: var(--surface-glass); border: 1px solid var(--divider); border-radius: 22px;
+  box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / calc(0.035 * var(--shadow-strength)));
+}
+.todoFilters button, .reminderFilters button {
+  width: 100%; min-width: 0; height: 40px; min-height: 40px; padding: 0 4px; border: 0 !important; border-radius: 18px;
+  background: transparent; color: var(--text-3); font: inherit; font-size: 13px; font-weight: 800; white-space: nowrap;
+}
+.todoFilters button.active, .reminderFilters button.active {
+  background: var(--accent-strong); color: var(--on-accent);
+  box-shadow: 0 7px 18px rgb(var(--shadow-rgb) / calc(0.16 * var(--shadow-strength)));
+}
+@media (max-width: 380px) { .todoFilters button, .reminderFilters button { font-size: 12px; } }
+
+/* Sheets take focus themselves (no ring on the first chip when a sheet opens). */
+.plannerSheet:focus { outline: none; }
+
+/* Home: the empty day is a quiet line; ideas fill the space for people who haven't scanned yet. */
+.homeTodayEmpty { margin: 0; display: block; cursor: default; }
+.homeIdeas { margin-top: 14px; padding: 16px 18px; border: 1px dashed var(--border-strong); border-radius: 22px; background: var(--surface); }
+.homeIdeas h2 { margin: 0 0 8px; font-size: 15px; letter-spacing: -0.01em; color: var(--text); }
+.homeIdeas ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.homeIdeas li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-2); }
+.homeIdeas li span { width: 22px; text-align: center; }
+.todoHero > div { display: block; }
