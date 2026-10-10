@@ -12,6 +12,7 @@ import {
   Loader2,
   MapPin,
   Sparkles,
+  Plus,
   Download,
   ChevronLeft,
   ChevronRight,
@@ -52,7 +53,8 @@ import { hasNativeSpeech, startNativeSpeech, stopNativeSpeech } from "@/lib/nati
 import { blockedPermissionHelp } from "@/lib/native/permissions";
 import { CaptureCancelled, capturePhoto, nativeCameraAvailable } from "@/lib/native/camera";
 import { addExtractedEventToDevice, deviceCalendarAvailable } from "@/lib/native/calendar";
-import { hapticSuccess } from "@/lib/native/haptics";
+import { hapticLight, hapticSuccess } from "@/lib/native/haptics";
+import { prepSuggestions, suggestionToEvent } from "@/lib/scan-extras";
 import { shareTextNatively } from "@/lib/native/share";
 import PlannerView, { type PlannerRequest } from "./planner-view";
 import SharedView from "./shared-view";
@@ -1150,11 +1152,23 @@ export default function App() {
                 ← Scan another
               </button>
               <div className="eyebrow">AI REVIEW</div>
-              <h1>
-                {result.events.length === 0
-                  ? "No actionable dates found"
-                  : `${result.events.length} ${result.events.length === 1 ? "event" : "events"} found`}
+              <h1 className="reviewCount">
+                {result.events.length > 0 && (
+                  <span className="reviewBadge" aria-hidden="true">
+                    <Check size={18} strokeWidth={3} />
+                  </span>
+                )}
+                {(() => {
+                  const found = result.events.filter((e) => !e.plannerType).length;
+                  return result.events.length ? `${found} ${found === 1 ? "event" : "events"} found` : "No actionable dates found";
+                })()}
               </h1>
+              {result.events.some((e) => e.plannerType) && (
+                <span className="reviewAdded">
+                  <Plus size={13} /> {result.events.filter((e) => e.plannerType).length} to-do
+                  {result.events.filter((e) => e.plannerType).length === 1 ? "" : "s"} added from this notice
+                </span>
+              )}
               <p>{result.summary}</p>
             </section>
 
@@ -1206,6 +1220,7 @@ export default function App() {
                       (checked ? "selected " : "") +
                       (duplicate ? "duplicate" : "")
                     }
+                    style={{ "--i": Math.min(i, 8) } as React.CSSProperties}
                     key={i}
                   >
                     <button
@@ -1219,7 +1234,7 @@ export default function App() {
                     <div className="eventBody">
                       <div className="eventHeading">
                         <div>
-                          <span className="category">{event.category}</span>
+                          <span className="category">{event.plannerType === "task" ? "to-do" : event.category}</span>
                           <h3>{event.title}</h3>
                         </div>
                         {event.confidence < 0.7 && (
@@ -1250,6 +1265,36 @@ export default function App() {
                           Already in your Zest agenda
                         </div>
                       )}
+                      {!event.plannerType && (() => {
+                        const ideas = prepSuggestions(event).filter((s) => !result.events.some((e) => e.title.toLowerCase() === s.title.toLowerCase()));
+                        if (!ideas.length) return null;
+                        return (
+                          <div className="zestSuggests">
+                            <small>
+                              <Sparkles size={13} /> Zest suggests
+                            </small>
+                            {ideas.map((idea) => (
+                              <button
+                                type="button"
+                                key={idea.title}
+                                className="suggestChip"
+                                onClick={() => {
+                                  const events = [...result.events];
+                                  events.splice(i + 1, 0, suggestionToEvent(idea, event));
+                                  setSaveOutcome(null);
+                                  setResult({ ...result, events });
+                                  // Indices after the insert shift by one; the new to-do starts selected.
+                                  setSelected((sel) => [...sel.map((k) => (k > i ? k + 1 : k)), i + 1]);
+                                  void hapticLight();
+                                }}
+                              >
+                                <Plus size={14} /> To-do: {idea.title}
+                                <em>{new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${idea.dueDate}T12:00:00Z`))}</em>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
                       <div className="eventButtons">
                         <button
                           className="button alt small"
