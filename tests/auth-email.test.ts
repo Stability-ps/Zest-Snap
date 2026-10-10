@@ -7,7 +7,6 @@ import {
   authLinkErrorFrom,
   authLinkErrorStatus,
   emailLinkType,
-  isExistingAccountSignup,
   recordResend,
   resendWaitSeconds,
   RESEND_COOLDOWN_SECONDS,
@@ -62,13 +61,6 @@ test("resend verification is rate limited per address for 60 seconds", () => {
   assert.equal(resendWaitSeconds(store, "b@x.com", t0), 0, "other addresses are not blocked");
   store.setItem("zest-auth-resend-v1", "garbage");
   assert.equal(resendWaitSeconds(store, "a@x.com", t0), 0);
-});
-
-test("signing up with an existing verified address is detected", () => {
-  assert.equal(isExistingAccountSignup({ identities: [] }), true);
-  assert.equal(isExistingAccountSignup({ identities: [{ provider: "email" }] }), false);
-  assert.equal(isExistingAccountSignup(null), false);
-  assert.equal(isExistingAccountSignup({}), false);
 });
 
 test("native apps open verification links in-app with a full page load", () => {

@@ -93,13 +93,5 @@ export function recordResend(store: Store, email: string, now = Date.now()) {
   } catch {}
 }
 
-/**
- * Supabase hides whether an email is registered: signing up with an existing confirmed address returns
- * a user with no identities and sends nothing.
- */
-export function isExistingAccountSignup(user: { identities?: unknown[] | null } | null | undefined) {
-  return !!user && Array.isArray(user.identities) && user.identities.length === 0;
-}
-
 /** Remembers where to go after confirming, for links opened on the device that signed up. */
 export const PENDING_NEXT_KEY = "zest-auth-next-v1";
