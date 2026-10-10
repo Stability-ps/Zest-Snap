@@ -3388,3 +3388,22 @@ html.native .welcomePage { padding-top: max(12px, var(--zest-safe-top)); padding
 .welcomeContinue { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 2; }
 html.native .welcomeContinue { bottom: max(12px, var(--zest-safe-bottom)); }
 .welcomeWrap::after { content: ""; display: block; height: 8px; }
+
+/* Scan result moment: a success badge pops in, then each found item slides up in turn. */
+.reviewCount{display:flex;align-items:center;gap:10px}
+.reviewBadge{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:50%;background:var(--success);color:var(--on-accent);box-shadow:0 0 0 6px var(--success-soft);animation:zestPop .55s cubic-bezier(.2,1.4,.4,1) both}
+.eventList .reviewEvent{animation:zestRise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.12s + var(--i,0) * .08s)}
+@keyframes zestPop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+@keyframes zestRise{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+/* Zest suggests: optional prep to-dos found in the notice's own words (lib/scan-extras.ts). */
+.zestSuggests{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 2px}
+.zestSuggests small{display:inline-flex;align-items:center;gap:4px;width:100%;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent-text)}
+.suggestChip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px dashed var(--accent-border);border-radius:999px;background:var(--accent-wash);color:var(--text);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.suggestChip em{font-style:normal;font-weight:600;color:var(--text-3)}
+.suggestChip:active{transform:scale(.97)}
+@media (prefers-reduced-motion:reduce){.reviewBadge,.eventList .reviewEvent{animation:none}}
+.reviewCount{flex-wrap:wrap;row-gap:4px}
+.suggestChip{text-align:left;line-height:1.25;padding:7px 12px}
+.suggestChip em{white-space:nowrap}
+.reviewAdded{display:inline-flex;align-items:center;gap:5px;margin:-2px 0 8px;padding:5px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent-text);font-size:12.5px;font-weight:800;animation:zestPop .4s cubic-bezier(.2,1.4,.4,1) both}
+@media (prefers-reduced-motion:reduce){.reviewAdded{animation:none}}

@@ -13,6 +13,8 @@ export type ExtractedEvent = {
   sourceText: string;
   dayOfWeek?: string;
   recurrence?: "none" | "weekly";
+  /** Set on review-screen suggestions (lib/scan-extras.ts) so they save as that Planner type. Never from the AI. */
+  plannerType?: "event" | "task" | "deadline";
   category:
     | "appointment"
     | "meeting"
