@@ -1130,16 +1130,14 @@ export default function App() {
                 )}
               </div>
             </section>
-            {!homeToday.length && (
-              <section className="homeIdeas" aria-labelledby="home-ideas-title">
-                <h2 id="home-ideas-title">What can I snap?</h2>
-                <ul>
-                  <li><span aria-hidden="true">🏫</span> School notices and newsletters</li>
-                  <li><span aria-hidden="true">🩺</span> Appointment cards and booking emails</li>
-                  <li><span aria-hidden="true">🎟️</span> Invitations, posters and tickets</li>
-                </ul>
-              </section>
-            )}
+            <section className="homeIdeas" aria-labelledby="home-ideas-title">
+              <h2 id="home-ideas-title">What can I snap?</h2>
+              <ul>
+                <li><span aria-hidden="true">🏫</span> School notices and newsletters</li>
+                <li><span aria-hidden="true">🩺</span> Appointment cards and booking emails</li>
+                <li><span aria-hidden="true">🎟️</span> Invitations, posters and tickets</li>
+              </ul>
+            </section>
           </>
         )}
 
