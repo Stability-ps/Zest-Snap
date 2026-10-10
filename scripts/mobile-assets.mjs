@@ -36,8 +36,30 @@ await sharp(svg(`<rect width="512" height="512" fill="${NAVY}"/>`)).resize(1024,
 await sharp(svg(`<g transform="translate(256 256) scale(0.90) translate(-256 -256)">${mark}</g>`), { density: 1200 })
   .resize(1024, 1024).png().toFile(`${out}/icon-foreground.png`);
 
-// Splash keeps the same calendar/page identity but drops the outer scan-frame brackets.
-const splash = svg(`<rect width="2732" height="2732" fill="${NAVY}"/><g transform="translate(1110 1110)">${coreMark}</g>`, 2732);
+// Splash keeps the same calendar/page identity but drops the outer scan-frame brackets. A larger mark with a
+// soft teal glow and the wordmark beneath, all inside the centre ~1200px that stays visible when iOS
+// aspect-fills this square onto a portrait phone. Generated PNGs are committed, so the font only matters
+// when this script is re-run (Inter, falling back to the system sans).
+const splash = svg(`
+  <defs>
+    <radialGradient id="glow" cx="1366" cy="1250" r="980" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00C6A7" stop-opacity="0.22"/>
+      <stop offset="0.45" stop-color="#00C6A7" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#00C6A7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="2732" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B1F3B"/>
+      <stop offset="1" stop-color="#071528"/>
+    </linearGradient>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="28" stdDeviation="34" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+  </defs>
+  <rect width="2732" height="2732" fill="url(#bg)"/>
+  <rect width="2732" height="2732" fill="url(#glow)"/>
+  <g filter="url(#lift)" transform="translate(1366 1250) scale(1.7) translate(-256 -256)">${coreMark}</g>
+  <text x="1366" y="1662" text-anchor="middle" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif"
+    font-size="132" font-weight="800" letter-spacing="-4" fill="#FFFFFF">Zest <tspan fill="#00C6A7">Snap</tspan></text>`, 2732);
 await sharp(splash, { density: 300 }).resize(2732, 2732).png().toFile(`${out}/splash.png`);
 await sharp(splash, { density: 300 }).resize(2732, 2732).png().toFile(`${out}/splash-dark.png`);
 
