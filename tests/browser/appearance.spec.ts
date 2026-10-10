@@ -226,8 +226,9 @@ for (const scheme of ["light", "dark"] as const) {
     await page.locator("input[type=file]").last().setInputFiles({ name: "notice.png", mimeType: "image/png", buffer: PNG });
     await expect(page.getByRole("heading", { name: "3 events found" })).toBeVisible();
     await audit("review");
-    await page.getByRole("button", { name: "Save to Planner" }).click();
-    await expect(page.getByText("3 items saved to Planner.")).toBeVisible();
+    await page.getByRole("button", { name: "Save 3 to Planner" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "3 events added to Planner" })).toBeVisible();
+    await page.getByRole("button", { name: "View in Planner" }).click();
     await audit("planner-upcoming");
     await page.getByRole("tab", { name: "Today" }).click();
     await page.getByRole("button", { name: "Mark Submit permission slip as done" }).click();
