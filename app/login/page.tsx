@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import SocialButtons from "./social-buttons";
+import { isOAuthErrorKind, oauthErrorMessage } from "@/lib/social-auth";
 import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { PENDING_NEXT_KEY, authLinkErrorFrom, isExistingAccountSignup, safeAuthNext } from "@/lib/auth";
@@ -15,13 +17,13 @@ type Mode = "login" | "signup" | "forgot";
 const copy: Record<Mode, { eyebrow: string; title: string; text: string }> = {
   login: {
     eyebrow: "",
-    title: "Your dates, organised.",
-    text: "Sign in to keep your scans, planner, rewards and calendar connections together across devices.",
+    title: "Welcome back",
+    text: "Sign in to continue planning with Zest Snap.",
   },
   signup: {
     eyebrow: "GET STARTED",
-    title: "Create your Zest account.",
-    text: "Keep everything you scan and plan safely connected across your devices.",
+    title: "Create your Zest account",
+    text: "Your plans, reminders, and important dates in one place.",
   },
   forgot: {
     eyebrow: "PASSWORD HELP",
@@ -64,6 +66,8 @@ export default function LoginPage() {
       return;
     }
     if (q.get("verified") === "1") setMessage("Your email is verified. Sign in to continue.");
+    const socialError = q.get("auth_error");
+    if (isOAuthErrorKind(socialError)) setMessage(oauthErrorMessage[socialError]);
   }, [configured]);
 
   async function switchAccount() {
@@ -120,26 +124,6 @@ export default function LoginPage() {
     setActiveUser(userId);
     await Promise.allSettled([registerDevice(), claimPendingReferral()]);
     window.location.assign(new URL(nextPath(), window.location.origin).href);
-  }
-
-  async function socialSignIn(provider: "google" | "apple") {
-    if (!configured || busy) return;
-    setBusy(true);
-    setMessage("");
-    try {
-      const redirectTo = new URL("/auth/callback", window.location.origin);
-      redirectTo.searchParams.set("provider", provider);
-      redirectTo.searchParams.set("next", nextPath());
-      const { error } = await createClient().auth.signInWithOAuth({
-        provider,
-        options: { redirectTo: redirectTo.toString() },
-      });
-      if (error) setMessage(authErrorMessage(error.code, error.message));
-    } catch (error) {
-      setMessage(error instanceof Error ? authErrorMessage(undefined, error.message) : "Unable to start sign-in.");
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -302,17 +286,7 @@ export default function LoginPage() {
         <h1>{current.title}</h1>
           <p className="authIntro">{current.text}</p>
 
-          {mode !== "forgot" && (
-            <div className="socialAuth" aria-label="Other sign-in options">
-              <button type="button" className="authDeviceButton" disabled={busy || !configured} onClick={() => socialSignIn("google")}>
-                Continue with Google
-              </button>
-              <button type="button" className="authDeviceButton" disabled={busy || !configured} onClick={() => socialSignIn("apple")}>
-                Continue with Apple
-              </button>
-              <div className="authDivider"><span>or continue with email</span></div>
-            </div>
-          )}
+          {mode !== "forgot" && configured && <SocialButtons next={nextPath()} disabled={busy} onError={setMessage} />}
           <form onSubmit={submit}>
             {mode === "signup" && (
               <label>
@@ -332,7 +306,7 @@ export default function LoginPage() {
               </label>
             )}
             <label>
-              <span>Email</span>
+              <span>Email address</span>
               <div>
                 <Mail size={18} />
                 <input
@@ -396,7 +370,7 @@ export default function LoginPage() {
             {mode === "login" ? (
               <>
                 <button className="authSwitch" onClick={() => changeMode("signup")}>
-                  New to Zest Snap? Create an account
+                  Don’t have an account? Create account
                 </button>
                 <button className="authSwitch" onClick={() => changeMode("forgot")}>
                   Forgot password?
@@ -404,7 +378,7 @@ export default function LoginPage() {
               </>
             ) : (
               <button className="authSwitch" onClick={() => changeMode("login")}>
-                Back to sign in
+                {mode === "signup" ? "Already have an account? Sign in" : "Back to sign in"}
               </button>
             )}
           </div>

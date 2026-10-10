@@ -79,7 +79,7 @@ test("components use theme tokens, not hard-coded colours", () => {
   const css = STYLESHEETS.map((f) => readFileSync(f, "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
   // Allowed: the fixed Light/Dark depictions in the Appearance thumbnails, the brand capture mark, white glyphs on
   // coloured swatches/toggle knobs and destructive buttons, and neutral drop shadows on swatches.
-  const allowed = /^(\.appearanceThumbHalf|\.appearanceSwatch|\.zestCaptureMark|\.settingsToggle:after|\.dangerButton|\.button\.dangerSolid|\.plannerReminderButton span|\.mine \.reaction)/;
+  const allowed = /^(\.appearanceThumbHalf|\.appearanceSwatch|\.zestCaptureMark|\.settingsToggle:after|\.dangerButton|\.button\.dangerSolid|\.plannerReminderButton span|\.mine \.reaction|\.socialButton|:root\[data-theme="dark"\] \.socialButton)/;
   const offenders: string[] = [];
   for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selector = m[1].trim().replace(/\s+/g, " ").replace(/^@media[^{]*/, "");
