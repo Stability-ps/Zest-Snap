@@ -20,6 +20,7 @@ import MarketingToggle from "./marketing-toggle";
 import SignInMethods from "./sign-in-methods";
 import { isOAuthErrorKind, oauthErrorMessage } from "@/lib/social-auth";
 import AppearanceSheet from "./appearance-sheet";
+import { writeBriefingSettings } from "@/lib/briefing";
 import { useAppearance } from "@/lib/appearance/use-appearance";
 import { appearanceStrings, appearanceSummary } from "@/lib/appearance/strings";
 import { shareFileNatively } from "@/lib/native/share";
@@ -96,7 +97,12 @@ export default function Settings() {
           setGoogleCalendar(calendarResult);
           const { data: briefingRows } = await db.rpc("get_daily_briefing_settings");
           const briefing = briefingRows?.[0];
-          if (briefing) setDailyBriefing({enabled:Boolean(briefing.enabled),localTime:String(briefing.local_time||"07:00").slice(0,5),includeTodos:Boolean(briefing.include_todos),includeShared:Boolean(briefing.include_shared),includeMeals:Boolean(briefing.include_meals)});
+          if (briefing) {
+            const loaded = {enabled:Boolean(briefing.enabled),localTime:String(briefing.local_time||"07:00").slice(0,5),includeTodos:Boolean(briefing.include_todos),includeShared:Boolean(briefing.include_shared),includeMeals:Boolean(briefing.include_meals)};
+            setDailyBriefing(loaded);
+            // The iPhone/Android apps schedule the briefing on the device (lib/native/briefing.ts) from this copy.
+            writeBriefingSettings({enabled:loaded.enabled,localTime:loaded.localTime,includeTodos:loaded.includeTodos,timezone:loadedProfile.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone});
+          }
           setGoogleCalendarLoading(false);
         } else {
           setGoogleCalendarLoading(false);
@@ -224,6 +230,11 @@ export default function Settings() {
     setDailyBriefing(next);
     const db=createClient();
     const {error}=await db.rpc("save_daily_briefing_settings",{p_enabled:next.enabled,p_local_time:next.localTime+":00",p_include_todos:next.includeTodos,p_include_shared:next.includeShared,p_include_meals:next.includeMeals});
+    if(!error){
+      writeBriefingSettings({enabled:next.enabled,localTime:next.localTime,includeTodos:next.includeTodos,timezone:profile.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone});
+      // The app needs notification permission to deliver the briefing on the device; asked only when turning it on.
+      if(next.enabled){try{const n=await import("@/lib/native/notifications");if(n.nativeNotificationsAvailable())await n.enableNativeNotifications();}catch{}}
+    }
     setMessage(error ? "Could not update Daily Briefing." : next.enabled ? "Daily Briefing updated." : "Daily Briefing turned off.");
   }
 

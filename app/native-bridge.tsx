@@ -75,6 +75,35 @@ export default function NativeBridge() {
     };
     window.addEventListener("zest-reminders-changed", syncReminders);
     removers.push(() => window.removeEventListener("zest-reminders-changed", syncReminders));
+    // Daily Briefing → the next three mornings as local notifications built from the Planner (lib/native/briefing.ts),
+    // re-scheduled when the Planner or the briefing settings change and when the app resumes.
+    let briefingTimer: ReturnType<typeof setTimeout> | undefined;
+    let briefingItems: import("@/lib/planner").PlannerItem[] | null = null;
+    const syncBriefing = () => {
+      clearTimeout(briefingTimer);
+      briefingTimer = setTimeout(async () => {
+        const [{ syncNativeBriefing }, { updateNativeWidget }, { PlannerStore }, { readBriefingSettings }] = await Promise.all([
+          import("@/lib/native/briefing"),
+          import("@/lib/native/widget"),
+          import("@/lib/planner-store"),
+          import("@/lib/briefing"),
+        ]);
+        const items = briefingItems ?? PlannerStore.loadLastUsed();
+        await syncNativeBriefing(items, navigator.language || "en");
+        // The home-screen widget shows the same Planner days (lib/native/widget.ts).
+        await updateNativeWidget(items, readBriefingSettings()?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+      }, 1200);
+    };
+    void import("@/lib/planner-store").then(({ subscribePlanner }) => {
+      if (disposed) return;
+      removers.push(subscribePlanner((items) => {
+        briefingItems = items;
+        syncBriefing();
+      }));
+    });
+    window.addEventListener("zest-briefing-changed", syncBriefing);
+    removers.push(() => window.removeEventListener("zest-briefing-changed", syncBriefing));
+    syncBriefing();
     const onViewportChange = () => void syncAndroidInsets();
     window.addEventListener("resize", onViewportChange);
     removers.push(() => window.removeEventListener("resize", onViewportChange));
@@ -135,6 +164,7 @@ export default function NativeBridge() {
           window.dispatchEvent(new Event("zest-app-resume"));
           await syncAndroidInsets();
           syncReminders();
+          syncBriefing();
         }),
       );
       listen(

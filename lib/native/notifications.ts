@@ -1,4 +1,5 @@
 import { hasPlugin } from "./runtime";
+import { BRIEFING_NOTIFICATION_IDS } from "../briefing";
 
 /**
  * Native reminder delivery. Zest Snap reminders already live on the server (or on-device for guests);
@@ -96,7 +97,9 @@ export async function syncNativeReminders(reminders: Reminder[]): Promise<ArmedR
   await prepare();
   const wanted = remindersToSchedule(reminders);
   const wantedById = new Map(wanted.map((r) => [notificationId(r.id), r]));
-  const { notifications: pending } = await LocalNotifications.getPending();
+  // Daily Briefing notifications (lib/native/briefing.ts) are managed separately: never treat them as stale reminders.
+  const { notifications: allPending } = await LocalNotifications.getPending();
+  const pending = allPending.filter((p) => !BRIEFING_NOTIFICATION_IDS.includes(p.id));
   const stale = pending.filter((p) => {
     const r = wantedById.get(p.id);
     const at = (p.schedule as { at?: string | Date } | undefined)?.at;

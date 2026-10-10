@@ -4,4 +4,7 @@
     <string name="title_activity_main">Zest Snap</string>
     <string name="package_name">app.zestsnap</string>
     <string name="custom_url_scheme">app.zestsnap</string>
+    <string name="widget_today_title">Today</string>
+    <string name="widget_today_empty">Your day is clear. Snap something to plan ahead.</string>
+    <string name="widget_today_description">Your next Zest Snap items for today</string>
 </resources>

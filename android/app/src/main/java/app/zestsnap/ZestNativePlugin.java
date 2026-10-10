@@ -51,4 +51,21 @@ public class ZestNativePlugin extends Plugin {
             call.reject("Could not read system insets");
         }
     }
+
+    /** Saves the home-screen widget snapshot (lib/native/widget.ts) and redraws placed widgets. */
+    @PluginMethod
+    public void setWidgetData(PluginCall call) {
+        String json = call.getString("json");
+        if (json == null || json.length() > 50000) {
+            call.reject("Invalid widget data");
+            return;
+        }
+        try {
+            getContext().getSharedPreferences(TodayWidget.PREFS, android.content.Context.MODE_PRIVATE).edit().putString(TodayWidget.KEY, json).apply();
+            TodayWidget.refreshAll(getContext());
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Could not update widget");
+        }
+    }
 }
