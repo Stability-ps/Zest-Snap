@@ -63,6 +63,8 @@ test.beforeAll(async () => {
     expect(r.status, JSON.stringify(r.json)).toBe(200);
     ids[key] = (r.json as { id: string }).id;
     await admin(`/rest/v1/profiles?id=eq.${ids[key]}`, { method: "PATCH", body: JSON.stringify({ onboarding_complete: true }) });
+    // These accounts are not testing the one-time premium introduction (supabase/migrations/20261017100000_*).
+    await admin(`/rest/v1/premium_onboarding?user_id=eq.${ids[key]}`, { method: "PATCH", body: JSON.stringify({ completed_at: new Date().toISOString(), choice: "free" }) });
   }
 });
 

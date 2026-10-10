@@ -18,6 +18,8 @@ import SupportForm from "./support-form";
 import PlansSheet from "./plans-sheet";
 import { billingAvailability } from "@/lib/native/billing";
 import NativeAppSettings from "./native-app-settings";
+import SignInMethods from "./sign-in-methods";
+import { isOAuthErrorKind, oauthErrorMessage } from "@/lib/social-auth";
 import AppearanceSheet from "./appearance-sheet";
 import { useAppearance } from "@/lib/appearance/use-appearance";
 import { appearanceStrings, appearanceSummary } from "@/lib/appearance/strings";
@@ -55,7 +57,13 @@ export default function Settings() {
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("sheet");
     if (requested === "plans" || requested === "pro") setSheet("pro");
-    else if (requested === "support" || requested === "report" || requested === "appearance") setSheet(requested);
+    else if (requested === "support" || requested === "report" || requested === "appearance" || requested === "account") setSheet(requested);
+    // Returning from connecting Google/Apple (/auth/callback?link=1).
+    const params = new URLSearchParams(window.location.search);
+    const linked = params.get("linked");
+    const linkError = params.get("auth_error");
+    if (linked === "google" || linked === "apple") setMessage(`${linked === "google" ? "Google" : "Apple"} is now connected to your account.`);
+    else if (isOAuthErrorKind(linkError)) setMessage(oauthErrorMessage[linkError]);
   }, []);
   useEffect(() => {
     getDataProvider()
@@ -291,6 +299,7 @@ export default function Settings() {
                 <div><span>Email</span><b>{accountEmail || "Signed-in account"}</b></div>
                 <div><span>Status</span><b>Signed in</b></div>
               </div>
+              <SignInMethods onMessage={setMessage} />
               <button className="button alt" disabled={busy} onClick={()=>run(async()=>{await signOut();window.location.assign(new URL("/login",window.location.origin).href);})}><LogOut size={18}/> Sign out</button>
             </div>}
             {sheet==="storage"&&<div className="settingsStorageDetails">
