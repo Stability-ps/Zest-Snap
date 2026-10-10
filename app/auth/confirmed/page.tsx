@@ -116,7 +116,7 @@ export default function EmailLinkResult() {
               new reset link.
             </p>
             <a className="button authSubmit" href="/login">
-              Sign in <ArrowRight size={17} />
+              Sign in to Zest Snap <ArrowRight size={17} />
             </a>
             <div className="authLinks">
               <a className="authSwitch" href="/login?mode=forgot">

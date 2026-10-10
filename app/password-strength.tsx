@@ -25,9 +25,9 @@ export function PasswordStrength({ value, onChange, name = "password", icon }: {
   const [visible, setVisible] = useState(false);
   const checks = passwordChecks(value);
   const requiredMet = checks.slice(0, 4).every((check) => check.ok);
-  const level = !value ? 0 : requiredMet ? (checks[4].ok && value.length >= 12 ? 3 : 2) : 1;
-  const label = ["Enter a password", "Weak", "Strong", "Very strong"][level];
-  const color = ["var(--text-4)", "var(--danger-text)", "var(--success)", "var(--success-text)"][level];
+  const level = !value ? 0 : requiredMet ? (checks[4].ok && value.length >= 12 ? 3 : 2) : checks.slice(0, 4).filter((check) => check.ok).length >= 3 ? 2 : 1;
+  const label = !value ? "Enter a password" : !requiredMet && level === 2 ? "Almost ready" : ["Enter a password", "Weak", "Strong", "Very strong"][level];
+  const color = !requiredMet && level === 2 ? "var(--text-2)" : ["var(--text-4)", "var(--danger-text)", "var(--success)", "var(--success-text)"][level];
   return (
     <>
       <div>
@@ -45,7 +45,7 @@ export function PasswordStrength({ value, onChange, name = "password", icon }: {
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
           <span>Password strength</span><span style={{ color }} aria-live="polite">{label}</span>
         </div>
-        <div aria-hidden="true" style={{ display: "flex", gap: 5, marginTop: 8, marginBottom: 12 }}>
+        {!requiredMet && value && <p role="status" style={{ fontSize: 12, marginTop: 7, color: "var(--text-2)" }}>Still needed: {checks.slice(0, 4).filter((check) => !check.ok).map((check) => check.label.toLowerCase()).join(", ")}.</p>}\n        <div aria-hidden="true" style={{ display: "flex", gap: 5, marginTop: 8, marginBottom: 12 }}>
           {[1,2,3].map((n) => <div key={n} style={{ height: 5, flex: 1, borderRadius: 8, background: n <= level ? color : "var(--surface-4)", transition: "background .2s" }} />)}
         </div>
         <div style={{ display: "grid", gap: 7 }}>
