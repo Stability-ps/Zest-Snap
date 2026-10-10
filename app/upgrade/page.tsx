@@ -12,6 +12,7 @@ import { trackConversion, type PaywallContext } from "@/lib/conversion";
 import { billingAvailability, manageSubscriptionUrl, purchaseOffer, restorePurchases, storeName, storeOffers, type StoreOffer } from "@/lib/native/billing";
 import { annualSavingsPercent, billingTerms, cardPrice, pickProOffers, type PaidPlanId } from "@/lib/billing/paywall";
 import { hapticSuccess } from "@/lib/native/haptics";
+import { holdLightAppearance } from "@/lib/appearance/client";
 
 type From = "onboarding" | "guest" | "free_limit" | "settings";
 type Period = "annual" | "monthly";
@@ -21,6 +22,7 @@ const contextOf: Record<From, PaywallContext> = { onboarding: "post_verification
  * Premium page. Prices, purchases and restores go through the App Store / Google Play via RevenueCat
  * (lib/native/billing). The device only starts a purchase; the server grants Pro from the verified receipt.
  * Nothing on this page shows a price the store didn't provide.
+ * Always light, like Admin (lib/appearance/boot.ts on a full load; holdLightAppearance for in-app navigation).
  * Contexts: ?from=onboarding (once, after a new account verifies), guest, free_limit, settings. ?plan=monthly preselects Monthly.
  */
 export default function UpgradePage() {
@@ -40,6 +42,8 @@ export default function UpgradePage() {
   const [error, setError] = useState("");
   const [eventDate, setEventDate] = useState("12 Oct 2026");
   const [availability, setAvailability] = useState<ReturnType<typeof billingAvailability>>("web_not_connected");
+
+  useEffect(() => holdLightAppearance(), []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -427,7 +431,7 @@ function PaywallArt({ date }: { date: string }) {
             <span className="bars" />
           </div>
           <p className="pwEventTitle">
-            Coffee
+            Coffee{" "}
             <br />
             with Sarah
           </p>
@@ -445,7 +449,7 @@ function PaywallArt({ date }: { date: string }) {
       </div>
       <div className="pwNotes">
         <b>
-          Meeting
+          Meeting{" "}
           <br />
           Notes
         </b>

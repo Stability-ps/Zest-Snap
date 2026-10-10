@@ -98,3 +98,19 @@ for (const [w, h] of [[320, 568], [375, 667], [430, 932], [1280, 800]] as const)
     }
   });
 }
+
+test("premium page: light in dark mode, no invented prices, honest on the web", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.addInitScript(() => localStorage.setItem("zest-appearance-v1", JSON.stringify({ mode: "dark", accent: "violet", updatedAt: 1 })));
+  await page.goto("/upgrade?from=settings");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).not.toHaveAttribute("data-accent", /./);
+  await expect(page.getByRole("heading", { name: "Get more from Zest Snap." })).toBeVisible();
+  await expect(page.getByText("Coffee with Sarah")).toBeVisible();
+  for (const b of ["More AI scans", "Smart reminders", "Plan with Zest AI", "Sync everywhere"]) await expect(page.getByText(b, { exact: true })).toBeVisible();
+  // Not signed in: account first, no prices anywhere.
+  await expect(page.getByRole("link", { name: /Create a free account/ })).toBeVisible();
+  expect(await page.locator("main").innerText()).not.toMatch(/[$€£¥]\s?\d|R\s?\d+[.,]\d{2}/);
+  await expect(page.getByRole("link", { name: "Terms of Service" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Privacy Policy" })).toBeVisible();
+});

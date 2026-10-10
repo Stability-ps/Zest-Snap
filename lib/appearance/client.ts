@@ -48,6 +48,10 @@ export function applyToDocument(doc: Document, value: { scheme: Scheme; mode: Th
     root.dataset.theme = "light";
     root.style.colorScheme = "light";
     delete root.dataset.accent;
+    doc.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+      m.setAttribute("content", themeColorFor("light"));
+      m.removeAttribute("media");
+    });
     return;
   }
   const changed = root.dataset.theme !== value.scheme || (root.dataset.accent || "ocean") !== value.accent;
@@ -120,6 +124,20 @@ export function startAppearance() {
     window.removeEventListener("storage", onStorage);
     window.removeEventListener("zest-app-resume", onSystem);
     document.removeEventListener("visibilitychange", recheck);
+  };
+}
+
+/**
+ * Light-only screens (Admin, the premium page) reached by in-app navigation: the boot script only runs on a
+ * full load, so switch to light on mount and back to the person's appearance on leaving.
+ */
+export function holdLightAppearance() {
+  applyToDocument(document, getAppearance());
+  void applyNativeAppearance("light");
+  return () => {
+    const current = getAppearance();
+    applyToDocument(document, current, "/");
+    void applyNativeAppearance(current.scheme);
   };
 }
 

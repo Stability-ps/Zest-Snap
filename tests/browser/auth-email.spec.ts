@@ -148,11 +148,13 @@ test("signing in before verifying explains why and can resend; resend is rate li
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("signing up again with a verified email guides to sign in and sends nothing", async ({ page }) => {
+test("signing up again with a verified email looks exactly like a new sign-up (no account enumeration) and sends nothing", async ({ page }) => {
   const before = (await emailsTo(verified)).length;
   await signUp(page, verified);
-  await expect(page.getByText("An account already exists for this email. Sign in instead, or reset your password if you’ve forgotten it.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Verify your email." })).toBeVisible();
+  await expect(page.getByText(/already exists/)).toHaveCount(0);
+  await expect(page.getByText("If you already have an account with this email, sign in or reset your password instead.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reset password" })).toBeVisible();
   await page.waitForTimeout(1500);
   expect((await emailsTo(verified)).length).toBe(before);
 });

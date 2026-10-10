@@ -6,7 +6,7 @@ import SocialButtons from "./social-buttons";
 import { isOAuthErrorKind, oauthErrorMessage } from "@/lib/social-auth";
 import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { PENDING_NEXT_KEY, authLinkErrorFrom, isExistingAccountSignup, safeAuthNext } from "@/lib/auth";
+import { PENDING_NEXT_KEY, authLinkErrorFrom, safeAuthNext } from "@/lib/auth";
 import { ResendVerification } from "../auth/resend-verification";
 import { useCompactAuthCard } from "../auth/compact";
 import { PasswordStrength, validPassword } from "@/app/password-strength";
@@ -92,8 +92,6 @@ export default function LoginPage() {
         return "Incorrect email or password. Check your email address and password, then try again.";
       case "email_not_confirmed":
         return "Verify your email first. Use the link we sent you, or resend it below.";
-      case "user_already_exists":
-        return "An account already exists for this email. Sign in instead, or reset your password if you’ve forgotten it.";
       case "email_address_invalid":
         return "Enter a valid email address.";
       case "weak_password":
@@ -210,13 +208,9 @@ export default function LoginPage() {
         setMessage(authErrorMessage(error.code, error.message));
         return;
       }
-      if (error || isExistingAccountSignup(data.user)) {
-        // Already registered and verified: Supabase sends nothing, so guide them to sign in.
-        setMode("login");
-        setMessage("An account already exists for this email. Sign in instead, or reset your password if you’ve forgotten it.");
-        return;
-      }
-      if (data.session && data.user) {
+      // An address that already has an account gets the same "check your email" screen as a new one (Supabase
+      // sends nothing then): sign-up must not reveal which emails are registered. The screen offers sign-in and reset.
+      if (!error && data.session && data.user) {
         await afterSignIn(data.user.id);
       } else {
         try {
@@ -279,10 +273,14 @@ export default function LoginPage() {
             <p className="authIntro">
               We sent a link to <b>{pendingEmail}</b>. It expires in an hour. Can’t find it? Check spam or promotions.
             </p>
+            <p className="authIntro">If you already have an account with this email, sign in or reset your password instead.</p>
             <ResendVerification email={pendingEmail} />
             <div className="authLinks">
               <button className="authSwitch" onClick={() => changeMode("login")}>
                 Already verified? Sign in
+              </button>
+              <button className="authSwitch" onClick={() => changeMode("forgot")}>
+                Reset password
               </button>
               <button className="authSwitch" onClick={() => changeMode("signup")}>
                 Use a different email
