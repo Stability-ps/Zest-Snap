@@ -3388,3 +3388,54 @@ html.native .welcomePage { padding-top: max(12px, var(--zest-safe-top)); padding
 .welcomeContinue { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 2; }
 html.native .welcomeContinue { bottom: max(12px, var(--zest-safe-bottom)); }
 .welcomeWrap::after { content: ""; display: block; height: 8px; }
+
+/* Category colours (lib/item-category.ts): --cat on any .cat-* element; "personal" follows the accent. */
+.cat-school{--cat:var(--cat-school)}.cat-health{--cat:var(--cat-health)}.cat-work{--cat:var(--cat-work)}.cat-bills{--cat:var(--cat-bills)}.cat-travel{--cat:var(--cat-travel)}.cat-social{--cat:var(--cat-social)}.cat-personal{--cat:var(--accent)}
+.homeTimelineItem[class*="cat-"] .homeTimelineDot{background:var(--cat);box-shadow:0 0 0 3px color-mix(in srgb,var(--cat) 22%,transparent)}
+.homeTimelineItem[class*="cat-"] .homeTimelineBody{position:relative;padding-left:40px;background:color-mix(in srgb,var(--cat) 11%,var(--surface));box-shadow:inset 3px 0 0 var(--cat)}
+.homeTimelineIcon{position:absolute;left:11px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:color-mix(in srgb,var(--cat) 18%,transparent);color:var(--cat)}
+.plannerCard[class*="cat-"]{box-shadow:inset 4px 0 0 var(--cat)}
+.plannerCardTop .plannerCardCat{display:inline-flex;align-items:center;gap:5px;color:var(--cat)}
+.plannerCardTop .plannerCardCat svg{width:13px;height:13px}
+
+/* Loading skeletons: soft shimmering placeholders shown while data is on its way (instead of an empty state flash). */
+.homeTodaySkeleton{display:grid;gap:8px}
+.skeletonRow{display:block;height:44px;border-radius:13px;background:linear-gradient(100deg,var(--skeleton) 30%,var(--skeleton-shine) 50%,var(--skeleton) 70%);background-size:300% 100%;animation:zestShimmer 1.4s ease-in-out infinite}
+.skeletonRow.short{width:72%}
+@keyframes zestShimmer{from{background-position:100% 0}to{background-position:0 0}}
+@media (prefers-reduced-motion:reduce){.skeletonRow{animation:none}}
+
+/* Empty-state illustrations (app/app/empty-art.tsx). Theme tokens only. */
+.emptyArt{display:block;width:120px;height:90px;margin:0 auto 4px}
+.emptyArt.sm{width:56px;height:42px;margin:0;flex:none}
+.eaShadow{fill:var(--surface-3)}
+.eaCard{fill:var(--surface-2);stroke:var(--border-strong);stroke-width:1.5}
+.eaHead,.eaClip{fill:var(--accent-soft);stroke:var(--accent-border);stroke-width:1.5}
+.eaHeadFill{fill:var(--accent-soft);stroke:var(--accent-border);stroke-width:1.5}
+.eaRing{fill:var(--border-strong)}
+.eaDot{fill:var(--surface-4)}
+.eaDot.accent,.eaBadge{fill:var(--accent)}
+.eaSun{fill:var(--warning-soft);stroke:var(--warning);stroke-width:1.5}
+.eaRay{fill:none;stroke:var(--warning);stroke-width:2;stroke-linecap:round}
+.eaLine{fill:var(--surface-4)}
+.eaLine.faint{opacity:.55}
+.eaCheck{fill:var(--surface);stroke:var(--border-strong);stroke-width:1.5}
+.eaCheck.done{fill:var(--accent-soft);stroke:var(--accent)}
+.eaTick{fill:none;stroke:var(--accent-text);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.eaTickOn{fill:none;stroke:var(--on-accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.eaScan{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.emptyIcon:has(.emptyArt){width:auto;height:auto;background:none;border-radius:0}
+.emptyIcon .emptyArt{width:150px;height:112px}
+.plannerEmpty>.emptyArt,.sharedEmpty>.emptyArt{width:120px;height:90px;margin:0 auto 6px}
+.todoEmpty>.emptyArt{margin-bottom:2px}
+.homeTodayEmpty:has(.emptyArt){display:flex!important;align-items:center;gap:12px;justify-content:flex-start}
+.homeTodayEmpty span{display:grid;gap:2px}
+.homeTodayEmpty span b{color:var(--text)}
+.homeTodayEmpty span small{color:var(--text-3);font-size:12px}
+
+/* Press feel: a quick, subtle scale on tap for buttons and tappable cards (native-app feedback). */
+.button,.planWithZestButton,.homeTimelineItem,.plannerCard,.todoRow,.sharedCard,.bottomNav button,.homeViewAll,.captureMark{transition:transform .14s ease,box-shadow .2s ease,background-color .2s ease,opacity .2s ease}
+.button:active:not(:disabled),.planWithZestButton:active:not(:disabled),.homeViewAll:active{transform:scale(.97)}
+.homeTimelineItem:active,.plannerCard:active,.todoRow:active,.sharedCard:active{transform:scale(.985)}
+.bottomNav button:active{transform:scale(.92)}
+@media (prefers-reduced-motion:reduce){.button,.planWithZestButton,.homeTimelineItem,.plannerCard,.todoRow,.sharedCard,.bottomNav button,.homeViewAll,.captureMark{transition:none}.button:active,.planWithZestButton:active,.homeViewAll:active,.homeTimelineItem:active,.plannerCard:active,.todoRow:active,.sharedCard:active,.bottomNav button:active{transform:none}}

@@ -18,7 +18,6 @@ import {
   FileText,
   Pencil,
   Check,
-  History as HistoryIcon,
   Settings as SettingsIcon,
   MoreVertical,
   Search,
@@ -52,7 +51,7 @@ import { hasNativeSpeech, startNativeSpeech, stopNativeSpeech } from "@/lib/nati
 import { blockedPermissionHelp } from "@/lib/native/permissions";
 import { CaptureCancelled, capturePhoto, nativeCameraAvailable } from "@/lib/native/camera";
 import { addExtractedEventToDevice, deviceCalendarAvailable } from "@/lib/native/calendar";
-import { hapticSuccess } from "@/lib/native/haptics";
+import { hapticLight, hapticSuccess } from "@/lib/native/haptics";
 import { shareTextNatively } from "@/lib/native/share";
 import PlannerView, { type PlannerRequest } from "./planner-view";
 import SharedView from "./shared-view";
@@ -77,6 +76,9 @@ import {
 import { syncPushSubscription } from "@/lib/reminders";
 import { knownGuestTrialRemaining, rememberGuestTrial, trackConversion } from "@/lib/conversion";
 import { materializeWeeklySchedule, weeklyOccurrences } from "@/lib/schedule";
+import CategoryIcon from "./category-icon";
+import EmptyArt from "./empty-art";
+import { itemCategory } from "@/lib/item-category";
 
 type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards" | "shared";
 type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
@@ -295,20 +297,32 @@ export default function App() {
 
   // Planner is one shared, live store: Home → Today is always the same data as Planner.
   useEffect(() => subscribePlanner(setPlannerItems), []);
+  // Today shows skeleton rows until Planner data is known (cached items count, otherwise the first load), so an
+  // empty state never flashes before items arrive. Capped so a slow or offline load can't leave it loading.
+  const [plannerLoaded, setPlannerLoaded] = useState(false);
   useEffect(() => {
     if (!identity) return;
     let alive = true;
+    setPlannerLoaded(false);
+    const cap = window.setTimeout(() => alive && setPlannerLoaded(true), 6000);
     sharedPlannerStore(identity)
       .then((s) => {
         if (!alive) return;
-        setPlannerItems(s.loadCached());
+        const cached = s.loadCached();
+        setPlannerItems(cached);
+        if (cached.length) setPlannerLoaded(true);
         return s.load();
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (alive) setPlannerLoaded(true);
+      });
     return () => {
       alive = false;
+      window.clearTimeout(cap);
     };
   }, [identity]);
+  const todayLoading = !ready || !plannerLoaded;
   const allCalendarItems = useMemo(() => mergePlannerWithExternal(plannerItems, googleCalendarItems), [plannerItems, googleCalendarItems]);
   const homeToday = useMemo(() => plannerTodayItems(allCalendarItems, timezone), [allCalendarItems, timezone]);
 
@@ -1100,7 +1114,7 @@ export default function App() {
                   <div>
                     <h2>Today</h2>
                     <p>
-                      {homeToday.length} {homeToday.length === 1 ? "thing" : "things"} in your day
+                      {todayLoading && !homeToday.length ? "Getting your day ready…" : `${homeToday.length} ${homeToday.length === 1 ? "thing" : "things"} in your day`}
                     </p>
                   </div>
                 </div>
@@ -1109,15 +1123,17 @@ export default function App() {
                 </button>
               </div>
               <div className="homeTimeline">
-                {homeToday.slice(0, 3).map((item, i) => {
+                {homeToday.slice(0, 3).map((item) => {
                   const time = plannerReferenceTime(item);
+                  const category = itemCategory(item);
                   return (
-                    <button key={item.id} className={"homeTimelineItem tone" + (i % 3)} onClick={() => openView("calendar", { tab: "today" })}>
+                    <button key={item.id} className={"homeTimelineItem cat-" + category} onClick={() => openView("calendar", { tab: "today" })}>
                       <span className="homeTimelineTime">
                         {time ? new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" }).format(new Date(`1970-01-01T${time}:00Z`)) : "All day"}
                       </span>
                       <span className="homeTimelineDot" />
                       <span className="homeTimelineBody">
+                        <span className="homeTimelineIcon"><CategoryIcon category={category} size={15} /></span>
                         <b>{item.status === "completed" ? <s>{item.title}</s> : item.title}</b>
                         <small>{item.location || (item.type === "event" ? (time ? "Today" : "All day") : item.type[0].toUpperCase() + item.type.slice(1))}</small>
                       </span>
@@ -1125,12 +1141,24 @@ export default function App() {
                     </button>
                   );
                 })}
-                {!homeToday.length && (
-                  <p className="homeTodayEmpty">Your day is clear.</p>
+                {todayLoading && !homeToday.length && (
+                  <div className="homeTodaySkeleton" aria-busy="true" aria-label="Loading your day">
+                    <span className="skeletonRow" />
+                    <span className="skeletonRow short" />
+                  </div>
+                )}
+                {!todayLoading && !homeToday.length && (
+                  <p className="homeTodayEmpty">
+                    <EmptyArt kind="calendar" size="sm" />
+                    <span>
+                      <b>Your day is clear.</b>
+                      <small>Snap something to plan ahead.</small>
+                    </span>
+                  </p>
                 )}
               </div>
             </section>
-            {!homeToday.length && (
+            {!todayLoading && !homeToday.length && (
               <section className="homeIdeas" aria-labelledby="home-ideas-title">
                 <h2 id="home-ideas-title">What can I snap?</h2>
                 <ul>
@@ -1656,7 +1684,15 @@ function NavButton({
   icon: React.ReactNode;
 }) {
   return (
-    <button type="button" className={active ? "active" : ""} onClick={onClick} aria-current={active ? "page" : undefined}>
+    <button
+      type="button"
+      className={active ? "active" : ""}
+      onClick={() => {
+        if (!active) void hapticLight();
+        onClick();
+      }}
+      aria-current={active ? "page" : undefined}
+    >
       {icon}
       <small>{label}</small>
     </button>
@@ -1844,7 +1880,7 @@ function TodoView({
 
       {!open.length && !completed.length && (
         <div className="todoEmpty">
-          <span className="todoEmptyIcon"><Check /></span>
+          <EmptyArt kind="todo" />
           <b>Nothing on your list yet</b>
           <p>Add something above, or save a task or deadline from a scan.</p>
         </div>
@@ -1857,21 +1893,21 @@ function TodoView({
 
       {filter === "today" && !today.length && (
         <div className="todoEmpty">
-          <span className="todoEmptyIcon"><Check /></span>
+          <EmptyArt kind="todo" />
           <b>Nothing due today</b>
           <p>Your open to-dos due today will appear here.</p>
         </div>
       )}
       {filter === "upcoming" && !upcoming.length && (
         <div className="todoEmpty">
-          <span className="todoEmptyIcon"><Check /></span>
+          <EmptyArt kind="todo" />
           <b>No upcoming to-dos</b>
           <p>Future tasks and deadlines will appear here.</p>
         </div>
       )}
       {filter === "completed" && !completed.length && (
         <div className="todoEmpty">
-          <span className="todoEmptyIcon"><Check /></span>
+          <EmptyArt kind="todo" />
           <b>No completed to-dos yet</b>
           <p>Finished items will appear here after you mark them done.</p>
         </div>
@@ -1987,7 +2023,7 @@ function HistoryView({
       <EmptyView
         title="Scan history"
         text="Your successful scans will appear here automatically."
-        icon={<HistoryIcon />}
+        icon={<EmptyArt kind="history" />}
       />
     );
   return (
