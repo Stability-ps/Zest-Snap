@@ -275,7 +275,7 @@ export default function UpgradePage() {
               Skip for now
             </button>
           ) : (
-            <Link href="/app" className="pwSkip">
+            <Link href={from === "settings" ? "/settings" : "/app"} className="pwSkip">
               <ArrowLeft size={15} aria-hidden="true" /> Back
             </Link>
           )}
