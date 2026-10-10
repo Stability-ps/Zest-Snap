@@ -157,7 +157,7 @@ test("boot script applies the stored theme before first paint and never throws",
   assert.equal(dark.dataset.accent, "violet");
   assert.equal(dark.style.colorScheme, "dark");
   assert.equal(boot(JSON.stringify({ mode: "light" }), true).style.colorScheme, "light", "explicit Light on a dark device");
-  assert.deepEqual(dark.metas[0], { content: "#0e1114" });
+  assert.deepEqual(dark.metas[0], { content: "#0a0e14" });
   assert.equal(boot(JSON.stringify({ mode: "light", accent: "rose" }), true).dataset.theme, "light");
   assert.equal(boot("{broken", true).dataset.theme, "light");
   assert.equal(boot(JSON.stringify({ mode: "evil", accent: "x" }), false).dataset.accent, undefined);
