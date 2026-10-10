@@ -49,6 +49,7 @@ import PlanningTools from "./planning-tools";
 import SmartFollowups from "./smart-followups";
 import { followupCandidates } from "@/lib/followup-suggestions";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import CalendarBackdrop from "./calendar-backdrop";
 
 type Tab = "today" | "upcoming" | "calendar" | "reminders";
 type ReminderFilter = "all" | "today" | "upcoming" | "overdue";
@@ -314,7 +315,8 @@ export default function PlannerView({ identity, timezone, locale, signedIn, requ
         </div>
       )}
       {tab === "calendar" && (
-        <div className="plannerCalendar">
+        <div className="plannerCalendar hasBackdrop">
+          <CalendarBackdrop />
           <div className="calendarTop">
             <button
               onClick={() => setMonth((m) => (m.month === 1 ? { year: m.year - 1, month: 12 } : { year: m.year, month: m.month - 1 }))}
