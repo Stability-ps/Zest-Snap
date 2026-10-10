@@ -42,7 +42,15 @@ export default function EmailLinkResult() {
       // Same as signing in: drop another account's cached state, then register this device.
       setActiveUser(view.userId);
       await Promise.allSettled([registerDevice(), claimPendingReferral()]);
-      window.location.assign(new URL(view.next, window.location.origin).href);
+      let destination = view.next;
+      // Only successful signup confirmation is eligible. Email changes and recovery bypass this gate.
+      if (view.status === "verified" && view.confirmed && view.next === "/app") {
+        try {
+          const { data, error } = await createClient().rpc("premium_onboarding_status");
+          if (!error && data?.show === true) destination = "/upgrade";
+        } catch { /* Never block verified users if the onboarding service is unavailable. */ }
+      }
+      window.location.assign(new URL(destination, window.location.origin).href);
     } else window.location.assign(new URL("/login?verified=1" + (view.next !== "/app" ? "&next=" + encodeURIComponent(view.next) : ""), window.location.origin).href);
   }
 
