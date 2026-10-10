@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark system appearance: the window behind the WebView matches Zest Snap's dark page (lib/appearance/palette.ts),
+         so a dark-mode start never flashes white before the page paints. -->
+    <color name="zest_surface">#0E1114</color>
+</resources>

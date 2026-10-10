@@ -137,21 +137,26 @@ test("a previous account's cached name, credits and Planner never appear for som
   expect(await page.evaluate(() => localStorage.getItem("zest-cloud-99999999-9999-9999-9999-999999999999"))).toBeNull();
 });
 
-test("guest Rewards routes to sign-up and returns; trial exhaustion offers an account", async ({ page }) => {
-  await page.goto("/app?view=rewards");
-  await expect(page.getByText("Rewards need a free account")).toBeVisible();
-  await expect(page.getByText(/on-device/i)).toHaveCount(0);
-  await page.getByRole("button", { name: /Share your experience/ }).click();
-  await expect(page).toHaveURL(/\/login\?mode=signup&next=%2Fapp%3Fview%3Drewards/);
-  await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
+test.describe(() => {
+  // The first visit registers the /app service worker. A request that the worker passes through to the network
+  // is invisible to page.route, so the mocked 401 below was skipped whenever the worker took control in time.
+  test.use({ serviceWorkers: "block" });
+  test("guest Rewards routes to sign-up and returns; trial exhaustion offers an account", async ({ page }) => {
+    await page.goto("/app?view=rewards");
+    await expect(page.getByText("Rewards need a free account")).toBeVisible();
+    await expect(page.getByText(/on-device/i)).toHaveCount(0);
+    await page.getByRole("button", { name: /Share your experience/ }).click();
+    await expect(page).toHaveURL(/\/login\?mode=signup&next=%2Fapp%3Fview%3Drewards/);
+    await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
 
-  await page.goto("/app");
-  await page.route("**/api/extract", (r) =>
-    r.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ code: "guest_trial_exhausted", error: "You’ve used the free trial scans on this device. Create a free account to keep scanning." }) }),
-  );
-  await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeEnabled();
-  await page.locator("input[type=file]").last().setInputFiles({ name: "x.png", mimeType: "image/png", buffer: PNG });
-  await expect(page.getByRole("button", { name: "Create a free account" })).toBeVisible();
+    await page.goto("/app");
+    await page.route("**/api/extract", (r) =>
+      r.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ code: "guest_trial_exhausted", error: "You’ve used the free trial scans on this device. Create a free account to keep scanning." }) }),
+    );
+    await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeEnabled();
+    await page.locator("input[type=file]").last().setInputFiles({ name: "x.png", mimeType: "image/png", buffer: PNG });
+    await expect(page.getByRole("button", { name: "Create a free account" })).toBeVisible();
+  });
 });
 
 test("unsupported files are rejected before any upload", async ({ page }) => {
@@ -173,7 +178,7 @@ test("settings: full timezone list and clear device data", async ({ page }) => {
   await page.getByPlaceholder("Search city or timezone").fill("kathmandu");
   await expect(page.getByRole("button", { name: /Kathmandu · Asia/ })).toBeVisible();
   await page.getByRole("button", { name: /Kathmandu · Asia/ }).click();
-  await expect(page.locator(".settingsValue").first()).toContainText("Kathmandu");
+  await expect(page.getByRole("button", { name: /Timezone/ }).locator(".settingsValue")).toContainText("Kathmandu");
   await page.getByRole("button", { name: /Clear device data/ }).click();
   await expect(page.getByRole("dialog")).toContainText("Clear device data?");
 });

@@ -335,7 +335,7 @@ export default function LoginPage() {
               <label>
                 <span>Confirm password</span>
                 <div><Lock size={18} /><input type="password" required autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} /></div>
-                {confirmPassword && <small role="status" style={{ color: signupPassword === confirmPassword ? "#047857" : "#b91c1c" }}>{signupPassword === confirmPassword ? "Passwords match" : "Passwords do not match"}</small>}
+                {confirmPassword && <small role="status" style={{ color: signupPassword === confirmPassword ? "var(--success-text)" : "var(--danger-text)" }}>{signupPassword === confirmPassword ? "Passwords match" : "Passwords do not match"}</small>}
               </label>
             )}
             {message && (
