@@ -88,6 +88,14 @@ export default function EmailLinkResult() {
             <button className="button authSubmit" onClick={continueToApp} disabled={busy}>
               {view.userId ? "Continue to Zest Snap" : "Sign in to Zest Snap"} <ArrowRight size={17} />
             </button>
+            {!view.userId && (
+              <div className="authLinks">
+                <a className="authSwitch" href="zestsnap://login?verified=1">
+                  Open the installed Zest Snap app
+                </a>
+                <p className="authIntro">If the app doesn't open, use Sign in above. Your email verification is still complete.</p>
+              </div>
+            )}
           </>
         ) : view.recovery ? (
           <>
