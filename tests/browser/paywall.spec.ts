@@ -50,10 +50,25 @@ test("paywall buttons: Explore Premium opens the premium page; Create a free acc
   await page.getByRole("button", { name: "Explore Premium" }).click();
   await page.waitForURL(/\/upgrade\?from=guest/);
   await expect(page.getByRole("heading", { name: "You’ve captured 3 important moments." })).toBeVisible();
-  await expect(page.getByRole("list", { name: "What Pro adds" }).getByRole("listitem")).toHaveCount(4);
-  // Guests create an account before buying (plans follow the account); no invented prices or buy buttons.
+  await expect(page.getByRole("list", { name: "What you get with Pro" }).getByRole("listitem")).toHaveCount(4);
+  // Annual is preselected; the choice is a real radio group.
+  const plans = page.getByRole("radiogroup", { name: "Choose your Pro plan" });
+  await expect(plans.getByRole("radio", { name: /Pro – Annual/ })).toHaveAttribute("aria-checked", "true");
+  await plans.getByRole("radio", { name: /Pro – Monthly/ }).click();
+  await expect(plans.getByRole("radio", { name: /Pro – Monthly/ })).toHaveAttribute("aria-checked", "true");
+  await expect(plans.getByRole("radio", { name: /Pro – Annual/ })).toHaveAttribute("aria-checked", "false");
+  // On the web there is no store: no invented prices, only an honest note.
+  await expect(plans.getByText("Price in app")).toHaveCount(2);
+  await expect(page.locator(".pwPrice b")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Terms of Service" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Privacy Policy" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Restore Purchases" })).toBeVisible();
+  // Guests create an account before buying (plans follow the account); Continue with Pro goes to sign-up first.
   await expect(page.getByRole("link", { name: /Create a free account/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Subscribe/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /Continue with Pro/ }).click();
+  await page.waitForURL(/\/login\?mode=signup&next=%2Fupgrade%3Ffrom%3Dguest%26plan%3Dmonthly/);
+  await page.goBack();
+  await page.waitForURL(/\/upgrade\?from=guest/);
   await page.getByRole("link", { name: /Create a free account/ }).click();
   await page.waitForURL(/\/login\?mode=signup/);
   await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
@@ -74,11 +89,17 @@ for (const [w, h] of [[320, 568], [375, 667], [430, 932], [1280, 800]] as const)
       await page.goto(`/upgrade?from=${from}`);
       await expect(page.locator("h1")).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), from).toBe(true);
+      // Primary actions are full-width and comfortably tappable.
+      for (const cta of [page.getByRole("button", { name: /Continue with Pro/ }), page.locator(".pwFree")]) {
+        const box = (await cta.boundingBox())!;
+        expect(box.height, from).toBeGreaterThanOrEqual(44);
+        expect(box.x + box.width, from).toBeLessThanOrEqual(w);
+      }
     }
   });
 }
 
-test("premium page (Figma 4:2): light in dark mode, no invented prices, honest on the web", async ({ page }) => {
+test("premium page: light in dark mode, no invented prices, honest on the web", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.addInitScript(() => localStorage.setItem("zest-appearance-v1", JSON.stringify({ mode: "dark", accent: "violet", updatedAt: 1 })));
   await page.goto("/upgrade?from=settings");
@@ -90,6 +111,6 @@ test("premium page (Figma 4:2): light in dark mode, no invented prices, honest o
   // Not signed in: account first, no prices anywhere.
   await expect(page.getByRole("link", { name: /Create a free account/ })).toBeVisible();
   expect(await page.locator("main").innerText()).not.toMatch(/[$€£¥]\s?\d|R\s?\d+[.,]\d{2}/);
-  await expect(page.getByRole("link", { name: "Terms" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Privacy" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Terms of Service" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Privacy Policy" })).toBeVisible();
 });

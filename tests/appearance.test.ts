@@ -78,8 +78,9 @@ const STYLESHEETS = ["app/globals.css", "app/shared/[id]/shared-chat.module.css"
 test("components use theme tokens, not hard-coded colours", () => {
   const css = STYLESHEETS.map((f) => readFileSync(f, "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
   // Allowed: the fixed Light/Dark depictions in the Appearance thumbnails, the brand capture mark, white glyphs on
-  // coloured swatches/toggle knobs and destructive buttons, and neutral drop shadows on swatches.
-  const allowed = /^(\.appearanceThumbHalf|\.appearanceSwatch|\.zestCaptureMark|\.settingsToggle:after|\.dangerButton|\.button\.dangerSolid|\.plannerReminderButton span|\.mine \.reaction|\.socialButton|:root\[data-theme="dark"\] \.socialButton)/;
+  // coloured swatches/toggle knobs and destructive buttons, neutral drop shadows on swatches, and the Premium page's
+  // fixed illustration (a white phone screen, a kraft notebook, a plant) plus its one violet feature tile.
+  const allowed = /^(\.pw(Art|Plant|Notebook|Phone|Screen|Status|Event|Notes)|(:root\[data-theme="dark"\] |:root:not\(\[data-theme\]\) )?\.pwIcon\.violet|\.appearanceThumbHalf|\.appearanceSwatch|\.zestCaptureMark|\.settingsToggle:after|\.dangerButton|\.button\.dangerSolid|\.plannerReminderButton span|\.mine \.reaction|\.socialButton|:root\[data-theme="dark"\] \.socialButton)/;
   const offenders: string[] = [];
   for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selector = m[1].trim().replace(/\s+/g, " ").replace(/^@media[^{]*/, "");

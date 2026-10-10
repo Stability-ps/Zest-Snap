@@ -3172,35 +3172,111 @@ html.native body::before {
 .paywallActions small{text-align:center;color:var(--text-3);font-size:12.5px}
 @media (min-width:640px){.paywallOverlay{align-items:center;padding:20px}.paywallSheet{border-radius:28px;padding-bottom:26px}}
 
-/* Premium page (app/upgrade/page.tsx) */
-.upgradePage{min-height:100dvh;background:linear-gradient(160deg,var(--bg) 0%,var(--surface) 46%,var(--accent-wash) 100%);color:var(--text);padding:max(22px,env(safe-area-inset-top)) 18px max(32px,env(safe-area-inset-bottom))}
-html.native .upgradePage{padding-top:calc(16px + var(--zest-safe-top));padding-bottom:calc(24px + var(--zest-safe-bottom))}
-.upgradeWrap{max-width:520px;margin:0 auto;display:grid;gap:18px}
-.upgradeTop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-.upgradeTop .textButton{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 6px;font-weight:700;color:var(--text-2)}
-.upgradeEyebrow{margin:0;color:var(--brand-text);font-weight:800;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
-.upgradeWrap h1{margin:10px 0 12px;font-size:clamp(31px,9vw,44px);line-height:1.06;letter-spacing:-0.045em}
-.upgradeLead{margin:0;color:var(--text-2);font-size:16px;line-height:1.6}
-.upgradeUsage{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--warning-soft);border:1px solid var(--warning-border);color:var(--warning-text);font-size:14px}
-.upgradeCard{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:20px 18px;box-shadow:0 12px 40px rgb(var(--shadow-rgb) / calc(0.06 * var(--shadow-strength)))}
-.upgradeCard h2{margin:0 0 14px;font-size:18px;letter-spacing:-0.01em}
-.upgradeBenefits ul{list-style:none;margin:0;padding:0;display:grid;gap:14px}
-.upgradeBenefits li{display:flex;gap:14px;align-items:center}
-.upgradeBenefits li>span:last-child{min-width:0}
-.upgradeBenefits b{display:block;font-size:15.5px}
-.upgradeBenefits small{display:block;color:var(--text-3);font-size:13px;line-height:1.4}
-.upgradeIcon{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:14px;background:var(--hero);color:var(--brand)}
-.upgradeIcon.soft{background:var(--accent-soft);color:var(--accent-text)}
-.upgradeIcon svg{width:21px;height:21px}
-.upgradeSubhead{margin-top:22px!important;font-size:13px!important;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
-.upgradeSignup{display:grid;gap:10px}
-.upgradeSignup p{margin:0 0 4px;color:var(--text-2);line-height:1.55}
-.upgradeSignup .button,.upgradeFree .button{width:100%;min-height:52px;gap:8px;white-space:normal;text-align:center}
-.upgradeMessage{margin:12px 0 0;color:var(--success-text);font-weight:600}
-.upgradeFree{display:grid;gap:8px;text-align:center}
-.upgradeFree small{color:var(--text-3);font-size:12.5px}
-.upgradeFooter{display:flex;justify-content:center;gap:18px;font-size:12.5px;padding:6px 0}
-.upgradeFooter a{color:var(--text-3);text-decoration:underline}
+/* Premium page (app/upgrade/page.tsx). Always light (lib/appearance/boot.ts); dark rules stay for in-app navigation edge cases. Measured from the approved reference (430pt-wide device, 24pt margins → 382pt
+   column); sizes are in column-relative units (1cqw = 3.82px at 430) with readable floors, so it keeps its proportions
+   from a 320px phone up to the 480px tablet/desktop column. */
+.pw{--pw-ink:var(--text);--pw-cta:var(--ink);--pw-on-cta:var(--on-ink);--pw-mint:color-mix(in srgb,var(--brand) 13%,var(--surface));--pw-mint-ink:var(--brand-text);--pw-blue:color-mix(in srgb,var(--accent) 11%,var(--surface));--pw-blue-ink:var(--accent-text);min-height:100dvh;background:radial-gradient(110% 45% at 0% 0%,color-mix(in srgb,var(--accent) 6%,var(--surface)) 0%,transparent 70%),linear-gradient(180deg,var(--surface) 0%,var(--bg) 100%);color:var(--pw-ink);overflow-x:clip;padding:env(safe-area-inset-top) 0 max(14px,env(safe-area-inset-bottom))}
+html.native .pw{padding-top:var(--zest-safe-top);padding-bottom:max(12px,var(--zest-safe-bottom))}
+/* The violet tile is a fixed illustrative tone (allowlisted in tests/appearance.test.ts like the illustration below). */
+.pwIcon.violet{background:color-mix(in srgb,#8b5cf6 12%,var(--surface));color:#7c4ddb}
+:root[data-theme="dark"] .pwIcon.violet{color:#b69cff}
+@media (prefers-color-scheme:dark){:root:not([data-theme]) .pwIcon.violet{color:#b69cff}}
+.pwFrame{position:relative;width:min(100%,480px);margin:0 auto;padding:0 24px;container-type:inline-size;display:flex;flex-direction:column}
+.pwFrame>*:not(.pwArt){position:relative;z-index:1}
+
+.pwTop{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;padding-top:0}
+.pwBrand{font-size:clamp(20px,5.5cqw,23px);font-weight:800;letter-spacing:-0.04em;color:var(--pw-ink)}
+.pwBrand span{color:var(--brand)}
+.pwSkip{display:inline-flex;align-items:center;gap:5px;min-height:33px;padding:0 clamp(12px,3.6cqw,15px);border:0;border-radius:999px;background:var(--accent-soft);color:var(--text-2);font:inherit;font-size:clamp(12.5px,3.15cqw,13.5px);font-weight:500;cursor:pointer;box-shadow:0 0 0 5px color-mix(in srgb,var(--surface) 60%,transparent)}
+.pwSkip:disabled{opacity:.6}
+
+.pwHero{margin-top:17px}
+.pwHero h1{margin:0;max-width:min(66cqw,300px);font-size:clamp(26px,9.15cqw,38px);line-height:.92;font-weight:800;letter-spacing:-0.045em;color:var(--pw-ink)}
+.pwLead{margin:11px 0 0;max-width:62cqw;font-size:clamp(13px,3.62cqw,15px);line-height:1.22;color:var(--text-2)}
+.pwUsage{margin-top:12px;max-width:62cqw;padding:9px 12px;border-radius:12px;background:var(--warning-soft);border:1px solid var(--warning-border);color:var(--warning-text);font-size:12.5px;line-height:1.35}
+
+.pwFeatures{list-style:none;margin:21px 0 0;padding:0;display:grid;gap:clamp(12px,4.2cqw,17px)}
+.pwFeatures li{display:flex;align-items:center;gap:clamp(13px,4.45cqw,18px)}
+.pwIcon{flex:none;display:grid;place-items:center;width:clamp(40px,11.5cqw,46px);height:clamp(40px,11.5cqw,46px);border-radius:clamp(10px,2.9cqw,12px);box-shadow:0 4px 12px rgb(var(--shadow-rgb) / calc(.05 * var(--shadow-strength)))}
+.pwIcon svg{width:50%;height:50%}
+.pwIcon.mint{background:var(--pw-mint);color:var(--pw-mint-ink)}
+.pwIcon.blue{background:var(--pw-blue);color:var(--pw-blue-ink)}
+.pwFeatureText{min-width:0;max-width:max(50cqw,172px)}
+.pwFeatureText b{display:block;font-size:clamp(12.5px,3.2cqw,13.5px);font-weight:700;letter-spacing:-0.015em;color:var(--pw-ink)}
+.pwFeatureText small{display:block;margin-top:3px;font-size:clamp(11px,2.8cqw,12px);line-height:1.3;color:var(--text-2)}
+
+.pwPlans{display:grid;gap:clamp(7px,2cqw,9px);margin-top:18px}
+.pwPlan{display:flex;align-items:stretch;justify-content:space-between;gap:10px;width:100%;margin:0;min-height:clamp(78px,23cqw,92px);padding:13px 13px 12px 16px;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:15px;border:1px solid var(--border);background:var(--surface);box-shadow:0 2px 10px rgb(var(--shadow-rgb) / calc(.03 * var(--shadow-strength)));transition:border-color .15s,box-shadow .15s,background .15s;-webkit-tap-highlight-color:transparent}
+.pwPlan.annual{min-height:clamp(96px,28cqw,112px)}
+.pwPlan.selected{border:1.5px solid transparent;padding:12.5px 12.5px 11.5px 15.5px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 6%,var(--surface)),color-mix(in srgb,var(--brand) 3%,var(--surface))) padding-box,linear-gradient(120deg,color-mix(in srgb,var(--brand) 75%,var(--accent)),var(--accent)) border-box;box-shadow:0 8px 22px rgb(var(--accent-rgb, 39 136 239) / .12)}
+.pwPlan:focus-visible{outline:3px solid var(--accent-ring, var(--accent));outline-offset:2px}
+.pwPlan:disabled{cursor:default}
+.pwPlanMain{display:flex;flex-direction:column;justify-content:center;min-width:0;gap:2px}
+.pwBadge{align-self:flex-start;margin:1px 0 6px;padding:4px 9px;border-radius:999px;background:var(--success-soft);color:var(--success-text);font-size:clamp(9.5px,2.6cqw,11px);font-weight:700;letter-spacing:.02em;text-transform:uppercase;line-height:1.2}
+.pwPlanTitle{font-size:clamp(17px,5.3cqw,21px);font-weight:700;letter-spacing:-0.035em;color:var(--pw-ink);line-height:1.15}
+.pwPlanDetail{font-size:clamp(11.5px,3.2cqw,13px);line-height:1.3;color:var(--text-2)}
+.pwPlanSide{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:4px;flex:none;text-align:right}
+.pwRadio{display:grid;place-items:center;width:clamp(18px,5.2cqw,21px);height:clamp(18px,5.2cqw,21px);border-radius:50%;border:1.5px solid var(--border-strong);background:var(--surface);color:var(--on-ink)}
+.pwRadio.on{border-color:var(--pw-cta);background:var(--pw-cta);color:var(--pw-on-cta)}
+.pwPrice{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.pwPrice b{font-size:clamp(18px,5.4cqw,22px);font-weight:700;letter-spacing:-0.035em;color:var(--pw-ink);white-space:nowrap}
+.pwPriceUnit{font-size:clamp(12px,3.3cqw,13.5px);color:var(--text-2);margin-top:1px}
+.pwPrice small{margin-top:5px;font-size:clamp(9.5px,2.5cqw,10.5px);color:var(--text-3);white-space:nowrap}
+.pwPriceNote{font-size:12px;font-weight:700;color:var(--text-3)}
+.pwSkeleton{display:block;width:44px;height:10px;margin-top:6px;border-radius:6px;background:linear-gradient(90deg,var(--skeleton),var(--skeleton-shine),var(--skeleton));background-size:200% 100%;animation:pwShimmer 1.2s linear infinite}
+.pwSkeleton.wide{width:70px;height:18px;margin-top:0}
+@keyframes pwShimmer{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.pwSkeleton{animation:none}}
+
+.pwCurrent{margin:10px 0 0;text-align:center;font-size:13px;font-weight:700;color:var(--success-text)}
+.pwCta{display:flex;align-items:center;justify-content:center;gap:clamp(10px,4cqw,16px);width:100%;min-height:clamp(48px,13.6cqw,54px);margin-top:clamp(12px,3.8cqw,15px);padding:0 20px;border:0;border-radius:15px;background:var(--pw-cta);color:var(--pw-on-cta);font:inherit;font-size:clamp(16px,4.45cqw,18px);font-weight:650;letter-spacing:-0.015em;cursor:pointer;box-shadow:0 10px 24px rgb(var(--shadow-rgb) / calc(.16 * var(--shadow-strength)))}
+.pwCta:disabled{opacity:.55;cursor:default}
+.pwCta:not(:disabled):active{transform:scale(.99)}
+.pwNotice{margin:8px 0 0;text-align:center;font-size:12px;line-height:1.35;color:var(--text-3)}
+.pwFree{display:flex;align-items:center;justify-content:center;width:100%;min-height:clamp(44px,10.5cqw,46px);margin-top:clamp(11px,3.6cqw,14px);padding:0 18px;border:0;border-radius:999px;background:var(--accent-soft);color:var(--accent-text);font:inherit;font-size:clamp(14.5px,3.75cqw,15.5px);font-weight:650;cursor:pointer;text-align:center}
+.pwFree:disabled{opacity:.6}
+.pwFine{margin:10px 0 0;text-align:center;font-size:clamp(11px,2.8cqw,12px);line-height:1.4;color:var(--text-3)}
+.pwFine a{color:var(--accent-text);font-weight:600;white-space:nowrap}
+.pwSuccess,.pwAlert{margin:10px 0 0;padding:9px 12px;border-radius:12px;text-align:center;font-size:12.5px;line-height:1.4}
+.pwSuccess{background:var(--success-soft);color:var(--success-text);border:1px solid var(--success-border)}
+.pwAlert{background:var(--danger-soft);color:var(--danger-text);border:1px solid var(--danger-border)}
+.pwTerms{margin:10px 0 0;text-align:center;font-size:10.5px;line-height:1.45;color:var(--text-3)}
+.pwAllPlans{margin-top:12px;font-size:13px}
+.pwAllPlans summary{cursor:pointer;text-align:center;color:var(--accent-text);font-weight:600;min-height:32px;list-style:none}
+.pwAllPlans[open] summary{margin-bottom:10px}
+.pwFooter{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px clamp(10px,3.4cqw,14px);margin-top:clamp(16px,5.5cqw,21px);padding-top:clamp(10px,3.4cqw,14px);border-top:1px solid var(--divider);font-size:clamp(11px,2.7cqw,12px);color:var(--text-3)}
+.pwFooter a,.pwFooter button{display:inline-flex;align-items:center;color:var(--text-3);font:inherit;line-height:1.2;background:none;border:0;padding:6px 0;min-height:32px;cursor:pointer}
+.pwFooter button:disabled{opacity:.6}
+.pwFooter span{color:var(--text-4)}
+
+/* Illustration: positions are the reference's, in column units from the column's left edge (incl. its 24px margin). */
+.pwArt{position:absolute;z-index:0;inset:0 0 auto 0;height:118cqw;pointer-events:none;user-select:none;overflow:hidden;-webkit-mask-image:linear-gradient(180deg,#000 82%,transparent 100%);mask-image:linear-gradient(180deg,#000 82%,transparent 100%)}
+.pwArt>*{position:absolute}
+.pwPlant{left:67cqw;top:3cqw;width:40cqw;filter:blur(1.6px);opacity:.9}
+.pwPlant .pot{fill:color-mix(in srgb,#e3cfae 75%,var(--surface))}
+.pwPlant .leaf.a{fill:#4f9a44}.pwPlant .leaf.b{fill:#6fb85a}.pwPlant .leaf.c{fill:#3d8636}
+.pwNotebook{left:78.5cqw;top:12cqw;width:50cqw;height:44cqw;border-radius:2.4cqw;background:linear-gradient(165deg,#f1e3cd 0%,#e7d2b2 55%,#dcc29c 100%);transform:rotate(21deg);transform-origin:0 0;box-shadow:0 3cqw 7cqw rgb(var(--shadow-rgb) / calc(.10 * var(--shadow-strength)))}
+.pwNotebook .rings{position:absolute;left:-1.4cqw;top:5%;bottom:5%;width:4.6cqw;background:repeating-linear-gradient(180deg,transparent 0 1.1cqw,#8d8882 1.1cqw 1.8cqw,#c7c2bc 1.8cqw 2.1cqw,transparent 2.1cqw 2.9cqw);border-radius:2cqw}
+.pwPhone{left:74cqw;top:35cqw;width:32.2cqw;height:59.6cqw;border-radius:5.6cqw;padding:1.15cqw;background:linear-gradient(145deg,#3a3e46,#0b0d11 55%,#24272d);transform:rotate(15deg);box-shadow:0 6cqw 10cqw rgb(var(--shadow-rgb) / calc(.30 * var(--shadow-strength))),inset 0 0 0 .3cqw #565b64}
+.pwScreen{position:relative;height:100%;overflow:hidden;border-radius:4.6cqw;background:#fff;color:#0f2342;padding:2.6cqw 3.3cqw 0}
+.pwStatus{display:flex;align-items:center;justify-content:space-between;font-size:1.75cqw;font-weight:700}
+.pwStatus .island{width:9.4cqw;height:2.4cqw;border-radius:2cqw;background:#0b0d11}
+.pwStatus .bars{width:4.2cqw;height:1.3cqw;border-radius:.4cqw;background:linear-gradient(90deg,#0f2342 62%,transparent 62%)}
+.pwEventTitle{margin:6.5cqw 0 2.8cqw;font-size:4.3cqw;font-weight:650;line-height:1.08;letter-spacing:-0.02em}
+.pwEventRow{display:flex;align-items:center;gap:1.6cqw;margin:0 0 1.5cqw;font-size:2.15cqw;font-weight:500;white-space:nowrap}
+.pwEventRow svg{width:2.6cqw;height:2.6cqw;flex:none;stroke-width:2.4}
+.pwScreenGlow{position:absolute;left:0;right:0;bottom:0;height:27%;background:linear-gradient(180deg,#eef4fe 0%,#d6e5fb 45%,#c3d8f8 100%)}
+.pwNotes{left:89.5cqw;top:76.5cqw;width:38cqw;height:36cqw;border-radius:3.4cqw;background:linear-gradient(160deg,#fff,#f3f5f8);transform:rotate(-24deg);box-shadow:0 4cqw 8cqw rgb(var(--shadow-rgb) / calc(.13 * var(--shadow-strength)));padding:6.8cqw 0 0 5.6cqw;color:#2b3442}
+.pwNotes b{display:block;font-size:3.4cqw;font-weight:500;line-height:1.1;margin-bottom:2cqw}
+.pwNotes i{display:block;height:.35cqw;width:80%;margin-top:2.4cqw;background:#e2e6eb}
+
+/* Small phones: the text keeps readable floors, so the scene steps back a little to stay clear of it. */
+@container (max-width:350px){.pwArt>*{translate:6cqw 0;scale:.84}}
+@media (min-width:700px){
+  .pw{display:grid;place-items:start center;padding-top:max(32px,env(safe-area-inset-top));padding-bottom:32px}
+  .pwFrame{padding:16px 24px 18px;border-radius:30px;background:color-mix(in srgb,var(--surface) 90%,transparent);border:1px solid var(--border);box-shadow:0 30px 70px rgb(var(--shadow-rgb) / calc(.08 * var(--shadow-strength)));overflow:hidden}
+  .pwArt{top:16px}
+}
 
 /* Continue with Apple / Google (app/login/social-buttons.tsx). Provider colours follow Apple's and Google's
    button guidelines (fixed brand colours, not theme tokens), switching to their dark variants in dark mode. */
@@ -3225,52 +3301,3 @@ html.native .upgradePage{padding-top:calc(16px + var(--zest-safe-top));padding-b
 
 /* The landing page is always light (lib/appearance/boot.ts), so the regular light tokens apply. */
 
-/* Premium page as approved in Figma (4:2). Always light (lib/appearance/boot.ts), so light tokens apply. */
-.upgradePage{background:var(--surface)}
-.upgradeWrap{max-width:430px;gap:16px}
-.upgradeTop{margin-bottom:0}
-.upgradeTop .brand{font-size:18px;font-weight:800;color:var(--text)}
-.upgradeTop .textButton{font-size:15px;font-weight:700;color:var(--text-2)}
-.upgradeWrap h1{font-size:clamp(32px,9.6vw,38px);margin:4px 0 8px;color:var(--text)}
-.upgradeLead{font-size:15px;line-height:1.45;color:var(--text-2)}
-.premiumHero{margin:0;display:grid;gap:6px;padding:14px 16px;border-radius:18px;background:var(--accent-wash);border:1px solid var(--divider)}
-.premiumHeroEyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--brand-text)}
-.premiumHero b{font-size:22px;letter-spacing:-0.02em;color:var(--text)}
-.premiumHeroMeta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--text-3)}
-.premiumHeroMeta span{display:inline-flex;align-items:center;gap:6px}
-.premiumHeroMeta svg{width:15px;height:15px;color:var(--brand-text)}
-.premiumBenefits{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.premiumBenefits li{display:flex;gap:12px;align-items:center}
-.premiumBenefits li>span:last-child{min-width:0}
-.premiumBenefits b{display:block;font-size:16px;color:var(--text)}
-.premiumBenefits small{display:block;font-size:12.5px;line-height:1.4;color:var(--text-3)}
-.premiumBenefitIcon{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:var(--accent-wash);color:var(--brand-text)}
-.premiumBenefitIcon svg{width:20px;height:20px}
-.premiumPlans{display:grid;gap:10px}
-.proPicker{display:grid;gap:10px}
-.proPlans{display:grid;gap:10px}
-.proPlan{position:relative;display:grid;gap:4px;width:100%;text-align:left;padding:12px 14px;border-radius:18px;border:2px solid transparent;background:var(--surface-3);color:var(--text);font:inherit;cursor:pointer;min-height:64px}
-.proPlan.selected{background:var(--info-soft);border-color:var(--accent-text)}
-.proPlan:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.proPlan:disabled{cursor:default;opacity:.7}
-.proPlanBadge{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--brand-text)}
-.proPlanTop{display:flex;align-items:center;gap:10px}
-.proPlanTop b{font-size:17px}
-.proPlanPrice{margin-left:auto;font-size:17px;font-weight:800}
-.proPlanCheck{display:grid;place-items:center;flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--border);margin-left:auto}
-.proPlanPrice+.proPlanCheck{margin-left:0}
-.proPlan.selected .proPlanCheck{background:var(--accent-text);border-color:var(--accent-text);color:var(--on-ink)}
-.proPlan small{font-size:12.5px;color:var(--text-2)}
-.proContinue{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;padding:14px 18px;border:0;border-radius:17px;background:var(--ink);color:var(--on-ink);font:inherit;font-size:18px;font-weight:800;text-align:center;cursor:pointer;text-decoration:none}
-.proContinue:disabled{opacity:.45;cursor:not-allowed}
-.proSecondary{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;padding:14px 18px;border:0;border-radius:17px;background:var(--accent-soft);color:var(--accent-text);font:inherit;font-size:17px;font-weight:800;text-align:center;cursor:pointer;text-decoration:none}
-.proSecondary:disabled{opacity:.6;cursor:wait}
-.proContinue:focus-visible,.proSecondary:focus-visible,.proRestore:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.proNote{margin:0;font-size:12px;line-height:1.45;color:var(--text-3);text-align:center}
-.proError{margin:0;font-size:13px;color:var(--danger-text);text-align:center}
-.proCurrent{margin:0;padding:12px 14px;border-radius:18px;background:var(--info-soft);color:var(--text);font-weight:700}
-.proRestore{justify-self:center;min-height:44px;padding:0 10px;border:0;background:none;color:var(--text-3);font:inherit;font-size:12.5px;text-decoration:underline;cursor:pointer}
-.upgradeSignup .proContinue{font-size:16px}
-.upgradeFree{gap:6px}
-.upgradeFree small{font-size:12px}
-.upgradeFooter{gap:14px;font-size:12px;padding:2px 0 0}
