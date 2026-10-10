@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     const next = safeAuthNext(url.searchParams.get("next"));
     // Social OAuth is a sign-in, not an email-verification result.
     if (url.searchParams.get("provider") === "google" || url.searchParams.get("provider") === "apple") {
-      return NextResponse.redirect(new URL(next, url.origin));
+      return NextResponse.redirect(new URL(`/auth/social-complete?next=${encodeURIComponent(next)}`, url.origin));
     }
     const destination = authLinkDestination({
       type: next === "/reset-password" ? "recovery" : null,
