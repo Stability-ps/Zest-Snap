@@ -83,56 +83,50 @@ html:has(.introPage) body {
 }
 .introGlow.amber { background: radial-gradient(circle, rgb(245 184 65 / 0.2), transparent 65%); }
 
+/* Phases come from data-phase on .introStage (set by page.tsx): idle → scan → done. Transitions only, no
+   looping keyframes, which froze on some iPhones. Without JS the default is the finished state. */
 .introPaper {
-  --loop: 7s;
   position: relative; width: min(74%, 270px); padding: 18px 18px 16px; border-radius: 16px; background: #fbfaf6; color: #1c2533;
-  transform: rotate(-4deg); box-shadow: 0 24px 50px rgb(0 0 0 / 0.45);
-  animation: introPaper var(--loop) cubic-bezier(.5, 0, .2, 1) infinite;
+  transform: rotate(-2deg) scale(.94); opacity: .72; box-shadow: 0 24px 50px rgb(0 0 0 / 0.45);
+  transition: transform .6s cubic-bezier(.5, 0, .2, 1), opacity .6s ease;
 }
+[data-phase="idle"] .introPaper,
+[data-phase="scan"] .introPaper { transform: rotate(-4deg); opacity: 1; }
 .introPaper small { display: block; font-size: 10px; letter-spacing: 1.6px; font-weight: 800; color: #8a6d1f; }
 .introPaper b { display: block; margin: 6px 0 8px; font-size: 24px; letter-spacing: -.5px; font-family: Georgia, "Times New Roman", serif; }
 .introPaper p { margin: 3px 0; font-size: 14px; font-weight: 600; }
 .introPaper p.faint { margin-top: 8px; font-weight: 400; color: #6b7280; font-size: 12.5px; }
-@keyframes introPaper {
-  0%, 38% { transform: rotate(-4deg) translateY(0) scale(1); opacity: 1; }
-  52%, 90% { transform: rotate(-2deg) scale(.94); opacity: .72; }
-  100% { transform: rotate(-4deg) translateY(0) scale(1); opacity: 1; }
-}
 
-.introCorner { position: absolute; width: 22px; height: 22px; border: 3px solid var(--i-teal); animation: introCorners 7s ease infinite; }
+.introCorner { position: absolute; width: 22px; height: 22px; border: 3px solid var(--i-teal); opacity: 0; transform: scale(1.15); transition: opacity .3s ease, transform .3s ease; }
+[data-phase="scan"] .introCorner { opacity: 1; transform: none; }
 .introCorner.tl { top: -10px; left: -10px; border-right: 0; border-bottom: 0; border-top-left-radius: 10px; }
 .introCorner.tr { top: -10px; right: -10px; border-left: 0; border-bottom: 0; border-top-right-radius: 10px; }
 .introCorner.bl { bottom: -10px; left: -10px; border-right: 0; border-top: 0; border-bottom-left-radius: 10px; }
 .introCorner.br { bottom: -10px; right: -10px; border-left: 0; border-top: 0; border-bottom-right-radius: 10px; }
-@keyframes introCorners { 0%, 4% { opacity: 0; transform: scale(1.15); } 10%, 40% { opacity: 1; transform: none; } 48%, 100% { opacity: 0; } }
 
 .introScanLine {
-  position: absolute; left: 6px; right: 6px; top: 0; height: 3px; border-radius: 3px;
+  position: absolute; left: 6px; right: 6px; top: 4%; height: 3px; border-radius: 3px;
   background: var(--i-teal); box-shadow: 0 0 18px 4px rgb(0 198 167 / 0.55); opacity: 0;
-  animation: introScan 7s ease-in-out infinite;
+  transition: opacity .2s ease;
 }
-@keyframes introScan { 0%, 10% { top: 4%; opacity: 0; } 13% { opacity: 1; } 34% { top: 94%; opacity: 1; } 38%, 100% { top: 94%; opacity: 0; } }
+[data-phase="scan"] .introScanLine { top: 94%; opacity: 1; transition: top 1.8s ease-in-out, opacity .2s ease; }
 
 .introChips { position: relative; width: 100%; margin-top: 22px; display: flex; flex-direction: column; gap: 9px; padding: 0 6px; }
 .introChip {
   --c: var(--i-teal);
   display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
-  background: rgb(16 35 63 / 0.92); border: 1px solid var(--i-line); border-left: 4px solid var(--c);
+  background: rgb(16 35 63 / 0.96); border: 1px solid var(--i-line); border-left: 4px solid var(--c);
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
-  /* No backdrop-filter here: on iPhone Safari a blurred element whose opacity is animated can stay invisible.
-     Visible by default too, so the chips still show if the animation never runs. */
-  will-change: transform, opacity;
-  animation: introChip 7s cubic-bezier(.2, .9, .3, 1.2) infinite;
+  transition: opacity .45s ease, transform .5s cubic-bezier(.2, .9, .3, 1.25);
 }
+[data-phase="idle"] .introChip,
+[data-phase="scan"] .introChip { opacity: 0; transform: translateY(18px) scale(.96); transition-duration: .3s; transition-delay: 0s; }
 .introChip svg { color: var(--c); flex: none; }
 .introChip span { display: flex; flex-direction: column; min-width: 0; }
 .introChip b { font-size: 15px; }
 .introChip small { color: var(--i-text-2); font-size: 13px; }
-.introChip.amber { --c: var(--i-amber); animation-name: introChip2; }
-.introChip.violet { --c: var(--i-violet); animation-name: introChip3; }
-@keyframes introChip { 0%, 40% { opacity: 0; transform: translateY(18px) scale(.96); } 46%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; transform: translateY(-4px); } }
-@keyframes introChip2 { 0%, 46% { opacity: 0; transform: translateY(18px) scale(.96); } 52%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; transform: translateY(-4px); } }
-@keyframes introChip3 { 0%, 52% { opacity: 0; transform: translateY(18px) scale(.96); } 58%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; transform: translateY(-4px); } }
+.introChip.amber { --c: var(--i-amber); transition-delay: .4s; }
+.introChip.violet { --c: var(--i-violet); transition-delay: .8s; }
 
 /* ---- Step 2: interests ------------------------------------------------------------------------------ */
 .introGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -187,7 +181,5 @@ html:has(.introPage) body {
 }
 @media (prefers-reduced-motion: reduce) {
   .introStep, .introNotice { animation: none; }
-  .introPaper { animation: none; transform: rotate(-2deg) scale(.94); opacity: .72; }
-  .introCorner, .introScanLine { animation: none; opacity: 0; }
-  .introChip, .introChip.amber, .introChip.violet { animation: none; opacity: 1; }
+  .introPaper, .introCorner, .introScanLine, .introChip { transition: none; }
 }
