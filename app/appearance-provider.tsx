@@ -38,6 +38,9 @@ export default function AppearanceProvider() {
             if (!disposed) replaceAppearance(next);
           },
         });
+        // Interests (Settings › What you snap) ride the same sync: newest copy wins (lib/interests.ts).
+        const { syncInterests } = await import("@/lib/interests");
+        if (!disposed) await syncInterests(db as never, userId);
         lastSync = Date.now();
       } catch {
         // Supabase unavailable: the device copy stays authoritative until the next attempt.

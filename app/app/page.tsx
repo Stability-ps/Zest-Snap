@@ -77,6 +77,8 @@ import {
 import { syncPushSubscription } from "@/lib/reminders";
 import { knownGuestTrialRemaining, rememberGuestTrial, trackConversion } from "@/lib/conversion";
 import { materializeWeeklySchedule, weeklyOccurrences } from "@/lib/schedule";
+import { readLocalInterests, snapExamples } from "@/lib/interests";
+import type { InterestId } from "@/lib/intro";
 
 type View = "home" | "review" | "history" | "calendar" | "todo" | "rewards" | "shared";
 type Snapshot = { userId?: string; credits?: number; displayName?: string; mode?: string };
@@ -110,6 +112,18 @@ export default function App() {
   const [activeScan, setActiveScan] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [view, setView] = useState<View>("home");
+  // What the person wants to remember (intro / Settings › What you snap): tailors the Home examples.
+  const [interests, setInterests] = useState<InterestId[]>([]);
+  useEffect(() => {
+    const read = () => setInterests(readLocalInterests().list);
+    read();
+    window.addEventListener("zest-interests-changed", read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener("zest-interests-changed", read);
+      window.removeEventListener("storage", read);
+    };
+  }, []);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
@@ -552,7 +566,7 @@ export default function App() {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Request-Id": requestId, "X-Zest-Device": deviceId() },
           signal: AbortSignal.timeout(65000),
-          body: JSON.stringify({ dataUrl: prepared.dataUrl, mimeType: prepared.mimeType, fileName: file.name, timezone, locale }),
+          body: JSON.stringify({ dataUrl: prepared.dataUrl, mimeType: prepared.mimeType, fileName: file.name, timezone, locale, interests }),
         });
       } catch (e) {
         throw new Error(
@@ -1134,9 +1148,9 @@ export default function App() {
               <section className="homeIdeas" aria-labelledby="home-ideas-title">
                 <h2 id="home-ideas-title">What can I snap?</h2>
                 <ul>
-                  <li><span aria-hidden="true">🏫</span> School notices and newsletters</li>
-                  <li><span aria-hidden="true">🩺</span> Appointment cards and booking emails</li>
-                  <li><span aria-hidden="true">🎟️</span> Invitations, posters and tickets</li>
+                  {snapExamples(interests).map((x) => (
+                    <li key={x.id}><span aria-hidden="true">{x.emoji}</span> {x.text}</li>
+                  ))}
                 </ul>
               </section>
             )}

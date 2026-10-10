@@ -3,16 +3,10 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Bell, CalendarDays, Check, CheckCircle2 } from "lucide-react";
 import { INTEREST_IDS, saveIntro, type InterestId } from "@/lib/intro";
+import { INTEREST_LABELS } from "@/lib/interests";
 import "./intro.css";
 
-const INTERESTS: Record<InterestId, { emoji: string; label: string; hint: string }> = {
-  school: { emoji: "🏫", label: "School & kids", hint: "Notices, newsletters" },
-  health: { emoji: "🩺", label: "Health", hint: "Doctor, dentist" },
-  work: { emoji: "💼", label: "Work", hint: "Meetings, deadlines" },
-  bills: { emoji: "🧾", label: "Bills & renewals", hint: "Licences, payments" },
-  events: { emoji: "🎟️", label: "Events", hint: "Invites, tickets" },
-  travel: { emoji: "✈️", label: "Travel", hint: "Flights, bookings" },
-};
+const INTERESTS = INTEREST_LABELS;
 
 const STEPS = 3;
 

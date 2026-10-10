@@ -5,7 +5,10 @@ export type Upload = {
   fileName: string;
   locale: string;
   timezone: string;
+  /** What the person mostly scans (Settings › What you snap). Allow-listed ids only: never free text. */
+  interests: string[];
 };
+const INTEREST_HINTS = ["school", "health", "work", "bills", "events", "travel"];
 export async function readBoundedJson(
   req: Request,
   max = MAX_BODY_BYTES,
@@ -92,5 +95,6 @@ export function validateUpload(body: unknown): Upload {
     fileName: b.mimeType === "application/pdf" ? "document.pdf" : "image",
     timezone,
     locale,
+    interests: Array.isArray(b.interests) ? [...new Set(b.interests.filter((x): x is string => typeof x === "string" && INTEREST_HINTS.includes(x)))] : [],
   };
 }

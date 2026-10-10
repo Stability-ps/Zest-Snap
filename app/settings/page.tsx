@@ -20,6 +20,8 @@ import MarketingToggle from "./marketing-toggle";
 import SignInMethods from "./sign-in-methods";
 import { isOAuthErrorKind, oauthErrorMessage } from "@/lib/social-auth";
 import AppearanceSheet from "./appearance-sheet";
+import InterestsSheet from "./interests-sheet";
+import { readLocalInterests } from "@/lib/interests";
 import { useAppearance } from "@/lib/appearance/use-appearance";
 import { appearanceStrings, appearanceSummary } from "@/lib/appearance/strings";
 import { shareFileNatively } from "@/lib/native/share";
@@ -48,7 +50,7 @@ export default function Settings() {
     [message, setMessage] = useState(""),
     [editingDisplayName, setEditingDisplayName] = useState(false),
     [busy, setBusy] = useState(false),
-    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|"support"|"report"|"briefing"|"appearance"|null>(null),
+    [sheet, setSheet] = useState<"account"|"storage"|"timezone"|"region"|"retention"|"calendar"|"export"|"clear"|"delete"|"support"|"report"|"briefing"|"appearance"|"interests"|null>(null),
     [sheetSearch, setSheetSearch] = useState(""),
     [exportStatus, setExportStatus] = useState<{ ok: boolean; text: string } | null>(null),
     [accountEmail, setAccountEmail] = useState(""),
@@ -57,6 +59,10 @@ export default function Settings() {
     [dailyBriefing, setDailyBriefing] = useState({enabled:false,localTime:"07:00",includeTodos:true,includeShared:true,includeMeals:true});
   const displayNameInputRef = useRef<HTMLInputElement>(null);
   const appearance = useAppearance();
+  // Read after mount (device storage) and again whenever a sheet opens or closes, so the row matches what was picked.
+  const [interestsCount, setInterestsCount] = useState(0);
+  useEffect(() => setInterestsCount(readLocalInterests().list.length), [sheet]);
+  const interestsSummary = interestsCount ? `${interestsCount} picked` : "None";
   useEffect(() => {
     if (sheet !== "export") setExportStatus(null);
   }, [sheet]);
@@ -243,6 +249,7 @@ export default function Settings() {
         <section className="settingsGroup">
           <label className={"settingsRow editable "+(editingDisplayName?"isEditing":"")} onClick={()=>{if(!editingDisplayName){setEditingDisplayName(true);requestAnimationFrame(()=>displayNameInputRef.current?.focus());}}}><span className="settingsIcon"><UserRound /></span><span className="settingsRowCopy"><b>{editingDisplayName?"Editing display name":"Display name"}</b><small>{editingDisplayName?"Type your name, then tap Done":"How Zest addresses you"}</small></span><input ref={displayNameInputRef} aria-label="Display name" maxLength={100} value={profile.displayName} placeholder="Add name" onFocus={()=>setEditingDisplayName(true)} onChange={e=>setProfile({...profile,displayName:e.target.value})} onBlur={()=>{setEditingDisplayName(false);saveProfile(profile);}} /></label>
           <button type="button" className="settingsRow" onClick={()=>setSheet("appearance")}><span className="settingsIcon"><Palette /></span><span className="settingsRowCopy"><b>{appearanceStrings.rowTitle}</b><small>{appearanceStrings.rowHint}</small></span><span className="settingsValue">{appearanceSummary(appearance.mode, appearance.accent)}</span><ChevronRight /></button>
+          <button type="button" className="settingsRow" onClick={()=>setSheet("interests")}><span className="settingsIcon"><Sparkles /></span><span className="settingsRowCopy"><b>What you snap</b><small>Tailors examples, reminders and scans</small></span><span className="settingsValue">{interestsSummary}</span><ChevronRight /></button>
           <button type="button" className="settingsRow" onClick={()=>{setSheetSearch("");setSheet("timezone");}}><span className="settingsIcon"><Clock3 /></span><span className="settingsRowCopy"><b>Timezone</b></span><span className="settingsValue">{timezoneLabel}</span><ChevronRight /></button>
           <button type="button" className="settingsRow" onClick={()=>setSheet("region")}><span className="settingsIcon"><Globe /></span><span className="settingsRowCopy"><b>Language & region</b><small>Interface is currently English</small></span><span className="settingsValue">{localeLabel}</span><ChevronRight /></button>
           <label className="settingsRow"><span className="settingsIcon"><Sparkles /></span><span className="settingsRowCopy"><b>Upcoming insights</b><small>Helpful reminders inside Zest</small></span><input className="settingsToggle" type="checkbox" checked={profile.reminders} onChange={e=>saveProfile({...profile,reminders:e.target.checked})} /></label>
@@ -285,11 +292,12 @@ export default function Settings() {
           <section className="settingsSheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
             <div className="settingsSheetTop">
               <div>
-                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="briefing"?"Daily Briefing":sheet==="appearance"?appearanceStrings.sheetTitle:sheet==="export"?"Export my data":sheet==="delete"?"Delete your account?":sheet==="support"?"Contact support":sheet==="report"?"Report a problem":"Clear device data?"}</h2>
+                <h2>{sheet==="account"?"Your account":sheet==="storage"?"Storage":sheet==="timezone"?"Choose timezone":sheet==="region"?"Language & region":sheet==="retention"?"Scan history":sheet==="calendar"?"Calendar":sheet==="briefing"?"Daily Briefing":sheet==="appearance"?appearanceStrings.sheetTitle:sheet==="interests"?"What you snap":sheet==="export"?"Export my data":sheet==="delete"?"Delete your account?":sheet==="support"?"Contact support":sheet==="report"?"Report a problem":"Clear device data?"}</h2>
                 {sheet==="account"&&<p>You’re signed in. Manage this account without signing in again.</p>}
                 {sheet==="storage"&&<p>{provider?.mode==="cloud"?"Your Zest data is synced to your signed-in account.":"Your Zest data is currently stored on this device only."}</p>}
                 {sheet==="region"&&<p>Zest Snap’s interface is currently English. This setting changes regional date and time formatting.</p>}
                 {sheet==="appearance"&&<p>{appearanceStrings.sheetIntro}</p>}
+                {sheet==="interests"&&<p>Pick what you want Zest to help you remember.</p>}
                 {sheet==="briefing"&&<p>Choose when Zest should send one compact summary of today’s events, To-Dos and shared plans.</p>}
                 {sheet==="calendar"&&<p>{googleCalendarLoading ? "Checking your Google Calendar connection…" : googleCalendar.connected ? "Google Calendar is connected. Zest can add confirmed scan events directly — no file download or manual import." : "Connect Google Calendar once to add confirmed scan events directly. Until then, Zest opens a pre-filled Google Calendar event for you to save; it does not download a calendar file."}</p>}
                 {sheet==="export"&&<p>Choose a readable PDF for normal use, or JSON if you need the complete machine-readable copy of your Zest data.</p>}
@@ -331,6 +339,7 @@ export default function Settings() {
             </>}
             {sheet==="region"&&<div className="settingsChoiceList">{localeOptions.map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,locale:value});setSheet(null);}}><span>{label}</span>{profile.locale===value&&<Check/>}</button>)}</div>}
             {sheet==="retention"&&<div className="settingsChoiceList">{([[30,"30 days"],[90,"90 days"],[365,"1 year"],[0,"Until deleted"]] as const).map(([value,label])=><button key={value} onClick={()=>{saveProfile({...profile,retentionDays:value});setSheet(null);}}><span>{label}</span>{profile.retentionDays===value&&<Check/>}</button>)}</div>}
+            {sheet==="interests"&&<InterestsSheet owner={provider?.mode==="cloud" ? provider.userId ?? null : null} />}
             {sheet==="appearance"&&<AppearanceSheet owner={provider?.mode==="cloud" ? provider.userId ?? null : null} signedIn={provider?.mode==="cloud"} onMessage={setMessage} />}
             {sheet==="briefing"&&<div className="settingsSheetActions"><label className="settingsRow"><span className="settingsRowCopy"><b>Daily Briefing</b><small>One useful notification, not another screen.</small></span><input className="settingsToggle" type="checkbox" checked={dailyBriefing.enabled} onChange={e=>saveDailyBriefing({...dailyBriefing,enabled:e.target.checked})}/></label><label className="settingsRow"><span className="settingsRowCopy"><b>Time</b><small>Uses your Zest timezone</small></span><input type="time" value={dailyBriefing.localTime} onChange={e=>setDailyBriefing({...dailyBriefing,localTime:e.target.value})} onBlur={()=>saveDailyBriefing()}/></label><label className="settingsRow"><span className="settingsRowCopy"><b>Include To-Dos</b></span><input className="settingsToggle" type="checkbox" checked={dailyBriefing.includeTodos} onChange={e=>saveDailyBriefing({...dailyBriefing,includeTodos:e.target.checked})}/></label><label className="settingsRow"><span className="settingsRowCopy"><b>Include shared plans</b></span><input className="settingsToggle" type="checkbox" checked={dailyBriefing.includeShared} onChange={e=>saveDailyBriefing({...dailyBriefing,includeShared:e.target.checked})}/></label><label className="settingsRow"><span className="settingsRowCopy"><b>Include meals</b></span><input className="settingsToggle" type="checkbox" checked={dailyBriefing.includeMeals} onChange={e=>saveDailyBriefing({...dailyBriefing,includeMeals:e.target.checked})}/></label></div>}
             {sheet==="calendar"&&<div className="settingsSheetActions">

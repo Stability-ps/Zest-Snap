@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
       { status: 413, headers: { "Cache-Control": "no-store" } },
     );
   }
-  const { dataUrl, mimeType, fileName, locale, timezone } = upload;
+  const { dataUrl, mimeType, fileName, locale, timezone, interests } = upload;
   logScan("scan_requested", requestId, { who, mime: mimeType, pages: pdfPages });
 
   const mediaPart =
@@ -199,6 +199,9 @@ export async function POST(req: NextRequest) {
     "For exam timetables, use documentType=exam_timetable and extract each exam as a separate school event with recurrence=none.",
     "For non-recurring content set recurrence=none and dayOfWeek to an empty string.",
     "The user locale is " + locale + " and timezone is " + timezone + ".",
+    ...(interests.length
+      ? ["The user mostly scans these kinds of things: " + interests.join(", ") + ". Use this only to choose the best category when the document is ambiguous. Never use it to add, drop or change events."]
+      : []),
     "Never guess an ambiguous numeric date. If 03/04/2026 could mean two dates, lower confidence and add a warning unless surrounding text resolves it.",
     "For relative deadlines such as 'within 10 business days', calculate only when the anchor date and jurisdiction-free business-day interpretation are clear. Otherwise add a warning.",
     "If a time is missing, mark the event allDay=true and leave startTime/endTime empty.",

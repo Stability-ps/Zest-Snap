@@ -14,6 +14,7 @@ import {
   Plus,
   Trash2,
   X,
+  Sparkles,
 } from "lucide-react";
 import {
   monthGrid,
@@ -49,6 +50,7 @@ import PlanningTools from "./planning-tools";
 import SmartFollowups from "./smart-followups";
 import { followupCandidates } from "@/lib/followup-suggestions";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { smartReminder } from "@/lib/smart-reminder";
 
 type Tab = "today" | "upcoming" | "calendar" | "reminders";
 type ReminderFilter = "all" | "today" | "upcoming" | "overdue";
@@ -1103,10 +1105,12 @@ function NewReminder({
 }
 
 function Reminder({ item, busy, onClose, onSave }: { item: PlannerItem; busy: boolean; onClose: () => void; onSave: (d: ReminderDraft) => void }) {
-  const [p, setP] = useState<ReminderDraft["preset"]>(item.type === "task" || item.type === "deadline" ? "1d" : "1h");
-  const [custom, setCustom] = useState("");
-  const [unit, setUnit] = useState<"minutes" | "hours" | "days">("hours");
-  const [time, setTime] = useState("09:00");
+  // Starts on the reminder that suits this kind of item (lib/smart-reminder.ts); any other choice is one tap away.
+  const smart = smartReminder(item);
+  const [p, setP] = useState<ReminderDraft["preset"]>(smart.preset);
+  const [custom, setCustom] = useState(smart.customDays ? String(smart.customDays) : "");
+  const [unit, setUnit] = useState<"minutes" | "hours" | "days">(smart.customDays ? "days" : "hours");
+  const [time, setTime] = useState(smart.allDayTime ?? "09:00");
   const number = custom.trim() === "" ? NaN : Number(custom);
   const multiplier = unit === "days" ? 1440 : unit === "hours" ? 60 : 1;
   const customMinutes = Number.isFinite(number) ? Math.round(number * multiplier) : NaN;
@@ -1118,6 +1122,11 @@ function Reminder({ item, busy, onClose, onSave }: { item: PlannerItem; busy: bo
         <div>
           <h2>Reminder</h2>
           <span className="sheetHint">Choose when Zest should remind you about “{item.title}”.</span>
+          {smart.why && (
+            <span className="smartReminderHint">
+              <Sparkles size={13} aria-hidden="true" /> Suggested · {smart.why}
+            </span>
+          )}
         </div>
         <button className="iconButton" onClick={onClose} aria-label="Close">
           <X />
