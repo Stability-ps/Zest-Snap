@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, BellRing, CalendarDays, Camera, Check, Cloud, FileText, Mic } from "lucide-react";
+import { ArrowLeft, BellRing, Camera, Check, Cloud, Sparkles } from "lucide-react";
 import PlansSheet from "@/app/settings/plans-sheet";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { getDataProvider, type Usage } from "@/lib/data";
@@ -77,10 +77,9 @@ export default function UpgradePage() {
 
   // Only what the app actually provides: the free account features, and what paid plans add (server-enforced).
   const included = [
-    { title: "Plan with Zest", detail: "Say or type it, and Zest organises it.", Icon: Mic },
-    { title: "Smart reminders", detail: "Notifications before what matters.", Icon: BellRing },
-    { title: "Calendar integration", detail: "Add events to Google or your device calendar.", Icon: CalendarDays },
-    { title: "Sync across devices", detail: "Your Planner on every device you sign in to.", Icon: Cloud },
+    { title: "Smart reminders", detail: "Never miss important dates again.", Icon: BellRing },
+    { title: "Plan with Zest AI", detail: "Turn your thoughts into a clear plan.", Icon: Sparkles },
+    { title: "Sync everywhere", detail: "Access your plans on all your devices.", Icon: Cloud },
   ];
 
   return (
@@ -102,7 +101,7 @@ export default function UpgradePage() {
         </header>
 
         <section aria-labelledby="upgrade-title">
-          <p className="upgradeEyebrow">{from === "onboarding" ? "Welcome to Zest Snap" : "Zest Snap Premium"}</p>
+          
           <h1 id="upgrade-title">{heading}</h1>
           <p className="upgradeLead">{lead}</p>
           {usage && (
@@ -115,49 +114,38 @@ export default function UpgradePage() {
           )}
         </section>
 
-        <section className="upgradeCard upgradeBenefits" aria-labelledby="premium-adds">
-          <h2 id="premium-adds">Premium adds</h2>
+        <section className="premiumEditorial" aria-label="Preview of Zest Snap planning">
+          <div className="premiumNotebook" aria-hidden="true" />
+          <div className="premiumPhone" aria-hidden="true">
+            <span className="premiumPhoneTime">9:41</span>
+            <b>Coffee<br />with Sarah</b>
+            <span>▣ &nbsp;12 Oct 2026</span>
+            <span>◷ &nbsp;10:00</span>
+            <span>⌖ &nbsp;The Glass House</span>
+          </div>
+          <div className="premiumNote" aria-hidden="true">Meeting<br />Notes</div>
+        </section>
+
+        <section className="upgradeBenefits premiumBenefits" aria-label="Why choose Zest Snap">
           <ul>
             <li>
-              <span className="upgradeIcon">
-                <Camera aria-hidden="true" />
-              </span>
-              <span>
-                <b>More AI scans</b>
-                <small>{best ? `Up to ${best.monthlyScans} scans every month` : "Many more scans every month"}</small>
-              </span>
+              <span className="upgradeIcon"><Camera aria-hidden="true" /></span>
+              <span><b>More AI scans</b><small>{best ? `Up to ${best.monthlyScans} scans each month` : "Capture and organise everything that matters."}</small></span>
             </li>
-            <li>
-              <span className="upgradeIcon">
-                <FileText aria-hidden="true" />
-              </span>
-              <span>
-                <b>Longer documents</b>
-                <small>{best ? `PDFs up to ${best.pdfPagesPerScan} pages in one scan` : "Bigger PDFs in one scan"}</small>
-              </span>
-            </li>
-          </ul>
-          <h2 className="upgradeSubhead">{signedIn ? "Already in your account" : "Included with a free account"}</h2>
-          <ul>
             {included.map(({ title, detail, Icon }) => (
               <li key={title}>
-                <span className="upgradeIcon soft">
-                  <Icon aria-hidden="true" />
-                </span>
-                <span>
-                  <b>{title}</b>
-                  <small>{detail}</small>
-                </span>
+                <span className="upgradeIcon soft"><Icon aria-hidden="true" /></span>
+                <span><b>{title}</b><small>{detail}</small></span>
               </li>
             ))}
           </ul>
         </section>
 
-        <section className="upgradeCard" aria-labelledby="choose-plan">
-          <h2 id="choose-plan">Choose your plan</h2>
+        <section className="premiumPlans" aria-labelledby="choose-plan">
+          <h2 id="choose-plan" className="premiumPlanHeading">Choose your plan</h2>
           {signedIn === false ? (
             <div className="upgradeSignup">
-              <p>Plans belong to your account, so they work on every device. Create a free account first — no payment required.</p>
+              <p>Create a free account to choose a plan. No payment required.</p>
               <Link
                 className="button"
                 href={"/login?mode=signup&next=" + encodeURIComponent("/upgrade?from=" + from)}
