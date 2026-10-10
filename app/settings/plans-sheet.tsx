@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { fallbackCatalog, formatPlanPrice, getPublicPlanCatalog, type CatalogPlan } from "@/lib/plan-catalog";
+import { fallbackCatalog, getPublicPlanCatalog, storePriceLabel, type CatalogPlan } from "@/lib/plan-catalog";
 import { billingAvailability, manageSubscriptionUrl, purchaseOffer, restorePurchases, storeName, storeOffers, type StoreOffer } from "@/lib/native/billing";
 import { hapticSuccess } from "@/lib/native/haptics";
 import { runtime } from "@/lib/native/runtime";
@@ -87,7 +87,7 @@ export default function PlansSheet({ onDone, context = "settings" }: { onDone: (
           <section key={p.id} className={"planOption" + (p.id === current ? " current" : "")}>
             <div className="planOptionTop">
               <b>{p.name}</b>
-              <span>{p.id === current ? "Your plan" : p.monthlyPrice ? `${formatPlanPrice(p.monthlyPrice, p.currency)}/month` : "Free"}</span>
+              <span>{p.id === current ? "Your plan" : p.id === "free" ? "Free" : storePriceLabel(planOffers)}</span>
             </div>
             <ul>{features(p).map((f) => <li key={f}><Check size={15} aria-hidden="true" /> {f}</li>)}</ul>
             {p.id !== "free" && p.id !== current && planOffers.map((o) => (
