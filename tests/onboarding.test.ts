@@ -33,9 +33,9 @@ test("guests get exactly three successful scans; failures are refunded; repeats 
 
   assert.equal((await reserve(1)).rows[0].r.remaining, 2);
   await finish(1, "completed"); await age();
-  // A failed scan costs nothing.
+  // A failed scan costs nothing, and the person can retry straight away (no "a scan is already running").
   assert.equal((await reserve(2)).rows[0].r.remaining, 1);
-  await finish(2, "failed"); await age();
+  await finish(2, "failed");
   assert.equal((await reserve(3)).rows[0].r.remaining, 1);
   await finish(3, "completed"); await age();
   // The same request id twice (network retry) is refused, and while one scan is in flight a second is refused.
@@ -52,6 +52,13 @@ test("guests get exactly three successful scans; failures are refunded; repeats 
   await applyFeature(other);
   assert.equal((await other.query<{ v: number }>(`select value v from public.app_limits where key='guest_trial_scans_per_device'`)).rows[0].v, 5);
   await other.close();
+  // Same for signed-in scans.
+  const U = "00000000-0000-4000-8000-0000000000c3";
+  await newUser(db, U);
+  await asService(db, `select public.reserve_scan($1,$2,'acc-1',$3)`, [U, req(21), DEVICE]);
+  await asService(db, `select public.finish_scan($1,'failed',0,0,0,0,null)`, [req(21)]);
+  await asService(db, `select public.reserve_scan($1,$2,'acc-2',$3)`, [U, req(22), DEVICE]);
+  await assert.rejects(() => asService(db, `select public.reserve_scan($1,$2,'acc-3',$3)`, [U, req(23), DEVICE]), /repeat_request/, "a scan in flight still blocks a parallel one");
   await db.close();
 });
 

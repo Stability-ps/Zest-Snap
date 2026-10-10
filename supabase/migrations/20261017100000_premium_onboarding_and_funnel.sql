@@ -65,7 +65,7 @@ grant execute on function public.complete_premium_onboarding(text) to authentica
 
 ------------------------------------------------------------------------------------------
 -- Conversion funnel events. Pseudonymous subject only: 'u:<user id>' when signed in, otherwise
--- 'd:<device hash>' (the same salted hash the scan quota uses). No emails, names, prices or content.
+-- 'd:<device hash>' (SHA-256 of the random per-install device id, as the scan quota uses). No emails, names, prices or content.
 -- Facts the database already knows (guest scans completed, registrations, email verification,
 -- subscriptions) are derived from their own tables in admin_conversion_funnel, never from the client.
 ------------------------------------------------------------------------------------------

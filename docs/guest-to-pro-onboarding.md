@@ -1,6 +1,7 @@
 # Zest Snap guest-to-account-to-paid onboarding (implementation contract)
 
-Status: DESIGN APPROVED; implementation pending. Do not merge until all tests pass.
+Status: IMPLEMENTED (PR #94). Paid checkout is wired to the existing RevenueCat stack but cannot be
+completed until the store products, RevenueCat keys and plan activation exist (see "Release blockers").
 
 ## Customer journey
 1. Guest may perform exactly three **successful** AI scans per device. Failed, cancelled, or abandoned scans do not count. Server is the authority. Never unlock scans solely by editing local storage.
@@ -37,3 +38,33 @@ Events: guest_scan_completed (number 1/2/3), guest_limit_reached, paywall_viewed
 - Unit, integration, CI and production authenticated smoke tests required before merge/deploy.
 
 Design reference: https://www.figma.com/design/1p18VLiAyNAZQJ8Kn2ydJT
+
+## Implementation notes (PR #94)
+- Guest limit root cause: `app_limits.guest_trial_scans_per_device` was seeded as 2 (production had 2).
+  `20261017090000_guest_trial_three_scans.sql` raises the untouched seed to 3 and lets a person retry right
+  after a failed scan (the 5-second anti-burst check no longer counts failed attempts, guests and accounts).
+- One-time premium screen: `20261017100000_premium_onboarding_and_funnel.sql`. A trigger on `auth.users`
+  inserts creates the row, so only accounts registered after the migration is applied are eligible
+  (no hard-coded date). `premium_onboarding_status()` = row exists, not completed, email confirmed, plan free.
+  `complete_premium_onboarding(choice)` keeps the first choice. Routed from `/login` and `/auth/confirmed`
+  to `/upgrade?from=onboarding`; any RPC failure falls through to the app.
+- Paywalls: `app/app/guest-paywall.tsx` (4th guest attempt; local hint + server refusal), `/upgrade?from=`
+  `guest | onboarding | free_limit | settings`. Prices only from the stores (PlansSheet) or the plan catalogue
+  with the existing "not available yet" note.
+- Funnel: `track_conversion` (allow-listed client interactions, pseudonymous, de-duplicated) +
+  `admin_conversion_funnel` (scans, sign-ups, verification and subscriptions from their own tables),
+  shown in Admin › Analytics › Conversion.
+- Guest history: the existing `migrateGuestData` (scans, agenda, Planner, reminders; once) is verified end
+  to end in `tests/browser/funnel-account.spec.ts`.
+
+## Local end-to-end run
+`tests/browser/funnel-account.spec.ts` runs against `supabase start` (all migrations), an HTTPS proxy in
+front of it (`isSupabaseConfigured` requires https), and a scratch build whose OpenAI URL in
+`app/api/extract/route.ts` is replaced by a local stub returning a valid Responses payload. Never commit
+that replacement. Use `TEST_BASE_URL=http://localhost:<port>` (the extract route checks the Origin).
+
+## Release blockers (external)
+- Apply both migrations to production (follow supabase/MIGRATION_HISTORY.md; they are registered "pending").
+- Paid checkout: App Store Connect / Play Console products, RevenueCat public keys
+  (NEXT_PUBLIC_REVENUECAT_IOS_KEY / _ANDROID_KEY) and server secret, and `plan_rules.active = true` for
+  plus/business. Annual prices appear automatically when annual store products exist.

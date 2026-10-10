@@ -121,10 +121,10 @@ export default function LoginPage() {
     await Promise.allSettled([registerDevice(), claimPendingReferral()]);
     let destination = nextPath();
     // A verified signup may finish on a different browser; server state is authoritative.
-    if (destination === "/app") {
+    if (destination === "/app" || destination.startsWith("/upgrade")) {
       try {
         const { data, error } = await createClient().rpc("premium_onboarding_status");
-        if (!error && data?.show === true) destination = "/upgrade";
+        if (!error && data?.show === true) destination = "/upgrade?from=onboarding";
       } catch { /* Never prevent sign-in when onboarding is unavailable. */ }
     }
     window.location.assign(new URL(destination, window.location.origin).href);

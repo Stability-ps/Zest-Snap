@@ -8,5 +8,6 @@ export function AnalyticsTabs({ current, range }: { current: string; range: Date
     { key: "product", label: "Product analytics", href: `/admin/analytics${s}` },
     { key: "growth", label: "User growth", href: `/admin/analytics/growth${s}` },
     { key: "retention", label: "Retention", href: `/admin/analytics/retention${s}` },
+    { key: "conversion", label: "Conversion", href: `/admin/analytics/conversion${s}` },
   ]} />;
 }

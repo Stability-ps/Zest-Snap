@@ -44,10 +44,10 @@ export default function EmailLinkResult() {
       await Promise.allSettled([registerDevice(), claimPendingReferral()]);
       let destination = view.next;
       // Only successful signup confirmation is eligible. Email changes and recovery bypass this gate.
-      if (view.status === "verified" && view.confirmed && view.next === "/app") {
+      if (view.status === "verified" && view.confirmed && (view.next === "/app" || view.next.startsWith("/upgrade"))) {
         try {
           const { data, error } = await createClient().rpc("premium_onboarding_status");
-          if (!error && data?.show === true) destination = "/upgrade";
+          if (!error && data?.show === true) destination = "/upgrade?from=onboarding";
         } catch { /* Never block verified users if the onboarding service is unavailable. */ }
       }
       window.location.assign(new URL(destination, window.location.origin).href);
