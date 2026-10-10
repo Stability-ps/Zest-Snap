@@ -3223,25 +3223,23 @@ html.native .upgradePage{padding-top:calc(16px + var(--zest-safe-top));padding-b
 .signInMethods li>svg:last-child{color:var(--success-text)}
 .signInMethods .button{width:100%;gap:8px}
 
-/* Public marketing site: always use the original light palette.
-   Scoped so the signed-in application continues to honour its own appearance. */
-body:has(> .marketingPage),
+/* Marketing page uses its own light theme tokens, independent of the app theme. */
 body:has(.marketingPage) {
-  background: #ffffff;
+  background: var(--marketing-white, white);
 }
 .marketingPage {
   color-scheme: light;
-  background: #ffffff;
-  color: #12243a;
-  --bg: #ffffff;
-  --surface: #ffffff;
+  background: var(--marketing-white, white);
+  color: var(--marketing-navy, #12243a);
+  --bg: white;
+  --surface: white;
   --surface-2: #f7fafc;
   --text: #12243a;
   --text-2: #34475e;
   --text-3: #607187;
   --text-4: #748297;
   --ink: #12243a;
-  --on-ink: #ffffff;
+  --on-ink: white;
   --border: #e2e8f0;
   --divider: #e5ebf1;
   --brand: #16b7aa;
@@ -3250,29 +3248,29 @@ body:has(.marketingPage) {
   --accent-text: #087e76;
   --accent-border: #c8ebe5;
   --hero: #152b47;
-  --on-hero: #ffffff;
+  --on-hero: white;
   min-height: 100vh;
 }
 .marketingPage .phone {
-  background: #152b47;
-  box-shadow: 0 28px 80px rgba(15, 33, 57, .16);
+  background: var(--hero);
+  box-shadow: 0 28px 80px rgb(15 33 57 / 16%);
 }
 .marketingPage .phone .screen {
-  background: #111c29;
-  color: #ffffff;
+  background: var(--marketing-screen, #111c29);
+  color: white;
   --surface: #111c29;
-  --text: #ffffff;
+  --text: white;
   --text-3: #a6b5c8;
   --divider: #2b3a4d;
   --accent-soft: #1c3554;
   --accent-border: #284a6d;
   --accent-text: #68b6ff;
   --hero: #172c45;
-  --on-hero: #ffffff;
-  --ink: #ffffff;
+  --on-hero: white;
+  --ink: white;
   --on-ink: #12243a;
 }
 .marketingPage .phone .button {
-  background: #ffffff;
-  color: #12243a;
+  background: var(--ink);
+  color: var(--on-ink);
 }
