@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { plans as fallbackPlans, type PlanId } from "./product-config";
 import { getSupabasePublicConfig, isSupabaseConfigured } from "./supabase/config";
+import type { StoreOffer } from "./native/billing";
 
 export type CatalogPlan = {
   id: PlanId;
@@ -95,4 +96,12 @@ export function formatPlanPrice(amount: number, currency: string) {
   } catch {
     return `${currency} ${amount}`;
   }
+}
+
+/** In the app, a paid plan's price is only ever the store's own (local currency and taxes); none without one. */
+export function storePriceLabel(offers: Pick<StoreOffer, "period" | "price">[]) {
+  const monthly = offers.find((o) => o.period === "monthly");
+  if (monthly) return `${monthly.price}/month`;
+  const annual = offers.find((o) => o.period === "annual");
+  return annual ? `${annual.price}/year` : "";
 }
