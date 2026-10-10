@@ -131,15 +131,26 @@ html:has(.introPage) body {
 
 /* ---- Step 2: interests ------------------------------------------------------------------------------ */
 .introGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.introAll {
+  position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; margin-bottom: 10px;
+  padding: 0 14px; border-radius: 18px; border: 1.5px solid var(--i-line); background: var(--i-card); color: var(--i-text);
+  font: inherit; text-align: left; cursor: pointer; transition: transform .15s ease, border-color .2s ease, background .2s ease;
+}
+.introAll b { font-size: 15.5px; }
+.introAll .introEmoji { font-size: 22px; }
+.introAll .introTick { top: 50%; margin-top: -11px; }
+.introAll:active { transform: scale(.98); }
+.introAll.on { border-color: var(--i-teal); background: rgb(0 198 167 / 0.12); }
+.introAll.on .introTick { background: var(--i-teal); border-color: var(--i-teal); color: #04221d; }
 .introOption {
-  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 104px;
-  padding: 14px; border-radius: 18px; border: 1.5px solid var(--i-line); background: var(--i-card); color: var(--i-text);
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 92px;
+  padding: 12px 14px; border-radius: 18px; border: 1.5px solid var(--i-line); background: var(--i-card); color: var(--i-text);
   font: inherit; text-align: left; cursor: pointer; transition: transform .15s ease, border-color .2s ease, background .2s ease;
 }
 .introOption:active { transform: scale(.97); }
-.introOption b { font-size: 15.5px; margin-top: 6px; }
+.introOption b { font-size: 15.5px; margin-top: 4px; }
 .introOption small { color: var(--i-text-2); font-size: 13px; }
-.introEmoji { font-size: 26px; line-height: 1; }
+.introEmoji { font-size: 24px; line-height: 1; }
 .introTick {
   position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
   border: 1.5px solid rgb(255 255 255 / 0.25); color: transparent; transition: all .2s ease;
@@ -177,7 +188,9 @@ html:has(.introPage) body {
   .introPaper b { font-size: 20px; margin: 4px 0 6px; }
   .introCopy h1 { font-size: 29px; }
   .introCopy p { font-size: 15.5px; }
-  .introOption { min-height: 92px; padding: 12px; }
+  .introOption { min-height: 80px; padding: 10px 12px; }
+  .introAll { min-height: 50px; }
+  .introCopy.top { margin: 10px 0 14px; }
   .introPrimary { min-height: 54px; }
 }
 @media (prefers-reduced-motion: reduce) {

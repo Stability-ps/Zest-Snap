@@ -19,7 +19,7 @@ export const RETURNING_KEYS = [
   "zest-last-app-state-v1",
 ];
 
-export const INTEREST_IDS = ["school", "health", "work", "bills", "events", "travel"] as const;
+export const INTEREST_IDS = ["school", "health", "work", "bills", "events", "travel", "sport", "home"] as const;
 export type InterestId = (typeof INTEREST_IDS)[number];
 
 export type IntroState = { v: 1; done: true; interests: InterestId[]; at: string };

@@ -12,6 +12,8 @@ const INTERESTS: Record<InterestId, { emoji: string; label: string; hint: string
   bills: { emoji: "🧾", label: "Bills & renewals", hint: "Licences, payments" },
   events: { emoji: "🎟️", label: "Events", hint: "Invites, tickets" },
   travel: { emoji: "✈️", label: "Travel", hint: "Flights, bookings" },
+  sport: { emoji: "⚽", label: "Sport & activities", hint: "Fixtures, classes" },
+  home: { emoji: "🏡", label: "Home & family", hint: "Birthdays, chores" },
 };
 
 const STEPS = 3;
@@ -66,6 +68,12 @@ export default function Intro() {
   };
 
   const tap = () => void import("@/lib/native/haptics").then((h) => h.hapticLight()).catch(() => undefined);
+
+  const allPicked = picked.length === INTEREST_IDS.length;
+  const toggleAll = () => {
+    tap();
+    setPicked(allPicked ? [] : [...INTEREST_IDS]);
+  };
 
   const toggle = (id: InterestId) => {
     tap();
@@ -170,6 +178,15 @@ export default function Intro() {
             </h1>
             <p>Pick any that fit. Zest works with anything that has a date.</p>
           </div>
+          <button type="button" className={"introAll" + (allPicked ? " on" : "")} aria-pressed={allPicked} onClick={toggleAll}>
+            <span className="introEmoji" aria-hidden="true">
+              ✨
+            </span>
+            <b>All of these</b>
+            <span className="introTick" aria-hidden="true">
+              <Check size={14} strokeWidth={3} />
+            </span>
+          </button>
           <div className="introGrid">
             {INTEREST_IDS.map((id) => {
               const on = picked.includes(id);
