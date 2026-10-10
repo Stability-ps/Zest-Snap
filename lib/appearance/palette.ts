@@ -72,25 +72,25 @@ export const NEUTRALS: Record<Scheme, Record<string, string>> = {
     "skeleton-shine": "#f8fafc",
   },
   dark: {
-    bg: "#0e1114",
-    "bg-tint": "#0e1114",
-    surface: "#161a1f",
-    "surface-2": "#1b2026",
-    "surface-3": "#222830",
-    "surface-4": "#2c333c",
-    elevated: "#1e2329",
-    "surface-glass": "rgb(22 26 31 / 0.94)",
-    nav: "rgb(20 24 29 / 0.96)",
+    bg: "#0a0e14",
+    "bg-tint": "#0a0e14",
+    surface: "#121821",
+    "surface-2": "#161d27",
+    "surface-3": "#1c2430",
+    "surface-4": "#27313e",
+    elevated: "#18202b",
+    "surface-glass": "rgb(18 24 33 / 0.94)",
+    nav: "rgb(13 18 26 / 0.92)",
     text: "#edf1f5",
     "text-2": "#b8c3ce",
     "text-3": "#98a4b1",
     "text-4": "#6f7b88",
-    border: "#2b323b",
-    "border-strong": "#3b4550",
-    divider: "#242a31",
+    border: "#232c38",
+    "border-strong": "#344152",
+    divider: "#1b232e",
     ink: "#edf1f5",
     "ink-2": "#d7dee6",
-    "on-ink": "#0e1114",
+    "on-ink": "#0a0e14",
     hero: "#15263b",
     "hero-2": "#1d3756",
     "on-hero": "#ffffff",
@@ -119,14 +119,14 @@ export const NEUTRALS: Record<Scheme, Record<string, string>> = {
     overlay: "rgb(0 0 0 / 0.62)",
     "shadow-rgb": "0 0 0",
     "shadow-strength": "2.2",
-    highlight: "rgb(255 255 255 / 0.04)",
-    skeleton: "#222830",
-    "skeleton-shine": "#2c333c",
+    highlight: "rgb(255 255 255 / 0.06)",
+    skeleton: "#1c2430",
+    "skeleton-shine": "#27313e",
   },
 };
 
 /** Browser/OS chrome colour (meta theme-color) per resolved scheme. Light keeps the existing navy. */
-export const THEME_COLOR: Record<Scheme, string> = { light: "#0B1F3B", dark: "#0e1114" };
+export const THEME_COLOR: Record<Scheme, string> = { light: "#0B1F3B", dark: "#0a0e14" };
 
 type RGB = [number, number, number];
 export function hexToRgb(hex: string): RGB {
