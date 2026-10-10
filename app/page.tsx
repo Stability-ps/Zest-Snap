@@ -39,7 +39,7 @@ export default async function Home() {
     ],
   ];
   return (
-    <main>
+    <main className="marketingPage">
       <div className="wrap">
         <nav className="nav">
           <a className="brand" href="https://zestsnap.app" aria-label="Zest Snap home">
