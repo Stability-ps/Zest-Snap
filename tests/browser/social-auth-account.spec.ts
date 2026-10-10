@@ -26,10 +26,10 @@ async function admin(path: string, init: { method?: string; body?: string } = {}
     req.end();
   });
 }
-async function newUser(email: string, metadata: Record<string, unknown> = {}) {
+async function newUser(email: string, metadata: Record<string, unknown> = {}, keepOnboarding = false) {
   const r = await admin("/auth/v1/admin/users", { method: "POST", body: JSON.stringify({ email, password: PASSWORD, email_confirm: true, user_metadata: metadata }) });
   expect(r.status, JSON.stringify(r.json)).toBe(200);
-  await admin(`/rest/v1/premium_onboarding?user_id=eq.${r.json.id}`, { method: "DELETE" }).catch(() => undefined);
+  if (!keepOnboarding) await admin(`/rest/v1/premium_onboarding?user_id=eq.${r.json.id}`, { method: "DELETE" }).catch(() => undefined);
   return r.json.id as string;
 }
 async function signIn(page: Page, email: string) {
@@ -161,4 +161,18 @@ test("connecting Google from Settings starts from the signed-in account; a confl
   await page.goto("/auth/callback?provider=google&link=1&error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user");
   await expect(page).toHaveURL(/\/settings\?sheet=account&auth_error=conflict/);
   await expect(page.locator(".settingsSaved")).toHaveText("This sign-in method is already connected to another account.");
+});
+
+test("a brand-new account finishing Google/Apple sign-in sees the premium introduction once", async ({ page }) => {
+  const email = `new-social-${Date.now().toString(36)}@example.com`;
+  await newUser(email, { full_name: "New Person" }, true);
+  await page.goto("/login");
+  await page.getByPlaceholder("you@example.com").fill(email);
+  await page.locator('input[name="password"]').fill(PASSWORD);
+  await page.getByRole("button", { name: /^Sign in/ }).click();
+  await page.waitForURL(/\/upgrade\?from=onboarding/);
+  await page.getByRole("button", { name: "Continue with Free plan" }).click();
+  await page.waitForURL((u) => u.pathname === "/app");
+  await page.goto("/auth/social-complete?next=%2Fapp");
+  await page.waitForURL((u) => u.pathname === "/app");
 });

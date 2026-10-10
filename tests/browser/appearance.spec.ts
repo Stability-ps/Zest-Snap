@@ -180,6 +180,8 @@ const screens: [string, string][] = [
   ["onboarding", "/onboarding"],
   ["offline", "/offline"],
   ["landing", "/"],
+  ["upgrade", "/upgrade?from=guest"],
+  ["upgrade-onboarding", "/upgrade?from=onboarding"],
 ];
 
 for (const scheme of ["light", "dark"] as const) {

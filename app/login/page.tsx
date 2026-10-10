@@ -123,7 +123,15 @@ export default function LoginPage() {
     // A different person may have used this device: drop their cached state before opening the app.
     setActiveUser(userId);
     await Promise.allSettled([registerDevice(), claimPendingReferral()]);
-    window.location.assign(new URL(nextPath(), window.location.origin).href);
+    let destination = nextPath();
+    // A verified signup may finish on a different browser; server state is authoritative.
+    if (destination === "/app" || destination.startsWith("/upgrade")) {
+      try {
+        const { data, error } = await createClient().rpc("premium_onboarding_status");
+        if (!error && data?.show === true) destination = "/upgrade?from=onboarding";
+      } catch { /* Never prevent sign-in when onboarding is unavailable. */ }
+    }
+    window.location.assign(new URL(destination, window.location.origin).href);
   }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
