@@ -303,3 +303,12 @@ test("RLS: people can save only their own appearance; no migration is needed", a
   assert.equal(read.rows.length, 0, "and unreadable");
   await db.close();
 });
+
+test("a look picked as a guest (first-run intro) carries into a brand-new account", () => {
+  const guest = stored({ mode: "dark", accent: "violet", updatedAt: 1000, owner: null, dirty: true });
+  const plan = reconcile(guest, null, A);
+  assert.equal(plan.apply?.mode, "dark");
+  assert.equal(plan.apply?.accent, "violet");
+  assert.equal(plan.apply?.owner, A);
+  assert.deepEqual(plan.push, { mode: "dark", accent: "violet", updatedAt: 1000 });
+});
