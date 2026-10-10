@@ -89,3 +89,8 @@ export function snapExamples(interests: InterestId[]) {
   const order = [...INTEREST_IDS.filter((id) => interests.includes(id)), ...DEFAULT_EXAMPLES];
   return [...new Set(order)].slice(0, 3).map((id) => ({ id, ...SNAP_EXAMPLES[id] }));
 }
+
+/** Saves a new pick on the device, stamped now (newest wins when syncing). */
+export function setLocalInterests(list: InterestId[]) {
+  writeLocalInterests({ list, updatedAt: Date.now() });
+}

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { INTEREST_IDS, type InterestId } from "@/lib/intro";
-import { INTEREST_LABELS, readLocalInterests, syncInterests, writeLocalInterests } from "@/lib/interests";
+import { INTEREST_LABELS, readLocalInterests, setLocalInterests, syncInterests } from "@/lib/interests";
 
 /** Settings › What you snap: the interests picked in the intro. Applies immediately; signed-in accounts sync. */
 export default function InterestsSheet({ owner }: { owner: string | null }) {
@@ -11,7 +11,7 @@ export default function InterestsSheet({ owner }: { owner: string | null }) {
   const toggle = async (id: InterestId) => {
     const list = picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id];
     setPicked(list);
-    writeLocalInterests({ list, updatedAt: Date.now() });
+    setLocalInterests(list);
     if (owner) {
       const { createClient, isSupabaseConfigured } = await import("@/lib/supabase/client");
       if (isSupabaseConfigured()) await syncInterests(createClient() as never, owner);
