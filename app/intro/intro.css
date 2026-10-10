@@ -118,8 +118,11 @@ html:has(.introPage) body {
   --c: var(--i-teal);
   display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
   background: rgb(16 35 63 / 0.92); border: 1px solid var(--i-line); border-left: 4px solid var(--c);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
-  opacity: 0; animation: introChip 7s cubic-bezier(.2, .9, .3, 1.2) infinite;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
+  /* No backdrop-filter here: on iPhone Safari a blurred element whose opacity is animated can stay invisible.
+     Visible by default too, so the chips still show if the animation never runs. */
+  will-change: transform, opacity;
+  animation: introChip 7s cubic-bezier(.2, .9, .3, 1.2) infinite;
 }
 .introChip svg { color: var(--c); flex: none; }
 .introChip span { display: flex; flex-direction: column; min-width: 0; }
@@ -153,8 +156,8 @@ html:has(.introPage) body {
 .introStage.notices { gap: 10px; justify-content: center; }
 .introNotice {
   position: relative; width: 100%; display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px;
-  padding: 13px 14px; border-radius: 20px; background: rgb(255 255 255 / 0.09); border: 1px solid var(--i-line);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 30px rgb(0 0 0 / 0.3);
+  padding: 13px 14px; border-radius: 20px; background: #1a2c47; border: 1px solid var(--i-line);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.3); /* solid, not blurred: see .introChip */
   animation: introDrop .7s cubic-bezier(.2, .9, .3, 1.15) both;
 }
 .introNotice span:not(.introAppIcon) { display: flex; flex-direction: column; min-width: 0; }
