@@ -11,7 +11,20 @@ import { hasPlugin, runtime } from "./runtime";
  * RevenueCat webhook) from receipts RevenueCat verified with Apple/Google — never from the client's word.
  */
 export type BillingAvailability = "store" | "store_not_configured" | "web_not_connected";
-export type StoreOffer = { id: string; plan: Exclude<PlanId, "free">; period: "monthly" | "annual" | "other"; price: string; title: string };
+/** A purchasable store package. Every price here is the store's own localised value (never computed or invented). */
+export type StoreOffer = {
+  id: string;
+  plan: Exclude<PlanId, "free">;
+  period: "monthly" | "annual" | "other";
+  /** Localised store price for the whole billing period, e.g. "R 599,99". */
+  price: string;
+  /** Numeric store price for the whole period (used only to compare plans, never displayed on its own). */
+  priceAmount: number;
+  currencyCode: string;
+  /** The store's localised monthly equivalent (annual packages), or null if the store didn't provide one. */
+  pricePerMonth: string | null;
+  title: string;
+};
 export type PurchaseOutcome = { status: "purchased" | "cancelled" | "pending"; plan?: string };
 
 const storeKey = () => (runtime() === "ios" ? revenueCatPublicKeys.ios : runtime() === "android" ? revenueCatPublicKeys.android : "");
@@ -32,16 +45,20 @@ export function manageSubscriptionUrl() {
   return null;
 }
 
+const ANONYMOUS = "\u0000anonymous";
 let configuredFor: string | null = null;
 // Returned wrapped: awaiting a bare Capacitor plugin proxy would call `.then()` on it.
-async function purchases(userId: string) {
+// userId null = read-only price lookup before sign-in (RevenueCat's anonymous customer; it is merged into the
+// account by logIn when the person signs in). Purchases and restores always pass the signed-in account id.
+async function purchases(userId: string | null) {
   const { Purchases } = await import("@revenuecat/purchases-capacitor");
-  if (configuredFor === userId) return { Purchases };
+  const want = userId ?? ANONYMOUS;
+  if (configuredFor === want || (userId === null && configuredFor !== null)) return { Purchases };
   const { isConfigured } = await Purchases.isConfigured();
   // The Zest Snap account id is the store customer id, so purchases follow the account (not the device).
-  if (!isConfigured) await Purchases.configure({ apiKey: storeKey(), appUserID: userId });
-  else await Purchases.logIn({ appUserID: userId });
-  configuredFor = userId;
+  if (!isConfigured) await Purchases.configure(userId ? { apiKey: storeKey(), appUserID: userId } : { apiKey: storeKey() });
+  else if (userId) await Purchases.logIn({ appUserID: userId });
+  configuredFor = want;
   return { Purchases };
 }
 
@@ -52,7 +69,8 @@ async function confirmWithServer(): Promise<string | undefined> {
   return body.plan;
 }
 
-export async function storeOffers(userId: string): Promise<StoreOffer[]> {
+/** The store's current offering. Prices are the App Store / Google Play's own localised values. */
+export async function storeOffers(userId: string | null): Promise<StoreOffer[]> {
   if (billingAvailability() !== "store") return [];
   const { Purchases } = await purchases(userId);
   const offerings = await Purchases.getOfferings();
@@ -61,7 +79,17 @@ export async function storeOffers(userId: string): Promise<StoreOffer[]> {
       const plan = planForProduct(p.product.identifier);
       if (!plan) return null;
       const type = String(p.packageType);
-      return { id: p.identifier, plan, period: type === "MONTHLY" ? "monthly" : type === "ANNUAL" ? "annual" : "other", price: p.product.priceString, title: p.product.title } as StoreOffer;
+      const product = p.product as typeof p.product & { currencyCode?: string; pricePerMonthString?: string | null };
+      return {
+        id: p.identifier,
+        plan,
+        period: type === "MONTHLY" ? "monthly" : type === "ANNUAL" ? "annual" : "other",
+        price: product.priceString,
+        priceAmount: Number(product.price) || 0,
+        currencyCode: product.currencyCode || "",
+        pricePerMonth: product.pricePerMonthString ?? null,
+        title: product.title,
+      } as StoreOffer;
     })
     .filter((x): x is StoreOffer => !!x);
 }
