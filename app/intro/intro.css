@@ -81,7 +81,6 @@ html:has(.introPage) body {
   position: absolute; width: 320px; height: 320px; left: 50%; top: 42%; transform: translate(-50%, -50%);
   background: radial-gradient(circle, rgb(0 198 167 / 0.26), transparent 65%); filter: blur(8px); pointer-events: none;
 }
-.introGlow.amber { background: radial-gradient(circle, rgb(245 184 65 / 0.2), transparent 65%); }
 
 /* Phases come from data-phase on .introStage (set by page.tsx): idle → scan → done. Transitions only, no
    looping keyframes, which froze on some iPhones. Without JS the default is the finished state. */
@@ -147,25 +146,26 @@ html:has(.introPage) body {
 .introOption.on { border-color: var(--i-teal); background: rgb(0 198 167 / 0.12); }
 .introOption.on .introTick { background: var(--i-teal); border-color: var(--i-teal); color: #04221d; transform: scale(1.05); }
 
-/* ---- Step 3: reminders ------------------------------------------------------------------------------ */
-.introStage.notices { gap: 10px; justify-content: center; }
-.introNotice {
-  position: relative; width: 100%; display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px;
-  padding: 13px 14px; border-radius: 20px; background: #1a2c47; border: 1px solid var(--i-line);
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.3); /* solid, not blurred: see .introChip */
-  animation: introDrop .7s cubic-bezier(.2, .9, .3, 1.15) both;
+/* ---- Step 3: look, colour and reminders ---------------------------------------------------------- */
+.introCopy.top.tight { margin: 10px 0 16px; }
+.introReminder {
+  display: flex; align-items: center; gap: 12px; margin-top: 18px; padding: 12px 14px; border-radius: 18px;
+  background: var(--i-card); border: 1px solid var(--i-line); cursor: pointer;
 }
-.introNotice span:not(.introAppIcon) { display: flex; flex-direction: column; min-width: 0; }
-.introNotice b { font-size: 15px; }
-.introNotice small { color: var(--i-text-2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.introNotice time { align-self: start; color: var(--i-text-2); font-size: 12px; }
-.introNotice.n2 { animation-delay: .25s; transform-origin: top; width: 96%; opacity: .85; }
-.introNotice.n3 { animation-delay: .5s; width: 92%; opacity: .7; }
-@keyframes introDrop { from { opacity: 0; transform: translateY(-26px) scale(.96); } }
-.introAppIcon {
-  width: 40px; height: 40px; border-radius: 11px; background: #0b1f3b url("/icons/zest-snap-192.png") center / cover no-repeat;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+.introReminderIcon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; flex: none; background: rgb(245 184 65 / 0.16); color: var(--i-amber); }
+.introReminderCopy { flex: 1; display: grid; min-width: 0; }
+.introReminderCopy b { font-size: 15px; }
+.introReminderCopy small { color: var(--i-text-2); font-size: 13px; }
+.introSwitch {
+  appearance: none; -webkit-appearance: none; position: relative; flex: none; width: 50px; height: 30px; margin: 0;
+  border-radius: 999px; background: rgb(255 255 255 / 0.18); cursor: pointer; transition: background .2s ease;
 }
+.introSwitch::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; box-shadow: 0 2px 6px rgb(0 0 0 / 0.3); transition: transform .2s cubic-bezier(.2, .9, .3, 1.2);
+}
+.introSwitch:checked { background: var(--i-teal); }
+.introSwitch:checked::after { transform: translateX(20px); }
 
 /* ---- Small screens and reduced motion --------------------------------------------------------------- */
 @media (max-height: 700px) {
@@ -181,6 +181,15 @@ html:has(.introPage) body {
   .introPrimary { min-height: 54px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .introStep, .introNotice { animation: none; }
+  .introStep { animation: none; }
   .introPaper, .introCorner, .introScanLine, .introChip { transition: none; }
+}
+
+/* The shared appearance picker inside the intro: a smaller phone so the reminder switch and button fit. */
+.introPage .appearanceSheet { gap: 14px; }
+.introPage .appearancePhone { width: min(100%, 214px); }
+.introPage .appearancePhoneHello { display: none; }
+@media (max-height: 700px) {
+  .introPage .appearancePhone { width: min(100%, 180px); }
+  .introPage .appearancePhoneCard .appearancePhoneRow + .appearancePhoneRow { display: none; }
 }
