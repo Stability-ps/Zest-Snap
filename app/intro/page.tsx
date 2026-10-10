@@ -30,6 +30,10 @@ export default function Intro() {
   const [picked, setPicked] = useState<InterestId[]>([]);
   const [native, setNative] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Photo-to-plan demo on the first screen: "idle" → "scan" → "done" (chips appear), then it loops.
+  // Driven from here with plain CSS transitions; looping CSS keyframe animations froze on some iPhones.
+  // Starts (and server-renders) as "done", so the full result shows even if the demo never runs.
+  const [phase, setPhase] = useState<"idle" | "scan" | "done">("done");
 
   useEffect(() => {
     setNative(isNativeShell());
@@ -37,6 +41,23 @@ export default function Intro() {
     document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", "#0B1F3B"));
     void import("@/lib/appearance/client").then(({ applyNativeAppearance }) => applyNativeAppearance("dark")).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (step !== 0) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setPhase("done");
+      return;
+    }
+    const timers: number[] = [];
+    const cycle = () => {
+      setPhase("idle");
+      timers.push(window.setTimeout(() => setPhase("scan"), 500));
+      timers.push(window.setTimeout(() => setPhase("done"), 2500));
+      timers.push(window.setTimeout(cycle, 7000));
+    };
+    timers.push(window.setTimeout(cycle, 2500));
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [step]);
 
   const leave = (to: string) => {
     saveIntro(picked);
@@ -86,7 +107,7 @@ export default function Intro() {
 
       {step === 0 && (
         <section className="introStep" key="s0">
-          <div className="introStage" aria-hidden="true">
+          <div className="introStage" data-phase={phase} aria-hidden="true">
             <div className="introGlow" />
             <div className="introPaper">
               <span className="introCorner tl" />
