@@ -127,19 +127,20 @@ test("invalid stored preferences fall back safely, field by field", () => {
 
 function boot(storageValue: string | null, systemDark: boolean, pathname = "/app") {
   const dataset: Record<string, string> = {};
+  const style: Record<string, string> = {};
   const metas = [0, 1].map(() => {
     const attrs: Record<string, string> = { media: "(prefers-color-scheme: light)" };
     return { attrs, setAttribute: (k: string, v: string) => void (attrs[k] = v), removeAttribute: (k: string) => void delete attrs[k] };
   });
   const context = {
-    document: { documentElement: { dataset }, querySelectorAll: () => metas },
+    document: { documentElement: { dataset, style }, querySelectorAll: () => metas },
     location: { pathname },
     localStorage: { getItem: (k: string) => (k === APPEARANCE_KEY ? storageValue : null) },
     window: { matchMedia: () => ({ matches: systemDark }) },
     matchMedia: () => ({ matches: systemDark }),
   };
   vm.runInNewContext(APPEARANCE_BOOT_SCRIPT, context);
-  return { dataset, metas: metas.map((m) => m.attrs) };
+  return { dataset, style, metas: metas.map((m) => m.attrs) };
 }
 
 test("boot script applies the stored theme before first paint and never throws", () => {
@@ -149,6 +150,8 @@ test("boot script applies the stored theme before first paint and never throws",
   const dark = boot(JSON.stringify({ mode: "dark", accent: "violet" }), false);
   assert.equal(dark.dataset.theme, "dark");
   assert.equal(dark.dataset.accent, "violet");
+  assert.equal(dark.style.colorScheme, "dark");
+  assert.equal(boot(JSON.stringify({ mode: "light" }), true).style.colorScheme, "light", "explicit Light on a dark device");
   assert.deepEqual(dark.metas[0], { content: "#0e1114" });
   assert.equal(boot(JSON.stringify({ mode: "light", accent: "rose" }), true).dataset.theme, "light");
   assert.equal(boot("{broken", true).dataset.theme, "dark");

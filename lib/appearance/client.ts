@@ -46,6 +46,7 @@ export function applyToDocument(doc: Document, value: { scheme: Scheme; mode: Th
   const root = doc.documentElement;
   if (!followsAppearance(pathname)) {
     root.dataset.theme = "light";
+    root.style.colorScheme = "light";
     delete root.dataset.accent;
     return;
   }
@@ -57,6 +58,8 @@ export function applyToDocument(doc: Document, value: { scheme: Scheme; mode: Th
   }
   root.dataset.theme = value.scheme;
   root.dataset.themeMode = value.mode;
+  // Form controls, scrollbars and the pre-CSS canvas follow the chosen scheme, not the OS one.
+  root.style.colorScheme = value.scheme;
   if (value.accent === "ocean") delete root.dataset.accent;
   else root.dataset.accent = value.accent;
   doc.querySelectorAll('meta[name="theme-color"]').forEach((m) => {

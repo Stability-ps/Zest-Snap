@@ -57,6 +57,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Lets the browser paint its pre-CSS canvas dark on dark devices (the stylesheet then applies the chosen theme).
+  colorScheme: "light dark",
   // Without JavaScript the OS scheme decides; the boot script replaces both with the person's own choice.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
