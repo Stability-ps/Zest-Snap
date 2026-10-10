@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ system splash. Same as values/styles.xml plus the "Zest Snap" wordmark in the branding slot
+         at the bottom of the screen (the system splash only allows a centred icon and this 200x80dp image). -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/zest_navy</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/zest_splash_v6</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:background">@drawable/zest_launch_background_v6</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/zest_splash_wordmark</item>
+    </style>
+</resources>
